@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050914">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>TaskFlow</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#030712;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.boot{position:relative;isolation:isolate;min-height:100dvh;display:grid;place-items:center;padding:24px;overflow:hidden;background:
+radial-gradient(circle at 50% 36%,rgba(53,231,214,.18),transparent 23%),
+radial-gradient(circle at 15% 15%,rgba(105,78,255,.17),transparent 31%),
+radial-gradient(circle at 86% 78%,rgba(255,146,61,.12),transparent 28%),
+linear-gradient(155deg,#02050d 0%,#06101f 48%,#030712 100%)}
+.boot::before,.boot::after{content:"";position:absolute;pointer-events:none;z-index:-1;border-radius:50%;filter:blur(2px)}
+.boot::before{width:min(80vw,640px);aspect-ratio:1;left:-35vw;top:-18vw;border:1px solid rgba(70,229,216,.10);box-shadow:0 0 0 38px rgba(75,224,214,.015),0 0 0 82px rgba(124,91,255,.012);animation:tfOrbFloat 7s ease-in-out infinite alternate}
+.boot::after{width:min(65vw,520px);aspect-ratio:1;right:-28vw;bottom:-24vw;border:1px solid rgba(255,160,74,.08);box-shadow:0 0 0 42px rgba(255,152,66,.012),0 0 0 88px rgba(67,225,213,.01);animation:tfOrbFloat 8.5s ease-in-out -2s infinite alternate-reverse}
+.card{position:relative;width:min(460px,100%);text-align:center;padding:42px 30px 30px;border-radius:30px;border:1px solid rgba(85,232,218,.30);background:
+radial-gradient(circle at 50% -10%,rgba(77,232,218,.10),transparent 31%),
+radial-gradient(circle at 100% 100%,rgba(119,86,255,.08),transparent 32%),
+linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88));box-shadow:0 38px 110px rgba(0,0,0,.56),0 0 65px rgba(57,223,210,.10),inset 0 1px 0 rgba(255,255,255,.055);backdrop-filter:blur(18px) saturate(1.12);-webkit-backdrop-filter:blur(18px) saturate(1.12);overflow:hidden}
+.card::before{content:"";position:absolute;width:210px;height:210px;border-radius:50%;left:50%;top:-118px;transform:translateX(-50%);border:1px solid rgba(77,232,218,.14);box-shadow:0 0 0 24px rgba(82,227,216,.026),0 0 0 52px rgba(128,91,255,.018),0 0 54px rgba(62,226,212,.10);pointer-events:none}
+.card::after{content:"";position:absolute;left:9%;right:9%;top:0;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,#47e7da 25%,#7d77ff 58%,#ff9b45 84%,transparent);box-shadow:0 0 18px rgba(71,231,218,.48);pointer-events:none}
+.logo{position:relative;font-size:clamp(56px,13vw,72px);line-height:.98;font-weight:950;letter-spacing:-.045em;background:linear-gradient(100deg,#45e9dc 0%,#62e8d7 30%,#8992ff 58%,#ffad55 88%,#45e9dc 100%);background-size:230% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;text-shadow:0 0 28px rgba(65,228,214,.25),0 0 68px rgba(118,88,255,.14);animation:tfLogoShift 5s linear infinite}
+.sub{margin-top:13px;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:#9cabc2;font-weight:850;text-shadow:0 1px 10px rgba(0,0,0,.55)}
+.msg{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:28px;padding:10px 15px;border-radius:999px;border:1px solid rgba(80,230,217,.18);background:linear-gradient(180deg,rgba(8,24,39,.72),rgba(6,15,29,.70));color:#d2dbea;font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 28px rgba(0,0,0,.16)}
+.msg::before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#55e9dd;box-shadow:0 0 0 4px rgba(85,233,221,.08),0 0 14px rgba(85,233,221,.72);animation:tfBootPulse 1.3s ease-in-out infinite}
+.bar{position:relative;height:9px;border-radius:999px;background:#091529;overflow:hidden;margin:24px auto 0;max-width:350px;border:1px solid rgba(118,165,215,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 28px rgba(69,224,210,.08)}
+.bar i{position:relative;display:block;height:100%;width:0;background:linear-gradient(90deg,#36e0d1 0%,#62ebc0 38%,#8d8cff 66%,#ff9c48 100%);animation:tfBoot5 5s linear forwards;border-radius:999px;box-shadow:0 0 16px rgba(66,225,209,.65),0 0 30px rgba(125,101,255,.18)}
+.bar i::after{content:"";position:absolute;top:0;bottom:0;width:72px;right:-12px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);filter:blur(2px);animation:tfBarSpark 1.15s ease-in-out infinite}
+.nv-watermark{margin:27px auto 0;display:grid;justify-items:center;gap:9px;opacity:.72;max-width:300px;padding-top:19px;border-top:1px solid rgba(142,167,204,.08)}
+.nv-watermark img{display:block;width:min(188px,55vw);height:auto;border-radius:11px;filter:saturate(1.08) brightness(1.05) contrast(1.04) drop-shadow(0 0 20px rgba(58,218,208,.13));opacity:.74}
+.nv-watermark span{font-size:9px;letter-spacing:.13em;color:#8998af;text-transform:uppercase;font-weight:800}
+.err{margin-top:14px;color:#ff8b9a;font-size:11px;display:none;line-height:1.45}
+.retry{display:none;margin:16px auto 0;border:1px solid rgba(75,226,212,.32);border-radius:13px;padding:10px 17px;background:linear-gradient(135deg,#12343c,#132845);color:#62e8dc;font-weight:850;box-shadow:0 10px 25px rgba(0,0,0,.22)}
+@keyframes tfBoot5{from{width:0}to{width:100%}}
+@keyframes tfLogoShift{0%{background-position:0% 50%}100%{background-position:230% 50%}}
+@keyframes tfBootPulse{0%,100%{opacity:.55;transform:scale(.86)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes tfBarSpark{0%,100%{opacity:.18;transform:translateX(-8px)}50%{opacity:.9;transform:translateX(8px)}}
+@keyframes tfOrbFloat{from{transform:translate3d(0,0,0)}to{transform:translate3d(18px,14px,0)}}
+@media(max-width:430px){.boot{padding:17px}.card{padding:38px 20px 26px;border-radius:26px}.logo{font-size:clamp(52px,15vw,64px)}.sub{font-size:9px}.msg{font-size:12px}.bar{max-width:330px}.nv-watermark{margin-top:23px}}
+@media(prefers-reduced-motion:reduce){.boot::before,.boot::after,.logo,.msg::before,.bar i::after{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="boot">
+  <div class="card">
+    <div class="logo">TaskFlow</div>
+    <div class="sub">Organiza · Avanza · Cumple</div>
+    <div class="msg" id="m">Preparando tu sistema…</div>
+    <div class="bar" id="b"><i></i></div>
+    <div class="nv-watermark" aria-label="Creado y actualizado por NovaVision GT">
+      <img src="./novavision-watermark.svg" alt="NovaVision GT">
+      <span>Creado y actualizado por NovaVision GT</span>
+    </div>
+    <div class="err" id="e"></div>
+    <button class="retry" id="r" type="button">Reintentar</button>
+  </div>
+</div>
+<script>
+(()=>{
+'use strict';
+const TF_WELCOME_KEY='taskflow_welcome_seen_v13083_release';
+try{
+ localStorage.setItem(TF_WELCOME_KEY,'1');
+ window.__tfV13063Welcome=true;window.__tfV13064WelcomeEmphasis=true;window.__tfV13072Headphones=true;
+ if(!window.__tfWelcomeSeenKeyGuard){
+  const rawRemoveItem=Storage.prototype.removeItem;
+  Storage.prototype.removeItem=function(key){
+   if(this===localStorage&&key===TF_WELCOME_KEY)return;
+   return rawRemoveItem.apply(this,arguments);
+  };
+  window.__tfWelcomeSeenKeyGuard=true;
+ }
+}catch(_){}
+const msg=document.getElementById('m'),err=document.getElementById('e'),bar=document.getElementById('b'),retry=document.getElementById('r');
+const MIN_BOOT_MS=1800;
+let timer=null;
+function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function resetBar(){
+  const i=bar&&bar.querySelector('i');
+  if(!i)return;
+  i.style.animation='none';
+  void i.offsetWidth;
+  i.style.animation='tfBoot5 1.8s linear forwards';
+}
+function fail(ex){
+  if(timer){clearTimeout(timer);timer=null;}
+  console.error('TaskFlow boot:',ex);
+  bar.style.display='none';
+  msg.textContent='No se pudo iniciar TaskFlow.';
+  err.textContent=ex&&ex.name==='AbortError'?'La carga tardó demasiado. Toca Reintentar.':String(ex&&ex.message?ex.message:ex);
+  err.style.display='block';
+  retry.style.display='inline-flex';
+}
+async function start(){
+  const started=performance.now();
+  err.style.display='none';retry.style.display='none';bar.style.display='block';msg.textContent='Cargando TaskFlow…';resetBar();
+  const ctrl=new AbortController();
+  timer=setTimeout(()=>ctrl.abort(),15000);
+  try{
+    const res=await fetch('./taskflow-loader-v102.html?v=13102-20261014',{cache:'no-store',signal:ctrl.signal});
+    if(!res.ok)throw new Error('No se pudo cargar la base de TaskFlow ('+res.status+')');
+    let html=await res.text();
+    if(timer){clearTimeout(timer);timer=null;}
+
+    const loaderVisualStyle=`<style id="tf-loader-visual-restore">
+html,body{margin:0!important;min-height:100%!important;background:#030712!important;color:#fff!important;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+.boot{position:relative!important;isolation:isolate!important;min-height:100dvh!important;display:grid!important;place-items:center!important;padding:24px!important;overflow:hidden!important;background:radial-gradient(circle at 50% 36%,rgba(53,231,214,.18),transparent 23%),radial-gradient(circle at 15% 15%,rgba(105,78,255,.17),transparent 31%),radial-gradient(circle at 86% 78%,rgba(255,146,61,.12),transparent 28%),linear-gradient(155deg,#02050d 0%,#06101f 48%,#030712 100%)!important}
+.boot::before,.boot::after{content:"";position:absolute;pointer-events:none;z-index:-1;border-radius:50%;filter:blur(2px)}
+.boot::before{width:min(80vw,640px);aspect-ratio:1;left:-35vw;top:-18vw;border:1px solid rgba(70,229,216,.10);box-shadow:0 0 0 38px rgba(75,224,214,.015),0 0 0 82px rgba(124,91,255,.012);animation:tfOrbFloat 7s ease-in-out infinite alternate}
+.boot::after{width:min(65vw,520px);aspect-ratio:1;right:-28vw;bottom:-24vw;border:1px solid rgba(255,160,74,.08);box-shadow:0 0 0 42px rgba(255,152,66,.012),0 0 0 88px rgba(67,225,213,.01);animation:tfOrbFloat 8.5s ease-in-out -2s infinite alternate-reverse}
+.card{position:relative!important;width:min(460px,100%)!important;text-align:center!important;padding:42px 30px 30px!important;border-radius:30px!important;border:1px solid rgba(85,232,218,.30)!important;background:radial-gradient(circle at 50% -10%,rgba(77,232,218,.10),transparent 31%),radial-gradient(circle at 100% 100%,rgba(119,86,255,.08),transparent 32%),linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88))!important;box-shadow:0 38px 110px rgba(0,0,0,.56),0 0 65px rgba(57,223,210,.10),inset 0 1px 0 rgba(255,255,255,.055)!important;backdrop-filter:blur(18px) saturate(1.12)!important;-webkit-backdrop-filter:blur(18px) saturate(1.12)!important;overflow:hidden!important}
+.card::before{content:"";position:absolute;width:210px;height:210px;border-radius:50%;left:50%;top:-118px;transform:translateX(-50%);border:1px solid rgba(77,232,218,.14);box-shadow:0 0 0 24px rgba(82,227,216,.026),0 0 0 52px rgba(128,91,255,.018),0 0 54px rgba(62,226,212,.10);pointer-events:none}
+.card::after{content:"";position:absolute;left:9%;right:9%;top:0;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,#47e7da 25%,#7d77ff 58%,#ff9b45 84%,transparent);box-shadow:0 0 18px rgba(71,231,218,.48);pointer-events:none}
+.logo{position:relative!important;font-size:clamp(56px,13vw,72px)!important;line-height:.98!important;font-weight:950!important;letter-spacing:-.045em!important;background:linear-gradient(100deg,#45e9dc 0%,#62e8d7 30%,#8992ff 58%,#ffad55 88%,#45e9dc 100%)!important;background-size:230% 100%!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:0 0 28px rgba(65,228,214,.25),0 0 68px rgba(118,88,255,.14)!important;animation:tfLogoShift 5s linear infinite!important}
+.sub{margin-top:13px!important;font-size:10px!important;letter-spacing:.25em!important;text-transform:uppercase!important;color:#9cabc2!important;font-weight:850!important;text-shadow:0 1px 10px rgba(0,0,0,.55)!important}
+.msg{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;margin-top:28px!important;padding:10px 15px!important;border-radius:999px!important;border:1px solid rgba(80,230,217,.18)!important;background:linear-gradient(180deg,rgba(8,24,39,.72),rgba(6,15,29,.70))!important;color:#d2dbea!important;font-size:13px!important;line-height:normal!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 28px rgba(0,0,0,.16)!important}
+.msg::before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#55e9dd;box-shadow:0 0 0 4px rgba(85,233,221,.08),0 0 14px rgba(85,233,221,.72);animation:tfBootPulse 1.3s ease-in-out infinite}
+.bar{position:relative!important;height:9px!important;border-radius:999px!important;background:#091529!important;overflow:hidden!important;margin:24px auto 0!important;max-width:350px!important;border:1px solid rgba(118,165,215,.08)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 28px rgba(69,224,210,.08)!important}
+.bar>i{position:relative!important;display:block!important;height:100%!important;width:0!important;background:linear-gradient(90deg,#36e0d1 0%,#62ebc0 38%,#8d8cff 66%,#ff9c48 100%)!important;animation:tfBoot5 1.8s linear forwards!important;border-radius:999px!important;transform:none!important;box-shadow:0 0 16px rgba(66,225,209,.65),0 0 30px rgba(125,101,255,.18)!important}
+.bar>i::after{content:"";position:absolute;top:0;bottom:0;width:72px;right:-12px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);filter:blur(2px);animation:tfBarSpark 1.15s ease-in-out infinite}
+.nv-watermark{margin:27px auto 0!important;display:grid!important;justify-items:center!important;gap:9px!important;opacity:.72!important;max-width:300px!important;padding-top:19px!important;border-top:1px solid rgba(142,167,204,.08)!important}
+.nv-watermark img{display:block!important;width:min(188px,55vw)!important;height:auto!important;border-radius:11px!important;filter:saturate(1.08) brightness(1.05) contrast(1.04) drop-shadow(0 0 20px rgba(58,218,208,.13))!important;opacity:.74!important}
+.nv-watermark span{font-size:9px!important;letter-spacing:.13em!important;color:#8998af!important;text-transform:uppercase!important;font-weight:800!important}
+.retry{display:none;margin:16px auto 0!important;border:1px solid rgba(75,226,212,.32)!important;border-radius:13px!important;padding:10px 17px!important;background:linear-gradient(135deg,#12343c,#132845)!important;color:#62e8dc!important;font-weight:850!important}
+.error .bar{display:none!important}.error .retry{display:inline-flex!important}
+.detail{display:none!important;margin:12px auto 0!important;max-width:370px!important;color:#75849d!important;font-size:10px!important;line-height:1.45!important;word-break:break-word!important}.error .detail{display:block!important}
+@keyframes tfBoot5{from{width:0}to{width:100%}}
+@keyframes tfLogoShift{0%{background-position:0% 50%}100%{background-position:230% 50%}}
+@keyframes tfBootPulse{0%,100%{opacity:.55;transform:scale(.86)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes tfBarSpark{0%,100%{opacity:.18;transform:translateX(-8px)}50%{opacity:.9;transform:translateX(8px)}}
+@keyframes tfOrbFloat{from{transform:translate3d(0,0,0)}to{transform:translate3d(18px,14px,0)}}
+@media(max-width:430px){.boot{padding:17px!important}.card{padding:38px 20px 26px!important;border-radius:26px!important}.logo{font-size:clamp(52px,15vw,64px)!important}.sub{font-size:9px!important}.msg{font-size:12px!important}.bar{max-width:330px!important}.nv-watermark{margin-top:23px!important}}
+@media(prefers-reduced-motion:reduce){.boot::before,.boot::after,.logo,.msg::before,.bar>i::after{animation:none!important}}
+</style>`;
+    const loaderScreen=`<div class="boot" id="boot"><div class="card">
+  <div class="logo">TaskFlow</div>
+  <div class="sub">Organiza · Avanza · Cumple</div>
+  <div class="msg" id="msg">Preparando tu sistema…</div>
+  <div class="bar"><i></i></div>
+  <div class="nv-watermark" aria-label="Creado y actualizado por NovaVision GT">
+    <img src="./novavision-watermark.svg" alt="NovaVision GT">
+    <span>Creado y actualizado por NovaVision GT</span>
+  </div>
+  <button class="retry" id="retry" type="button">Reintentar</button>
+  <div class="detail" id="detail"></div>
+</div></div>`;
+    html=html.replace('</head>',loaderVisualStyle+'</head>');
+    html=html.replace(/<div class="boot" id="boot"><div class="card">[\s\S]*?<\/div><\/div>\s*<script>/,loaderScreen+'<script>');
+
+    const headNeedle="if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+scrollBridgeScript+iconPortalGuard+'</head>');";
+    const headFix="if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+'<script src=\"./taskflow-touch-v105.js?v=1240-20260926\"><\\/script>'+scrollBridgeScript+iconPortalGuard+'<link rel=\"stylesheet\" href=\"./taskflow-503020.css?v=1110-20260909\"><link rel=\"stylesheet\" href=\"./taskflow-profile-v108.css?v=1110-20260909\"><style id=\"tf-v1192-main-spacing\">.wrap{padding-bottom:max(20px,env(safe-area-inset-bottom))!important}.v48-discipline-center{margin-bottom:0!important}</style>'+'</head>');";
+    const payloadCacheNeedle="fetch(base+name,{cache:'no-store',mode:'cors'})";
+    const payloadCacheFix="fetch(base+name,{cache:'force-cache',mode:'cors'})";
+    const perfGuard='<script id="tf-v123-performance-guard">(function(){if(window.__tfV123PerformanceGuard)return;window.__tfV123PerformanceGuard=true;var Native=window.MutationObserver;if(!Native)return;function Quiet(cb){this.cb=cb}Quiet.prototype.observe=function(){};Quiet.prototype.disconnect=function(){};Quiet.prototype.takeRecords=function(){return[]};window.MutationObserver=function(cb){var src="";try{src=Function.prototype.toString.call(cb)}catch(_){};var noisy=(src.indexOf("addedNodes")!==-1&&(src.indexOf("schedule()")!==-1||src.indexOf("queueApply()")!==-1))||src.indexOf("requestAnimationFrame(apply)")!==-1;return noisy?new Quiet(cb):new Native(cb)};window.MutationObserver.prototype=Native.prototype;document.addEventListener("DOMContentLoaded",function(){setTimeout(function(){window.MutationObserver=Native},0)},{once:true});})();<\\/script>';
+    const writeNeedle='document.open();document.write(html);document.close();';
+    const writeFix=`if(html.includes('</body>'))html=html.replace('</body>','<script src="./taskflow-503020.js?v=1110-20260909"><\\/script><script src="./taskflow-503020-inputformat.js?v=1110-20260909"><\\/script><script src="./taskflow-firebase-v108.js?v=1120-20260909"><\\/script><script src="./taskflow-firestore-sync-v109.js?v=1110-20260909"><\\/script>${perfGuard}<script src="./taskflow-v117.js?v=1230-20260926"><\\/script><script src="./taskflow-v119.js?v=1230-20260926"><\\/script><script src="./taskflow-v1193-spacing.js?v=1193-20260921"><\\/script><script src="./taskflow-v120.js?v=13097-20261014"><\\/script><script src="./taskflow-v121-resetfix.js?v=13097-20261014"><\\/script><script src="./taskflow-v122-habit-visual.js?v=1230-20260926"><\\/script><script src="./taskflow-v1303-routine-guard.js?v=1303-20260930"><\\/script><script src="./taskflow-v125-routine-layout.js?v=1250-20260926"><\\/script><script src="./taskflow-v126-routine-tight.js?v=1264-20260926"><\\/script><script src="./taskflow-v127-ui-fixes.js?v=1280-20260930"><\\/script><script src="./taskflow-v1281-requested-layout.js?v=1281-20260930"><\\/script><script src="./taskflow-v129-rank-visual-system.js?v=1290-20260930"><\\/script><script src="./taskflow-v130-unified-layout.js?v=1300-20260930"><\\/script><script src="./taskflow-v1301-bottom-gap-fix.js?v=1301-20260930"><\\/script><script src="./taskflow-v1302-routine-spacing.js?v=1302-20260930"><\\/script><script src="./taskflow-v1303-routine-stability.js?v=1303-20260930"><\\/script><script src="./taskflow-v1303-routine-guard-restore.js?v=1303-20260930"><\\/script><script src="./taskflow-v13058-audio-boost.js?v=13104-20261014"><\\/script><script src="./taskflow-v1304-sound.js?v=13104-20261014"><\\/script><script src="./taskflow-v1305-search-results.js?v=13101-20261014"><\\/script></body>');document.open();document.write(html);document.close();`;
+    if(!html.includes(headNeedle)||!html.includes(writeNeedle)||!html.includes(payloadCacheNeedle))throw new Error('La base publicada no coincide con la versión esperada.');
+    html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,writeFix);
+    const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
+    if(remaining)await wait(remaining);
+    msg.textContent='Iniciando TaskFlow…';
+    document.open();document.write(html);document.close();
+  }catch(ex){fail(ex);}
+}
+retry.addEventListener('click',start);
+start();
+})();
+</script>
+</body>
+</html>
