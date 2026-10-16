@@ -35,9 +35,8 @@ function initializeDefaultsOnce(){
  let first=true;
  try{first=localStorage.getItem(INIT)!=='1'}catch(_){}
  if(!first)return;
- const c=getCfg();
- for(const r of ROUTINES)c[r.id]=false;
- writeCfg(c,true);
+ /* Primer inicio: completar únicamente las claves ausentes. Nunca apagar rutinas ya guardadas. */
+ getCfg();
  try{localStorage.setItem(INIT,'1')}catch(_){}
 }
 

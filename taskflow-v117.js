@@ -119,7 +119,21 @@ function cloudWatch(){const u=window.TaskFlowFirebase&&window.TaskFlowFirebase.g
 function clearStaleNotice(){const box=$('tfRecoveryBanner');if(box)box.classList.remove('show')}
 function applyAll(){installStyle();closeOldArtifacts();installSearch();manager();resetModal();mountReset();applyVisibility();cloudWatch();clearStaleNotice()}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;applyAll()})}
-function start(){cfg();applyAll();setTimeout(applyAll,250);setTimeout(applyAll,850);setTimeout(applyAll,1700);observer=new MutationObserver(ms=>{if(ms.some(m=>m.addedNodes&&m.addedNodes.length))schedule()});observer.observe(document.body,{subtree:true,childList:true});setInterval(cloudWatch,2000);document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeManager();closeReset()}},true)}
+/* Vigilar solo cambios de los contenedores de rutinas, no cada modificación de la interfaz.
+   El núcleo puede reconstruir tarjetas al buscar o navegar. */
+function requestRoutineTreeRefresh(){schedule()}
+function onRoutineTreeChange(mutations){
+ const selector='#v27MainHub,#v32MandatoryMissions,#v69DailyMindRoutines,#tfPairV117,#tf503020Hub,#v94MentalistRoutine,.v83-core-card,.v69-routine-launch,.v94-mentalist-launch';
+ for(const m of mutations){
+  if(!m.addedNodes||!m.addedNodes.length)continue;
+  const t=m.target;
+  if(t&&t.nodeType===1&&['v27MainHub','v32MandatoryMissions','v69DailyMindRoutines','tfPairV117'].includes(t.id)){requestRoutineTreeRefresh();return}
+  for(const n of m.addedNodes){
+   if(n.nodeType===1&&(n.matches(selector)||n.querySelector(selector))){requestRoutineTreeRefresh();return}
+  }
+ }
+}
+function start(){cfg();applyAll();setTimeout(applyAll,250);setTimeout(applyAll,850);setTimeout(applyAll,1700);observer=new MutationObserver(onRoutineTreeChange);observer.observe(document.body,{subtree:true,childList:true});setInterval(cloudWatch,2000);window.addEventListener('pageshow',schedule);window.addEventListener('focus',schedule);document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});window.addEventListener('storage',e=>{if(e.key===CFG||e.key===CFG_META)schedule()});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeManager();closeReset()}},true)}
 window.TaskFlowV117={refresh:applyAll,openRoutineManager:openManager,openSystemReset:openReset};
 window.TaskFlowV115=window.TaskFlowV117;window.TaskFlowV116=window.TaskFlowV117;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
