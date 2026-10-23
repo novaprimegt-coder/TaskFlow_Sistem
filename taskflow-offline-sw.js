@@ -1,7 +1,7 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-v130104-20261023';
+const SHELL_CACHE='taskflow-offline-shell-v130105-20261023';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -49,10 +49,16 @@ async function prepareOptional(){
 self.addEventListener('install',event=>{
  event.waitUntil((async()=>{
    await prepareShell();
-   // La preparación de música/SDK se intenta en línea; no afecta al núcleo.
-   await prepareOptional();
+   // Activar solo después de guardar y verificar el núcleo indispensable.
+   // La música y los SDK externos se preparan después y nunca retrasan el arranque.
    await self.skipWaiting();
  })());
+});
+let optionalPreparation=null;
+self.addEventListener('message',event=>{
+ if(!event.data||event.data.type!=='TASKFLOW_PREPARE_OPTIONAL')return;
+ if(!optionalPreparation)optionalPreparation=prepareOptional().finally(()=>{optionalPreparation=null});
+ event.waitUntil(optionalPreparation);
 });
 self.addEventListener('activate',event=>{
  event.waitUntil((async()=>{

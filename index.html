@@ -68,7 +68,7 @@ linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88));box-shadow:0 38px 1
 (function(){
  if(!('serviceWorker' in navigator)||!(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'))return;
  navigator.serviceWorker.register('./taskflow-offline-sw.js',{scope:'./',updateViaCache:'none'})
- .then(reg=>{reg.update().catch(()=>{});})
+ .then(reg=>{reg.update().catch(()=>{});navigator.serviceWorker.ready.then(ready=>{if(ready.active)ready.active.postMessage({type:'TASKFLOW_PREPARE_OPTIONAL'});}).catch(()=>{});})
  .catch(error=>{console.warn('TaskFlow: no se pudo activar la disponibilidad sin conexión',error)});
 })();
 
@@ -111,8 +111,17 @@ async function start(){
   const ctrl=new AbortController();
   timer=setTimeout(()=>ctrl.abort(),15000);
   try{
-    const res=await fetch('./taskflow-loader-v102.html?v=13102-20261014',{cache:'no-store',signal:ctrl.signal});
-    if(!res.ok)throw new Error('No se pudo cargar la base de TaskFlow ('+res.status+')');
+    let res=null,bootNetworkError=null;
+    try{
+      res=await fetch('./taskflow-loader-v102.html?v=13102-20261014',{cache:'no-store',signal:ctrl.signal});
+      if(!res.ok)bootNetworkError=new Error('No se pudo cargar la base de TaskFlow ('+res.status+')');
+    }catch(networkError){bootNetworkError=networkError;}
+    if(!res||!res.ok){
+      try{
+        if('caches' in window)res=await caches.match(new URL('./taskflow-loader-v102.html',location.href).href,{ignoreSearch:true});
+      }catch(_){}
+    }
+    if(!res||!res.ok)throw new Error('No hay copia sin conexión del sistema en este dispositivo. Abre TaskFlow con Internet y deja que complete su preparación.');
     let html=await res.text();
     if(timer){clearTimeout(timer);timer=null;}
 
@@ -164,7 +173,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
     const headNeedle="if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+scrollBridgeScript+iconPortalGuard+'</head>');";
     const headFix="if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+'<script src=\"./taskflow-touch-v105.js?v=1240-20260926\"><\\/script>'+scrollBridgeScript+iconPortalGuard+'<link rel=\"stylesheet\" href=\"./taskflow-503020.css?v=1110-20260909\"><link rel=\"stylesheet\" href=\"./taskflow-profile-v108.css?v=1110-20260909\"><style id=\"tf-v1192-main-spacing\">.wrap{padding-bottom:max(20px,env(safe-area-inset-bottom))!important}.v48-discipline-center{margin-bottom:0!important}</style>'+'</head>');";
     const payloadCacheNeedle="fetch(base+name,{cache:'no-store',mode:'cors'})";
-    const payloadCacheFix="fetch(base+name,{cache:'force-cache',mode:'cors'})";
+    const payloadCacheFix="fetch(base+name,{cache:'force-cache',mode:'cors'}).catch(async e=>{if(!('caches' in window))throw e;const saved=await caches.match(new URL(base+name,location.href).href,{ignoreSearch:true});if(!saved)throw e;return saved})";
     const perfGuard='<script id="tf-v123-performance-guard">(function(){if(window.__tfV123PerformanceGuard)return;window.__tfV123PerformanceGuard=true;var Native=window.MutationObserver;if(!Native)return;function Quiet(cb){this.cb=cb}Quiet.prototype.observe=function(){};Quiet.prototype.disconnect=function(){};Quiet.prototype.takeRecords=function(){return[]};window.MutationObserver=function(cb){var src="";try{src=Function.prototype.toString.call(cb)}catch(_){};var noisy=(src.indexOf("addedNodes")!==-1&&(src.indexOf("schedule()")!==-1||src.indexOf("queueApply()")!==-1))||src.indexOf("requestAnimationFrame(apply)")!==-1;return noisy?new Quiet(cb):new Native(cb)};window.MutationObserver.prototype=Native.prototype;document.addEventListener("DOMContentLoaded",function(){setTimeout(function(){window.MutationObserver=Native},0)},{once:true});})();<\\/script>';
     const writeNeedle='document.open();document.write(html);document.close();';
     const writeFix=`if(html.includes('</body>'))html=html.replace('</body>','<script src="./taskflow-503020.js?v=1110-20260909"><\\/script><script src="./taskflow-503020-inputformat.js?v=1110-20260909"><\\/script><script src="./taskflow-firebase-v108.js?v=1120-20260909"><\\/script><script src="./taskflow-firestore-sync-v109.js?v=1110-20260909"><\\/script>${perfGuard}<script src="./taskflow-v117.js?v=130102-20261016"><\\/script><script src="./taskflow-v119.js?v=130102-20261016"><\\/script><script src="./taskflow-v1193-spacing.js?v=1193-20260921"><\\/script><script src="./taskflow-v120.js?v=13097-20261014"><\\/script><script src="./taskflow-v121-resetfix.js?v=13097-20261014"><\\/script><script src="./taskflow-v122-habit-visual.js?v=1230-20260926"><\\/script><script src="./taskflow-v1303-routine-guard.js?v=1303-20260930"><\\/script><script src="./taskflow-v125-routine-layout.js?v=1250-20260926"><\\/script><script src="./taskflow-v126-routine-tight.js?v=1264-20260926"><\\/script><script src="./taskflow-v127-ui-fixes.js?v=1280-20260930"><\\/script><script src="./taskflow-v1281-requested-layout.js?v=1281-20260930"><\\/script><script src="./taskflow-v129-rank-visual-system.js?v=1290-20260930"><\\/script><script src="./taskflow-v130-unified-layout.js?v=1300-20260930"><\\/script><script src="./taskflow-v1301-bottom-gap-fix.js?v=1301-20260930"><\\/script><script src="./taskflow-v1302-routine-spacing.js?v=1302-20260930"><\\/script><script src="./taskflow-v1303-routine-stability.js?v=1303-20260930"><\\/script><script src="./taskflow-v1303-routine-guard-restore.js?v=1303-20260930"><\\/script><script src="./taskflow-v13058-audio-boost.js?v=13104-20261014"><\\/script><script src="./taskflow-v1304-sound.js?v=13104-20261014"><\\/script><script src="./taskflow-v1305-search-results.js?v=13102-20261016"><\\/script><link rel="stylesheet" href="./taskflow-v130103-color-filters.css?v=130103-20261016"></body>');document.open();document.write(html);document.close();`;
