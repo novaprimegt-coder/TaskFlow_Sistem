@@ -45,18 +45,17 @@ linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88));box-shadow:0 38px 1
 @media(max-width:430px){.boot{padding:17px}.card{padding:38px 20px 26px;border-radius:26px}.logo{font-size:clamp(52px,15vw,64px)}.sub{font-size:9px}.msg{font-size:12px}.bar{max-width:330px}.nv-watermark{margin-top:23px}}
 @media(prefers-reduced-motion:reduce){.boot::before,.boot::after,.logo,.msg::before,.bar i::after{animation:none!important}}
 </style>
+<link rel="preload" as="image" href="./taskflow-loading-reference.jpg" type="image/jpeg">
+<link rel="stylesheet" href="./taskflow-loader-exact.css?v=130108-20261023">
 </head>
 <body>
-<div class="boot">
-  <div class="card">
-    <div class="logo">TaskFlow</div>
-    <div class="sub">Organiza · Avanza · Cumple</div>
-    <div class="msg" id="m">Preparando tu sistema…</div>
-    <div class="bar" id="b"><i></i></div>
-    <div class="nv-watermark" aria-label="Creado y actualizado por NovaVision GT">
-      <img src="./novavision-watermark.svg" alt="NovaVision GT">
-      <span>Creado y actualizado por NovaVision GT</span>
-    </div>
+<div class="boot tfReferenceBoot" id="tfReferenceBoot">
+  <div class="tfReferenceFrame">
+    <img class="tfReferenceImage" src="./taskflow-loading-reference.jpg" alt="Pantalla oficial de carga de TaskFlow con el diseño original de NovaVision GT" fetchpriority="high" decoding="async">
+    <span class="tfReferencePulse" aria-hidden="true"></span>
+    <div class="tfReferenceTrack"><div class="bar" id="b"><i></i></div></div>
+    <span class="tfReferencePercent" id="tfReferencePercent" aria-hidden="true">0%</span>
+    <p class="msg" id="m" aria-live="polite">Cargando TaskFlow…</p>
     <div class="err" id="e"></div>
     <button class="retry" id="r" type="button">Reintentar</button>
   </div>
@@ -87,27 +86,44 @@ try{
 }catch(_){}
 const msg=document.getElementById('m'),err=document.getElementById('e'),bar=document.getElementById('b'),retry=document.getElementById('r');
 const MIN_BOOT_MS=10000;
-let timer=null;
+let timer=null,progressFrame=0,progressStarted=0;
+const progressLabel=document.getElementById('tfReferencePercent');
 function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
-function resetBar(){
+function stopProgress(){if(progressFrame){cancelAnimationFrame(progressFrame);progressFrame=0}}
+function updateProgress(){
   const i=bar&&bar.querySelector('i');
-  if(!i)return;
-  i.style.animation='none';
-  void i.offsetWidth;
-  i.style.animation='tfBoot5 10s linear forwards';
+  const progress=Math.min(94,Math.max(0,Math.floor((performance.now()-progressStarted)/MIN_BOOT_MS*94)));
+  if(i)i.style.width=progress+'%';
+  if(progressLabel)progressLabel.textContent=progress+'%';
+  progressFrame=requestAnimationFrame(updateProgress);
+}
+function resetBar(){
+  stopProgress();
+  progressStarted=performance.now();
+  const i=bar&&bar.querySelector('i');
+  if(i){i.style.animation='none';i.style.width='0%'}
+  if(progressLabel)progressLabel.textContent='0%';
+  progressFrame=requestAnimationFrame(updateProgress);
+}
+function finishProgress(){
+  stopProgress();
+  const i=bar&&bar.querySelector('i');
+  if(i)i.style.width='100%';
+  if(progressLabel)progressLabel.textContent='100%';
 }
 function fail(ex){
   if(timer){clearTimeout(timer);timer=null;}
   console.error('TaskFlow boot:',ex);
+  stopProgress();
   bar.style.display='none';
   msg.textContent='No se pudo iniciar TaskFlow.';
   err.textContent=ex&&ex.name==='AbortError'?'La carga tardó demasiado. Toca Reintentar.':String(ex&&ex.message?ex.message:ex);
   err.style.display='block';
-  retry.style.display='inline-flex';
+  retry.classList.add('tfShowRetry');retry.style.display='inline-flex';
 }
 async function start(){
   const started=performance.now();
-  err.style.display='none';retry.style.display='none';bar.style.display='block';msg.textContent='Cargando TaskFlow…';resetBar();
+  err.style.display='none';retry.style.display='none';retry.classList.remove('tfShowRetry');bar.style.display='block';msg.textContent='Cargando TaskFlow…';resetBar();
   const ctrl=new AbortController();
   timer=setTimeout(()=>ctrl.abort(),15000);
   try{
@@ -181,7 +197,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
 
     // V130.10.7: pantalla de arranque visible hasta la transición segura.
     // El núcleo sustituye el cargador mediante document.write: proteger el documento FINAL.
-    const finalLaunchStyle='<style id="tfV130107LaunchStyle">#tfV130107Launch{position:fixed!important;inset:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:20px!important;z-index:2147483647!important;background:radial-gradient(circle at 47% 24%,#182d47 0%,#080f20 48%,#040915 100%)!important;color:#e4f7ff!important;text-align:center!important;font-family:system-ui,-apple-system,Segoe UI,sans-serif!important;padding:24px!important}#tfV130107Launch .tf107Name{font-weight:900;font-size:clamp(34px,10vw,52px);background:linear-gradient(95deg,#58e5da,#8ca7fa,#ffb17b);color:transparent;-webkit-background-clip:text;background-clip:text}#tfV130107Launch .tf107Label{color:#bed2e9;font-size:14px;line-height:1.5}#tfV130107Launch .tf107Retry{display:none;background:#103943;color:#90fff1;border:1px solid #54c9d1;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800}#tfV130107Launch.tf107Error .tf107Retry{display:inline-block}</style>';
+    const finalLaunchStyle='<style id="tfV130107LaunchStyle">#tfV130107Launch{position:fixed!important;inset:0!important;z-index:2147483647!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important;background:url("./taskflow-loading-reference.jpg") center/contain no-repeat,#030814!important;font-family:system-ui,sans-serif!important;padding:24px!important;color:#fff!important;text-align:center!important}#tfV130107Launch .tf107Name,#tfV130107Launch .tf107Label{display:none!important}#tfV130107Launch.tf107Error .tf107Label{display:block!important;background:rgba(4,10,26,.94)!important;color:#fff!important;max-width:360px!important;border-radius:12px!important;padding:13px!important}#tfV130107Launch .tf107Retry{display:none!important;background:#103943!important;color:#90fff1!important;border:1px solid #54c9d1!important;border-radius:12px!important;padding:12px 20px!important;font-weight:800!important}#tfV130107Launch.tf107Error .tf107Retry{display:inline-block!important}</style>';
     const finalLaunchMarkup='<div id="tfV130107Launch" role="status" aria-live="polite"><div class="tf107Name">TaskFlow</div><div class="tf107Label" id="tfV130107Status">Finalizando la carga del sistema…</div><button type="button" class="tf107Retry" id="tfV130107Retry" onclick="location.reload()">Reintentar</button></div>';
     const finalLaunchScript='<scr'+'ipt id="tfV130107LaunchCheck">(function(){"use strict";var start=Date.now(),finished=false;function ready(){try{var main=document.querySelector(".wrap"),nav=document.querySelector(".top-bar");if(!main||!nav||!window.__taskflowBooted)return false;var st=getComputedStyle(main),r=main.getBoundingClientRect();return st.display!=="none"&&st.visibility!=="hidden"&&r.width>120&&r.height>40}catch(_){return false}}function inspect(){if(finished)return;var overlay=document.getElementById("tfV130107Launch");if(!overlay)return;if(ready()){finished=true;clearInterval(loop);overlay.remove();return}if(Date.now()-start>12000){overlay.classList.add("tf107Error");var label=document.getElementById("tfV130107Status");if(label)label.textContent="No se pudo mostrar el sistema. Puedes reintentar la carga.";clearInterval(loop)}}var loop=setInterval(inspect,300);document.addEventListener("DOMContentLoaded",inspect,{once:true});window.addEventListener("load",inspect,{once:true});setTimeout(inspect,500)})();</scr'+'ipt>';
     const launchHead=JSON.stringify(finalLaunchStyle+finalLaunchScript).replace(/<\/script/gi,'<\\/script');
@@ -193,6 +209,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
     html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,guardedWriteFix);
     const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
     if(remaining)await wait(remaining);
+    finishProgress();
     msg.textContent='Iniciando TaskFlow…';
     document.open();document.write(html);document.close();
   }catch(ex){fail(ex);}
