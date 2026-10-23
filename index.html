@@ -64,6 +64,14 @@ linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88));box-shadow:0 38px 1
 <script>
 (()=>{
 'use strict';
+/* TaskFlow offline bootstrap: se ejecuta antes de reconstruir el documento. */
+(function(){
+ if(!('serviceWorker' in navigator)||!(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'))return;
+ navigator.serviceWorker.register('./taskflow-offline-sw.js',{scope:'./',updateViaCache:'none'})
+ .then(reg=>{reg.update().catch(()=>{});})
+ .catch(error=>{console.warn('TaskFlow: no se pudo activar la disponibilidad sin conexión',error)});
+})();
+
 const TF_WELCOME_KEY='taskflow_welcome_seen_v13083_release';
 try{
  localStorage.setItem(TF_WELCOME_KEY,'1');
