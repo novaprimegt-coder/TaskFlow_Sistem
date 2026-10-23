@@ -30,7 +30,7 @@ linear-gradient(180deg,rgba(15,29,52,.90),rgba(5,12,24,.88));box-shadow:0 38px 1
 .msg{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:28px;padding:10px 15px;border-radius:999px;border:1px solid rgba(80,230,217,.18);background:linear-gradient(180deg,rgba(8,24,39,.72),rgba(6,15,29,.70));color:#d2dbea;font-size:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 28px rgba(0,0,0,.16)}
 .msg::before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#55e9dd;box-shadow:0 0 0 4px rgba(85,233,221,.08),0 0 14px rgba(85,233,221,.72);animation:tfBootPulse 1.3s ease-in-out infinite}
 .bar{position:relative;height:9px;border-radius:999px;background:#091529;overflow:hidden;margin:24px auto 0;max-width:350px;border:1px solid rgba(118,165,215,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 28px rgba(69,224,210,.08)}
-.bar i{position:relative;display:block;height:100%;width:0;background:linear-gradient(90deg,#36e0d1 0%,#62ebc0 38%,#8d8cff 66%,#ff9c48 100%);animation:tfBoot5 5s linear forwards;border-radius:999px;box-shadow:0 0 16px rgba(66,225,209,.65),0 0 30px rgba(125,101,255,.18)}
+.bar i{position:relative;display:block;height:100%;width:0;background:linear-gradient(90deg,#36e0d1 0%,#62ebc0 38%,#8d8cff 66%,#ff9c48 100%);animation:tfBoot5 10s linear forwards;border-radius:999px;box-shadow:0 0 16px rgba(66,225,209,.65),0 0 30px rgba(125,101,255,.18)}
 .bar i::after{content:"";position:absolute;top:0;bottom:0;width:72px;right:-12px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);filter:blur(2px);animation:tfBarSpark 1.15s ease-in-out infinite}
 .nv-watermark{margin:27px auto 0;display:grid;justify-items:center;gap:9px;opacity:.72;max-width:300px;padding-top:19px;border-top:1px solid rgba(142,167,204,.08)}
 .nv-watermark img{display:block;width:min(188px,55vw);height:auto;border-radius:11px;filter:saturate(1.08) brightness(1.05) contrast(1.04) drop-shadow(0 0 20px rgba(58,218,208,.13));opacity:.74}
@@ -86,7 +86,7 @@ try{
  }
 }catch(_){}
 const msg=document.getElementById('m'),err=document.getElementById('e'),bar=document.getElementById('b'),retry=document.getElementById('r');
-const MIN_BOOT_MS=350;
+const MIN_BOOT_MS=10000;
 let timer=null;
 function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function resetBar(){
@@ -94,7 +94,7 @@ function resetBar(){
   if(!i)return;
   i.style.animation='none';
   void i.offsetWidth;
-  i.style.animation='tfBoot5 1.8s linear forwards';
+  i.style.animation='tfBoot5 10s linear forwards';
 }
 function fail(ex){
   if(timer){clearTimeout(timer);timer=null;}
@@ -178,7 +178,19 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
     const writeNeedle='document.open();document.write(html);document.close();';
     const writeFix=`if(html.includes('</body>'))html=html.replace('</body>','<script src="./taskflow-503020.js?v=1110-20260909"><\\/script><script src="./taskflow-503020-inputformat.js?v=1110-20260909"><\\/script><script src="./taskflow-firebase-v108.js?v=1120-20260909"><\\/script><script src="./taskflow-firestore-sync-v110.js?v=13106-20261023"><\\/script>${perfGuard}<script src="./taskflow-v117.js?v=130102-20261016"><\\/script><script src="./taskflow-v119.js?v=130102-20261016"><\\/script><script src="./taskflow-v1193-spacing.js?v=1193-20260921"><\\/script><script src="./taskflow-v120.js?v=13097-20261014"><\\/script><script src="./taskflow-v121-resetfix.js?v=13097-20261014"><\\/script><script src="./taskflow-v122-habit-visual.js?v=1230-20260926"><\\/script><script src="./taskflow-v1303-routine-guard.js?v=1303-20260930"><\\/script><script src="./taskflow-v125-routine-layout.js?v=1250-20260926"><\\/script><script src="./taskflow-v126-routine-tight.js?v=1264-20260926"><\\/script><script src="./taskflow-v127-ui-fixes.js?v=1280-20260930"><\\/script><script src="./taskflow-v1281-requested-layout.js?v=1281-20260930"><\\/script><script src="./taskflow-v129-rank-visual-system.js?v=1290-20260930"><\\/script><script src="./taskflow-v130-unified-layout.js?v=1300-20260930"><\\/script><script src="./taskflow-v1301-bottom-gap-fix.js?v=1301-20260930"><\\/script><script src="./taskflow-v1302-routine-spacing.js?v=1302-20260930"><\\/script><script src="./taskflow-v1303-routine-stability.js?v=1303-20260930"><\\/script><script src="./taskflow-v1303-routine-guard-restore.js?v=1303-20260930"><\\/script><script src="./taskflow-v13058-audio-boost.js?v=13104-20261014"><\\/script><script src="./taskflow-v1304-sound.js?v=13104-20261014"><\\/script><script src="./taskflow-v1305-search-results.js?v=13102-20261016"><\\/script><link rel="stylesheet" href="./taskflow-v130103-color-filters.css?v=130103-20261016"></body>');document.open();document.write(html);document.close();`;
     if(!html.includes(headNeedle)||!html.includes(writeNeedle)||!html.includes(payloadCacheNeedle))throw new Error('La base publicada no coincide con la versión esperada.');
-    html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,writeFix);
+
+    // V130.10.7: pantalla de arranque visible hasta la transición segura.
+    // El núcleo sustituye el cargador mediante document.write: proteger el documento FINAL.
+    const finalLaunchStyle='<style id="tfV130107LaunchStyle">#tfV130107Launch{position:fixed!important;inset:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:20px!important;z-index:2147483647!important;background:radial-gradient(circle at 47% 24%,#182d47 0%,#080f20 48%,#040915 100%)!important;color:#e4f7ff!important;text-align:center!important;font-family:system-ui,-apple-system,Segoe UI,sans-serif!important;padding:24px!important}#tfV130107Launch .tf107Name{font-weight:900;font-size:clamp(34px,10vw,52px);background:linear-gradient(95deg,#58e5da,#8ca7fa,#ffb17b);color:transparent;-webkit-background-clip:text;background-clip:text}#tfV130107Launch .tf107Label{color:#bed2e9;font-size:14px;line-height:1.5}#tfV130107Launch .tf107Retry{display:none;background:#103943;color:#90fff1;border:1px solid #54c9d1;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800}#tfV130107Launch.tf107Error .tf107Retry{display:inline-block}</style>';
+    const finalLaunchMarkup='<div id="tfV130107Launch" role="status" aria-live="polite"><div class="tf107Name">TaskFlow</div><div class="tf107Label" id="tfV130107Status">Finalizando la carga del sistema…</div><button type="button" class="tf107Retry" id="tfV130107Retry" onclick="location.reload()">Reintentar</button></div>';
+    const finalLaunchScript='<scr'+'ipt id="tfV130107LaunchCheck">(function(){"use strict";var start=Date.now(),finished=false;function ready(){try{var main=document.querySelector(".wrap"),nav=document.querySelector(".top-bar");if(!main||!nav||!window.__taskflowBooted)return false;var st=getComputedStyle(main),r=main.getBoundingClientRect();return st.display!=="none"&&st.visibility!=="hidden"&&r.width>120&&r.height>40}catch(_){return false}}function inspect(){if(finished)return;var overlay=document.getElementById("tfV130107Launch");if(!overlay)return;if(ready()){finished=true;clearInterval(loop);overlay.remove();return}if(Date.now()-start>12000){overlay.classList.add("tf107Error");var label=document.getElementById("tfV130107Status");if(label)label.textContent="No se pudo mostrar el sistema. Puedes reintentar la carga.";clearInterval(loop)}}var loop=setInterval(inspect,300);document.addEventListener("DOMContentLoaded",inspect,{once:true});window.addEventListener("load",inspect,{once:true});setTimeout(inspect,500)})();</scr'+'ipt>';
+    const launchHead=JSON.stringify(finalLaunchStyle+finalLaunchScript).replace(/<\/script/gi,'<\\/script');
+    const launchBody=JSON.stringify(finalLaunchMarkup);
+    const launchStatement="if(!html.includes('</head>')||!html.includes('<body>'))throw new Error('Interfaz incompleta');"+
+       "html=html.replace('</head>',"+launchHead+"+'</head>');"+
+       "html=html.replace('<body>','<body>'+"+launchBody+");";
+    const guardedWriteFix=writeFix.replace(writeNeedle,launchStatement+writeNeedle);
+    html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,guardedWriteFix);
     const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
     if(remaining)await wait(remaining);
     msg.textContent='Iniciando TaskFlow…';
