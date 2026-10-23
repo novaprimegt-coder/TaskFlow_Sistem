@@ -86,7 +86,7 @@ try{
  }
 }catch(_){}
 const msg=document.getElementById('m'),err=document.getElementById('e'),bar=document.getElementById('b'),retry=document.getElementById('r');
-const MIN_BOOT_MS=1800;
+const MIN_BOOT_MS=350;
 let timer=null;
 function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function resetBar(){
