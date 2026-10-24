@@ -1,0 +1,104 @@
+/* TaskFlow V130.10.10 — Distribución responsive de cabecera.
+   Perfil visible, nombre íntegro y buscador en segunda fila. No modifica funciones. */
+@media (max-width: 700px) {
+  .top-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-flow: row !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 12px 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+  .top-bar > .top-bar-left {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex: none !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .top-bar-left > .menu-toggle {
+    position: relative !important;
+    flex: 0 0 44px !important;
+    margin: 0 !important;
+  }
+  .top-bar-left > .app-title {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+  .top-bar-left > .app-title > span:last-child {
+    white-space: nowrap !important;
+    font-size: clamp(16px, 5.3vw, 23px) !important;
+  }
+  .top-bar-left > #tfProfileButton,
+  .top-bar-left > .tf-profile-button {
+    display: grid !important;
+    position: relative !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    margin: 0 0 0 auto !important;
+    padding: 0 !important;
+    z-index: 2 !important;
+  }
+  .top-bar > .search-container {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    position: relative !important;
+    display: flex !important;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    gap: 9px !important;
+    overflow: hidden !important;
+  }
+  .top-bar > .search-container #searchInput {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 0 !important;
+    height: 48px !important;
+    margin: 0 !important;
+  }
+}
+@media (max-width: 350px) {
+  .top-bar > .top-bar-left { gap: 7px !important; }
+  .top-bar-left > .menu-toggle { flex-basis: 40px !important; }
+  .top-bar-left > .app-title > span:last-child { font-size: 16px !important; }
+  .top-bar-left > #tfProfileButton,
+  .top-bar-left > .tf-profile-button {
+    flex-basis: 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+  .top-bar > .search-container { padding: 0 9px !important; gap: 6px !important; }
+}
