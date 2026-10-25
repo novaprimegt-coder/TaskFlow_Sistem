@@ -41,3 +41,17 @@
 .policy-page .policy-section p,.policy-page .policy-section li{font-size:11px!important;line-height:1.55!important}
 @media(max-width:355px){.policy-page .policy-hero h3{padding-right:30px!important}.policy-page .policy-hero::after{width:38px!important;height:38px!important}.policy-page .policy-meta>div{padding-left:44px!important}.policy-page .policy-meta>div::before{left:6px!important}.policy-page .policy-meta>div::after{left:13px!important}}
 @media(prefers-reduced-motion:reduce){.policy-page .policy-brand-mark{animation:none!important}}
+
+/* V130.11.3 — corregir exclusivamente el icono documental que faltaba
+   en el recuadro decorativo del Centro legal. */
+.policy-page .policy-hero::after{
+  content:"" !important;
+  opacity:1 !important;
+  background:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2272%22%20height%3D%2272%22%20viewBox%3D%220%200%2072%2072%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%232ff5ff%22%2F%3E%3Cstop%20offset%3D%22.58%22%20stop-color%3D%22%2345caff%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23a47aff%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M18%208H45L56%2019V63H18Z%22%20fill%3D%22none%22%20stroke%3D%22url(%23g)%22%20stroke-width%3D%223.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M45%209V19H55%22%20fill%3D%22none%22%20stroke%3D%22url(%23g)%22%20stroke-width%3D%223.7%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M27%2033H46M27%2043H46M27%2053H40%22%20fill%3D%22none%22%20stroke%3D%22url(%23g)%22%20stroke-width%3D%223.5%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") center / 78% 78% no-repeat,
+    radial-gradient(circle at 25% 18%,rgba(52,226,255,.15),transparent 48%),
+    linear-gradient(145deg,rgba(8,24,60,.96),rgba(15,18,48,.97)) !important;
+  border-color:rgba(94,229,255,.42) !important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 0 19px rgba(48,222,255,.18),0 0 16px rgba(143,89,255,.12) !important;
+  pointer-events:none !important;
+}
