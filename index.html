@@ -266,7 +266,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
       "}catch(other){console.error('TaskFlow: no se pudo recuperar tienda',other)}"
     ].join('');
     const fixedStore=storeBegin+'try{'+storeBody+'}catch(err){'+recover+'}}';
-    new Function(fixedStore);
+    // Se evitan compilaciones dinámicas durante el arranque, compatibles con WebView y CSP.
     html=html.slice(0,storeAt)+fixedStore+html.slice(storeNext);
     const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
     if(remaining)await wait(remaining);
