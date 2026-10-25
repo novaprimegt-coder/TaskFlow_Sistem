@@ -189,7 +189,25 @@ function disableLegacyPrompts(){
   }
 }
 
-function addCss(){if(document.getElementById('tfV13051ProfileCss'))return;const l=document.createElement('link');l.id='tfV13051ProfileCss';l.rel='stylesheet';l.href='./taskflow-v13051-profile-compact.css?v=13051-20261004';document.head.appendChild(l)}
+/* V130.11.5: los estilos de perfil deben cargarse DESPUÉS de la base compacta.
+   El CSS anterior se insertaba en DOMContentLoaded y anulaba la referencia visual. */
+function keepProfileReferenceLast(){
+ const reference=document.querySelector('link[href*="taskflow-v130114-profile-reference.css"]');
+ if(!reference)return;
+ const styles=Array.from(document.head.children).filter(el=>el.tagName==='STYLE'||el.tagName==='LINK'&&el.rel==='stylesheet');
+ if(reference.parentElement!==document.head||styles[styles.length-1]!==reference){
+  document.head.appendChild(reference);
+ }
+}
+function addCss(){
+ if(!document.getElementById('tfV13051ProfileCss')){
+  const l=document.createElement('link');l.id='tfV13051ProfileCss';l.rel='stylesheet';
+  l.href='./taskflow-v13051-profile-compact.css?v=13051-20261004';
+  document.head.appendChild(l);
+ }
+ keepProfileReferenceLast();
+ [100,400,1200].forEach(ms=>setTimeout(keepProfileReferenceLast,ms));
+}
 function addScript(id,src){if(document.getElementById(id))return;const s=document.createElement('script');s.id=id;s.src=src;s.async=false;document.body.appendChild(s)}
 function boot(){addCss();addScript('tfV13051ProfileJs','./taskflow-v13051-profile-compact.js?v=13051-20261004');addScript('tfV13053SearchStabilityJs','./taskflow-v13053-search-stability.js?v=130102-20261016');addScript('tfV13053VisualPolishJs','./taskflow-v13053-visual-polish.js?v=13079-20261006');addScript('tfV13054SearchCompleteJs','./taskflow-v13054-search-complete.js?v=13054-20261004');addScript('tfV13062MentalistaSearchGuardJs','./taskflow-v13062-mentalista-search-guard.js?v=13062-20261005');addScript('tfV13065UiStabilityJs','./taskflow-v13065-ui-stability.js?v=13065-20261005');addScript('tfV13066MentalistStabilityJs','./taskflow-v13066-mentalist-stability.js?v=13067-20261005');addScript('tfV13073MissionSoundJs','./taskflow-v13073-mission-sound.js?v=13074-20261005');addScript('tfV13078MindUnifiedStyleJs','./taskflow-v13078-mind-unified-style.js?v=13078-20261006');}
 
