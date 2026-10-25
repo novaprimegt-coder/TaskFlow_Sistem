@@ -730,3 +730,277 @@
  #tfDeleteModalV120 .tf120-warning{padding:12px 10px 12px 64px!important}
  #tfDeleteModalV120 .tf120-warning::before{left:11px!important;width:39px!important;height:39px!important}
 }
+
+
+/* TaskFlow V130.11.8 — perfil corregido: una única navegación, iconos contenidos,
+   ojo con estado verificable y presentación profesional de formularios.
+   Compatible con el contenido actual y sin modificar los datos de la cuenta. */
+#tfProfileOverlay.tf-profile-overlay.open{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ padding:clamp(8px,2vw,16px)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-card{
+ box-sizing:border-box!important;
+ width:min(calc(100vw - 20px),525px)!important;
+ height:auto!important;min-height:0!important;
+ max-height:calc(100dvh - 24px)!important;
+ margin:auto!important;overflow-y:auto!important;
+ border-radius:25px!important;
+ background:
+ radial-gradient(ellipse at 11% -8%,rgba(48,224,241,.16),transparent 42%),
+ radial-gradient(ellipse at 107% 115%,rgba(121,71,226,.20),transparent 49%),
+ linear-gradient(159deg,#15284d,#111c3c 48%,#0b142d)!important;
+ border:1px solid rgba(81,175,246,.48)!important;
+ box-shadow:0 24px 82px rgba(0,3,21,.83),inset 0 1px rgba(227,250,255,.10),0 0 27px rgba(19,160,222,.09)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-head{
+ min-height:104px!important;
+ padding:18px!important;
+ border-bottom:1px solid rgba(61,192,248,.26)!important;
+ background:
+ radial-gradient(circle at 9% 0,rgba(24,202,242,.16),transparent 42%),
+ linear-gradient(115deg,rgba(21,54,103,.86),rgba(33,29,87,.64))!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-avatar{
+ border-radius:20px!important;
+ border-color:rgba(22,242,245,.88)!important;
+ background:linear-gradient(140deg,#062e43,#0b1732)!important;
+ box-shadow:0 0 24px rgba(11,238,253,.19),inset 0 0 18px rgba(15,203,235,.12)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-close{
+ display:grid!important;place-items:center!important;
+ width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+ padding:0!important;margin:0!important;
+ font-size:28px!important;line-height:1!important;
+ border-radius:15px!important;
+ color:#e8f4ff!important;
+ border-color:rgba(163,194,255,.26)!important;
+}
+#tfProfileOverlay.tf13051-logged-out #tfProfileAuthForm{
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ width:calc(100% - 28px)!important;
+ box-sizing:border-box!important;
+ margin:14px!important;
+ padding:17px 18px 19px!important;
+ border-radius:22px!important;
+ border:1px solid rgba(97,143,247,.27)!important;
+ background:
+ linear-gradient(160deg,rgba(29,45,94,.59),rgba(12,22,50,.68))!important;
+ box-shadow:inset 0 1px rgba(214,237,255,.05),0 10px 25px rgba(0,0,0,.13)!important;
+}
+#tfProfileOverlay.tf13051-logged-out #tf13051AuthTabs{
+ flex-shrink:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+ width:100%!important;min-height:0!important;
+ margin:0 0 15px!important;padding:5px!important;
+ border-radius:16px!important;
+ background:rgba(7,16,44,.83)!important;
+ border:1px solid rgba(78,124,233,.28)!important;
+}
+#tfProfileOverlay.tf13051-logged-out #tf13051AuthTabs button{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ min-width:0!important;min-height:49px!important;
+ padding:9px 7px!important;gap:6px!important;
+ white-space:nowrap!important;
+ font-size:clamp(10px,2.85vw,14px)!important;
+ border-radius:12px!important;
+ color:#a7b9db!important;box-shadow:none!important;
+}
+#tfProfileOverlay.tf13051-auth-create #tf13051CreateTab,
+#tfProfileOverlay.tf13051-auth-login #tf13051LoginTab{
+ background:linear-gradient(112deg,#086c82,#0a577b)!important;
+ color:#58f5ff!important;
+ border:1px solid #1fe2ef!important;
+ box-shadow:inset 0 1px rgba(166,255,255,.16),0 0 20px rgba(15,228,250,.23)!important;
+}
+#tfProfileOverlay.tf13051-logged-out #tf13051AuthTabs button svg{
+ width:21px!important;height:21px!important;
+ flex-shrink:0!important;
+ stroke-width:1.9!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-auth-intro{
+ margin:0 0 17px!important;
+ color:#bdcbe4!important;
+ font-size:clamp(11px,2.9vw,13px)!important;
+ line-height:1.52!important;
+ text-align:left!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-field{
+ display:flex!important;flex-direction:column!important;
+ min-width:0!important;gap:7px!important;margin:0 0 14px!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf-profile-field label{
+ font-size:clamp(12px,3vw,14px)!important;font-weight:800!important;
+ color:#edf8ff!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-shell{
+ position:relative!important;
+ display:flex!important;align-items:center!important;
+ min-width:0!important;width:100%!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-shell input{
+ box-sizing:border-box!important;
+ width:100%!important;height:54px!important;min-height:54px!important;
+ border-radius:14px!important;
+ margin:0!important;
+ padding:0 54px 0 52px!important;
+ border:1px solid rgba(101,142,240,.46)!important;
+ background:linear-gradient(145deg,rgba(12,29,63,.88),rgba(25,36,80,.81))!important;
+ color:#f8fcff!important;
+ font-size:clamp(12px,3.2vw,15px)!important;
+ box-shadow:inset 0 2px 5px rgba(0,0,0,.13)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-shell input::placeholder{color:#859dc4!important}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-shell input:focus{
+ border-color:#32eaf5!important;
+ box-shadow:0 0 0 2px rgba(19,229,247,.15),0 0 21px rgba(11,215,247,.12)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-icon{
+ box-sizing:border-box!important;
+ display:grid!important;place-items:center!important;
+ position:absolute!important;
+ top:50%!important;left:13px!important;
+ transform:translateY(-50%)!important;
+ width:27px!important;height:27px!important;
+ margin:0!important;padding:0!important;
+ color:#adc4f2!important;pointer-events:none!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-input-icon svg{
+ display:block!important;width:23px!important;height:23px!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-eye{
+ box-sizing:border-box!important;
+ display:grid!important;place-items:center!important;
+ position:absolute!important;
+ top:50%!important;right:7px!important;transform:translateY(-50%)!important;
+ width:42px!important;height:42px!important;
+ min-width:42px!important;min-height:42px!important;
+ border-radius:11px!important;
+ margin:0!important;padding:9px!important;
+ color:#9bb2e6!important;
+ border:1px solid transparent!important;
+ background:transparent!important;
+ cursor:pointer!important;z-index:2!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-eye svg{
+ width:23px!important;height:23px!important;
+ stroke-width:1.85!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-eye.is-visible{
+ color:#25edfa!important;
+ background:rgba(0,207,242,.14)!important;
+ border-color:rgba(43,235,252,.5)!important;
+ box-shadow:0 0 13px rgba(11,226,255,.17)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-primary-actions{
+ margin:8px 0 0!important;
+}
+#tfProfileOverlay.tf13051-auth-create #tfProfileCreate,
+#tfProfileOverlay.tf13051-auth-login #tfProfileSignIn{
+ min-height:59px!important;
+ margin:0!important;
+ border-radius:15px!important;
+ background:linear-gradient(110deg,#008ea6 0%,#10d0cf 54%,#0c9fcc 100%)!important;
+ border:1px solid rgba(76,247,255,.9)!important;
+ color:#fff!important;
+ font-size:clamp(13px,3.7vw,17px)!important;
+ font-weight:900!important;
+ box-shadow:0 10px 24px rgba(6,185,211,.14),0 0 21px rgba(16,235,245,.21),inset 0 1px rgba(238,255,255,.27)!important;
+}
+#tfProfileOverlay.tf13051-logged-out .tf13051-main-arrow{
+ position:absolute!important;top:50%!important;right:17px!important;
+ transform:translateY(-50%)!important;
+ font-size:25px!important;line-height:1!important;
+ margin:0!important;color:#dcffff!important;
+}
+#tfProfileOverlay.tf13051-auth-login #tfProfileReset{
+ display:block!important;margin:12px auto 1px!important;
+ padding:6px 8px!important;font-size:clamp(10px,2.7vw,13px)!important;
+ color:#49f4fc!important;
+}
+#tfProfileOverlay.tf13051-logged-out #tf13051AuthFooter{
+ display:none!important;
+}
+/* Estado informativo de cierre: no cubrir errores del formulario */
+#tfProfileOverlay.tf13051-logged-out #tfProfileMessage.ok{display:none!important}
+/* Acciones y diálogos: nunca pintar el icono sobre el texto. */
+#tfResetModalV120 .tf120-action{
+ display:grid!important;
+ grid-template-columns:32px minmax(0,1fr) 32px!important;
+ align-items:center!important;
+ justify-content:stretch!important;
+ gap:8px!important;
+ padding:10px 15px!important;
+ min-height:61px!important;
+ width:100%!important;
+ border-radius:17px!important;
+ box-sizing:border-box!important;
+ text-align:center!important;
+}
+#tfResetModalV120 .tf120-action::before,
+#tfResetModalV120 .tf120-action::after{content:none!important;display:none!important}
+#tfResetModalV120 .tf120-action .tf120-cta-icon{
+ display:grid!important;place-items:center!important;
+ position:static!important;
+ width:32px!important;height:32px!important;
+ margin:0!important;padding:0!important;
+ color:#fff0a7!important;
+ pointer-events:none!important;
+}
+#tfResetModalV120 .tf120-action .tf120-cta-icon svg{
+ display:block!important;width:26px!important;height:26px!important;
+}
+#tfResetModalV120 .tf120-action .tf120-cta-label{
+ display:block!important;min-width:0!important;
+ font-size:clamp(10px,2.75vw,15px)!important;
+ line-height:1.22!important;
+ white-space:normal!important;overflow-wrap:break-word!important;
+ font-weight:900!important;
+ color:#fff!important;
+}
+#tfResetModalV120 .tf120-action .tf120-cta-end{width:32px!important;height:1px!important}
+#tfDeleteModalV120 .tf120-field-icon{
+ display:grid!important;place-items:center!important;
+ left:14px!important;top:50%!important;
+ transform:translateY(-50%)!important;
+ width:27px!important;height:27px!important;
+ pointer-events:none!important;
+}
+#tfDeleteModalV120 .tf120-field-icon svg{width:22px!important;height:22px!important}
+#tfDeleteModalV120 .tf120-field-shell input{padding-left:53px!important;padding-right:54px!important}
+#tfDeleteModalV120 .tf120-field-toggle{
+ top:50%!important;right:7px!important;transform:translateY(-50%)!important;
+ display:grid!important;place-items:center!important;
+ padding:8px!important;width:42px!important;height:42px!important;
+ border-radius:10px!important;color:#afc1e9!important;
+}
+#tfDeleteModalV120 .tf120-field-toggle svg{
+ width:23px!important;height:23px!important;display:block!important;
+}
+#tfDeleteModalV120 .tf120-field-toggle.is-visible{
+ color:#2ff1ff!important;background:rgba(1,203,244,.15)!important;
+ outline:1px solid rgba(33,234,248,.44)!important;
+}
+@media(max-width:420px){
+ #tfProfileOverlay.tf13051-logged-out .tf-profile-card{width:calc(100vw - 12px)!important}
+ #tfProfileOverlay.tf13051-logged-out .tf-profile-head{padding:13px!important;min-height:90px!important}
+ #tfProfileOverlay.tf13051-logged-out #tfProfileAuthForm{
+  margin:11px!important;width:calc(100% - 22px)!important;
+  padding:14px 13px 15px!important;
+  border-radius:18px!important;
+ }
+ #tfProfileOverlay.tf13051-logged-out .tf13051-auth-intro{margin-bottom:13px!important}
+ #tfProfileOverlay.tf13051-logged-out .tf-profile-field{margin-bottom:12px!important}
+ #tfProfileOverlay.tf13051-logged-out .tf13051-input-shell input{height:51px!important;min-height:51px!important}
+ #tfProfileOverlay.tf13051-logged-out #tf13051AuthTabs{margin-bottom:12px!important}
+ #tfProfileOverlay.tf13051-auth-create #tfProfileCreate,
+ #tfProfileOverlay.tf13051-auth-login #tfProfileSignIn{min-height:55px!important}
+ #tfResetModalV120 .tf120-action{grid-template-columns:27px minmax(0,1fr) 27px!important;padding:10px 9px!important;gap:5px!important}
+ #tfResetModalV120 .tf120-action .tf120-cta-icon,#tfResetModalV120 .tf120-action .tf120-cta-end{width:27px!important}
+ #tfResetModalV120 .tf120-action .tf120-cta-icon svg{width:23px!important;height:23px!important}
+}
+@media(prefers-reduced-motion:no-preference){
+ #tfProfileOverlay.tf13051-logged-out #tfProfileAuthForm{animation:tfAuthCardIn .22s ease-out both}
+ #tfProfileOverlay.tf13051-logged-out .tf13051-eye.is-visible svg{animation:tfEyeReveal .18s ease-out both}
+}
+@keyframes tfAuthCardIn{from{opacity:.55;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tfEyeReveal{from{transform:scale(.80)}to{transform:scale(1)}}
