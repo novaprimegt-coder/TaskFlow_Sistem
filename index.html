@@ -223,51 +223,12 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
     const launchHead=JSON.stringify(finalLaunchStyle+finalLaunchScript).replace(/<\/script/gi,'<\\/script');
     const launchBody=JSON.stringify(finalLaunchMarkup);
     const profileHeadLink=JSON.stringify('<link id="tfProfileReferenceV130116" rel="stylesheet" href="./taskflow-v130114-profile-reference.css?v=130119-20261025">');
-    const settingsRewardHeadLink=JSON.stringify('<link id="tfV130120Visual" rel="stylesheet" href="./taskflow-v130120-settings-rewards.css?v=130122-20261025">');
+    const settingsRewardHeadLink=JSON.stringify('<link id="tfV130120Visual" rel="stylesheet" href="./taskflow-v130120-settings-rewards.css?v=130124-20261025">');
     const launchStatement="if(!html.includes('</head>')||!html.includes('<body>'))throw new Error('Interfaz incompleta');"+
        "html=html.replace('</head>',"+launchHead+"+"+profileHeadLink+"+"+settingsRewardHeadLink+"+'</head>');"+
        "html=html.replace('<body>','<body>'+"+launchBody+");";
     const guardedWriteFix=writeFix.replace(writeNeedle,launchStatement+writeNeedle);
     html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,guardedWriteFix);
-    // tfV130122StoreSafePatch: comprueba y protege el código real del catálogo.
-    const storeBegin='function v30OpenStore(){';
-    const storeAfter='\n            function setupQuickActionButtons(){';
-    const storeAt=html.indexOf(storeBegin);
-    const storeNext=storeAt<0?-1:html.indexOf(storeAfter,storeAt);
-    if(storeAt<0||storeNext<0||html.indexOf(storeBegin,storeAt+storeBegin.length)!==-1)
-      throw new Error('Función de tienda inesperada; se conserva el paquete original.');
-    const originalStore=html.slice(storeAt,storeNext),lastBrace=originalStore.lastIndexOf('}');
-    if(lastBrace<storeBegin.length)throw new Error('Función de tienda incompleta.');
-    let storeBody=originalStore.slice(storeBegin.length,lastBrace);
-    function replaceStoreOne(source,oldValue,newValue){
-      const at=source.indexOf(oldValue);
-      if(at<0||source.indexOf(oldValue,at+oldValue.length)!==-1)throw new Error('Estructura de tienda inesperada: '+oldValue.slice(0,30));
-      return source.slice(0,at)+newValue+source.slice(at+oldValue.length);
-    }
-    storeBody=replaceStoreOne(storeBody,'v32ProcessPerfectShopHistory();',
-      "let tfShopCycleSafe=true;try{v32ProcessPerfectShopHistory()}catch(error){tfShopCycleSafe=false;window.__tfStoreLastIssue=String(error&&error.message||error);console.error('TaskFlow: ciclo de tienda',error)}");
-    storeBody=replaceStoreOne(storeBody,'req=v32CurrentRequirements()',
-      "req=(()=>{try{return v32CurrentRequirements()}catch(error){tfShopCycleSafe=false;window.__tfStoreLastIssue=String(error&&error.message||error);console.error('TaskFlow: requisitos de tienda',error);return {eligible:false}}})()");
-    storeBody=replaceStoreOne(storeBody,'const recent=v30ShopRecentIds();',
-      "const recent=(()=>{try{return v30ShopRecentIds()}catch(error){tfShopCycleSafe=false;window.__tfStoreLastIssue=String(error&&error.message||error);console.error('TaskFlow: historial de canjes',error);return new Set(V30_SHOP_POOL.map(item=>item.id))}})();");
-    storeBody=replaceStoreOne(storeBody,'const canRedeem=!!meta.shop.open&&!!req.eligible;',
-      'const canRedeem=tfShopCycleSafe&&!!meta.shop.open&&!!req.eligible;');
-    const recover=[
-      "console.error('TaskFlow: error al abrir la tienda',err);",
-      "window.__tfStoreLastIssue=String(err&&err.message||err);",
-      "try{const root=document.getElementById('windowContainer'),target=document.getElementById('windowContent');",
-      "if(!root||!target)return;root.classList.add('store-modal','open');target.classList.add('store-mode','v79-store-mode');",
-      "const wrap=document.createElement('section');wrap.className='tf130122-store-recovery';",
-      "const title=document.createElement('h2');title.textContent='Tienda TaskFlow';",
-      "const msg=document.createElement('p');msg.textContent='No se pudo completar la carga del catálogo. Ningún canje fue autorizado. Puedes volver a intentar.';",
-      "const again=document.createElement('button');again.type='button';again.className='tf130122-retry';again.textContent='Reintentar tienda';again.onclick=()=>v30OpenStore();",
-      "const close=document.createElement('button');close.type='button';close.className='tf130122-close';close.textContent='Cerrar';close.onclick=()=>{root.classList.remove('open','store-modal');target.classList.remove('store-mode','v79-store-mode');target.replaceChildren()};",
-      "wrap.append(title,msg,again,close);target.replaceChildren(wrap);",
-      "}catch(other){console.error('TaskFlow: no se pudo recuperar tienda',other)}"
-    ].join('');
-    const fixedStore=storeBegin+'try{'+storeBody+'}catch(err){'+recover+'}}';
-    // Se evitan compilaciones dinámicas durante el arranque, compatibles con WebView y CSP.
-    html=html.slice(0,storeAt)+fixedStore+html.slice(storeNext);
     const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
     if(remaining)await wait(remaining);
     finishProgress();
