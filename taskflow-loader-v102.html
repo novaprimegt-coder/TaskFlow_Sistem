@@ -98,6 +98,17 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
       const bin=atob(payload),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
       const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
       let html=await new Response(stream).text();
+      // V130.12.6: corregir la causa comprobada del error al abrir la Tienda.
+      // Los historiales sincronizados pueden contener null o registros incompletos.
+      // Se ignoran solo durante la lectura; no se borran ni se reescriben los datos.
+      const tfShopHistoryIntegrityV130126="function v30ShopRecentIds(){const cutoff=Date.now()-365*86400000;return new Set(meta.shop.selectedHistory.filter(x=>Number(x.ts)>=cutoff).map(x=>x.id));}";
+      const tfShopHistorySafeV130126="function v30ShopRecentIds(){const cutoff=Date.now()-365*86400000;const history=Array.isArray(meta.shop&&meta.shop.selectedHistory)?meta.shop.selectedHistory:[];return new Set(history.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.id==='string'&&x.id.trim()&&Number.isFinite(Number(x.ts))&&Number(x.ts)>=cutoff).map(x=>x.id.trim()));}";
+      if(html.includes(tfShopHistoryIntegrityV130126)){
+        html=html.replace(tfShopHistoryIntegrityV130126,tfShopHistorySafeV130126);
+      }else{
+        console.warn('TaskFlow: la revisión de historial de tienda no coincide con el núcleo actual');
+      }
+
       if(html.length<600000||!html.includes('<html')||!html.includes('TaskFlow'))throw new Error('Contenido reconstruido inválido');
       msgEl.textContent='Aplicando configuración…';
       html=html.replace(/<script\b[^>]*\bsrc=["'][^"']*taskflow-v13063-welcome\.js[^"']*["'][^>]*><\/script>/gi,'');

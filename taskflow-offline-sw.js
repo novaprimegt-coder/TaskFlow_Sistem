@@ -1,7 +1,7 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-v130125-20261025';
+const SHELL_CACHE='taskflow-offline-shell-v130126-20261025';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -84,6 +84,23 @@ async function navigation(request){
  finally{clearTimeout(timeout)}
  return fallback||new Response('TaskFlow necesita abrirse una vez con Internet para preparar el acceso sin conexión.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}});
 }
+/* V130.12.6: el cargador del sistema tiene prioridad de red para evitar
+   versiones antiguas servidas por la caché del SW. Sin red: usar caché offline. */
+async function coreLoaderNetworkFirst(request,url){
+ const cache=await caches.open(SHELL_CACHE);
+ const key=keyFor('taskflow-loader-v102.html');
+ const ctl=new AbortController();
+ const timer=setTimeout(()=>ctl.abort(),5500);
+ try{
+   const fresh=await fetch(new Request(url.href,{cache:'no-store',credentials:'same-origin',signal:ctl.signal}));
+   if(fresh&&fresh.ok){
+     try{await cache.put(key,fresh.clone())}catch(_){}
+     return fresh;
+   }
+ }catch(_){}
+ finally{clearTimeout(timer)}
+ return await cache.match(key,{ignoreSearch:true})||await fetch(request);
+}
 async function cachedResource(request,cacheName,url){
  const cache=await caches.open(cacheName);
  const key=url.origin===self.location.origin?url.origin+url.pathname:url.href;
@@ -125,6 +142,9 @@ self.addEventListener('fetch',event=>{
      event.respondWith(navigation(request));return;
    }
    if(staticKeys.has(url.pathname)){
+     if(url.pathname===new URL('taskflow-loader-v102.html',base).pathname){
+       event.respondWith(coreLoaderNetworkFirst(request,url));return;
+     }
      event.respondWith(cachedResource(request,SHELL_CACHE,url));return;
    }
    if(mediaKeys.has(url.pathname)){

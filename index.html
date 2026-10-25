@@ -149,7 +149,7 @@ async function start(){
   try{
     let res=null,bootNetworkError=null;
     try{
-      res=await fetch('./taskflow-loader-v102.html?v=13102-20261014',{cache:'no-store',signal:ctrl.signal});
+      res=await fetch('./taskflow-loader-v102.html?v=130126-20261025',{cache:'no-store',signal:ctrl.signal});
       if(!res.ok)bootNetworkError=new Error('No se pudo cargar la base de TaskFlow ('+res.status+')');
     }catch(networkError){bootNetworkError=networkError;}
     if(!res||!res.ok){
@@ -229,56 +229,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
        "html=html.replace('<body>','<body>'+"+launchBody+");";
     const guardedWriteFix=writeFix.replace(writeNeedle,launchStatement+writeNeedle);
     html=html.replace(payloadCacheNeedle,payloadCacheFix).replace(headNeedle,headFix).replace(writeNeedle,guardedWriteFix);
-    // V130.12.5: proteger exclusivamente la ejecución de la tienda.
-    // Ante fallos de datos, ningún canje se habilita sin verificar requisitos.
-    // Si una versión futura cambia la estructura, NO se interrumpe la carga de TaskFlow.
-    (function repairStoreOpening(){
-      const first='function v30OpenStore(){';
-      const begin=html.indexOf(first);
-      const tail='} catch(_) {}\n            }';
-      const final=begin<0?-1:html.indexOf(tail,begin);
-      if(begin<0||final<0)return;
-      const end=final+tail.length;
-      let original=html.slice(begin,end);
-      if(original.indexOf('v32ProcessPerfectShopHistory();')<0||original.indexOf('const canRedeem=')<0)return;
-      const one=(oldPart,newPart)=>{
-        const i=original.indexOf(oldPart);
-        if(i>=0&&original.indexOf(oldPart,i+oldPart.length)<0){
-          original=original.slice(0,i)+newPart+original.slice(i+oldPart.length);
-        }
-      };
-      one(first,first+'try{let tfShopCycleSafe=true;');
-      one('v32ProcessPerfectShopHistory();',
-        "try{v32ProcessPerfectShopHistory()}catch(err){tfShopCycleSafe=false;console.error('Tienda: cálculo del ciclo',err);window.__tfStoreLastIssue=String(err&&err.message||err)}");
-      one('req=v32CurrentRequirements()',
-        "req=(()=>{try{return v32CurrentRequirements()}catch(err){tfShopCycleSafe=false;console.error('Tienda: requisitos',err);window.__tfStoreLastIssue=String(err&&err.message||err);return {eligible:false}}})()");
-      one('const recent=v30ShopRecentIds();',
-        "const recent=(()=>{try{return v30ShopRecentIds()}catch(err){tfShopCycleSafe=false;console.error('Tienda: historial',err);window.__tfStoreLastIssue=String(err&&err.message||err);return new Set(V30_SHOP_POOL.map(x=>x.id))}})();");
-      one('const canRedeem=!!meta.shop.open&&!!req.eligible;',
-        'const canRedeem=tfShopCycleSafe&&!!meta.shop.open&&!!req.eligible;');
-      one('v79StoreProductIcon(item)',
-        "(()=>{try{return v79StoreProductIcon(item)}catch(err){console.warn('Tienda: icono de catálogo',err);return '◇'}})()");
-      const catcher=[
-        "console.error('TaskFlow: fallo de apertura de tienda',storeError);",
-        "window.__tfStoreLastIssue=String(storeError&&storeError.message||storeError);",
-        "try{",
-          "const root=document.getElementById('windowContainer'),content=document.getElementById('windowContent');",
-          "if(!root||!content){if(typeof showToast==='function')showToast('No se pudo abrir la tienda.','bad');return}",
-          "root.classList.add('store-modal','open');content.classList.add('store-mode','v79-store-mode');",
-          "const box=document.createElement('section');box.className='tf130122-store-recovery';",
-          "const title=document.createElement('h2');title.textContent='Tienda TaskFlow';",
-          "const msg=document.createElement('p');msg.textContent='No se pudo cargar el catálogo completo. Los canjes permanecen bloqueados hasta verificar el sistema.';",
-          "const retry=document.createElement('button');retry.type='button';retry.className='tf130122-retry';retry.textContent='Reintentar tienda';retry.onclick=()=>v30OpenStore();",
-          "const close=document.createElement('button');close.type='button';close.className='tf130122-close';close.textContent='Cerrar';close.onclick=()=>closeWindow();",
-          "box.append(title,msg,retry,close);content.replaceChildren(box);",
-        "}catch(recoverError){console.error('TaskFlow: recuperación de tienda',recoverError)}"
-      ].join('');
-      // La última llave corresponde a v30OpenStore, no a su try anidado.
-      const last=original.lastIndexOf('}');
-      if(last<0)return;
-      original=original.slice(0,last)+'}catch(storeError){'+catcher+'}}'+original.slice(last+1);
-      html=html.slice(0,begin)+original+html.slice(end);
-    })();
+    // V130.12.6: el historial se sanea en el núcleo DESCOMPRIMIDO dentro de taskflow-loader-v102.html.
     const remaining=Math.max(0,MIN_BOOT_MS-(performance.now()-started));
     if(remaining)await wait(remaining);
     finishProgress();
