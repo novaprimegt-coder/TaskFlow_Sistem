@@ -155,8 +155,14 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
           "modal.classList.add('store-mode','v79-store-mode');box.classList.add('open','store-modal')",
           "}catch(recoveryError){console.error('TaskFlow: recuperación de Tienda',recoveryError)}"
         ].join('');
-        // Una función y un solo manejo de errores; conservar todo el HTML existente.
-        html=html.slice(0,at)+start+'try{'+body+'}catch(error){'+fallback+'}'+closePart+html.slice(after);
+        // Probar la sintaxis real antes de reemplazar el núcleo. Si algo no coincide,
+        // mantener el módulo original y permitir que el resto del sistema arranque.
+        const candidate=start+'try{'+body+'}catch(error){'+fallback+'}'+closePart;
+        try{new Function(candidate)}catch(syntaxError){
+          console.error('TaskFlow: se conservó la Tienda original por seguridad',syntaxError);
+          return;
+        }
+        html=html.slice(0,at)+candidate+html.slice(after);
       })();
       if(html.length<600000||!html.includes('<html')||!html.includes('TaskFlow'))throw new Error('Contenido reconstruido inválido');
       msgEl.textContent='Aplicando configuración…';

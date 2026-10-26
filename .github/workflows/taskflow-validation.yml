@@ -56,6 +56,25 @@ jobs:
             assert.ok(blocks.length>=1,name+': script principal ausente');
             for(const block of blocks) new vm.Script(block[1],{filename:name+'.js'});
           }
+          // Probar el módulo final después de la transformación de Tienda.
+          const at=loader.indexOf('// V130.13.2 — Un solo parche');
+          const end=loader.indexOf('if(html.length<600000',at);
+          assert.ok(at>0&&end>at,'Falta la protección de Tienda');
+          const applyStoreFix=source=>{
+            const sandbox={html:source,console:{warn(){},error(){}}};
+            vm.runInNewContext(loader.slice(at,end),sandbox,{timeout:5000});
+            return sandbox.html;
+          };
+          const patched=applyStoreFix(core);
+          assert.notEqual(patched,core,'Tienda no reparada');
+          assert.ok(patched.includes('let tfShopChecksValid=true'),'Validación del ciclo ausente');
+          assert.ok(patched.includes('const canRedeem=tfShopChecksValid&&!!meta.shop.open&&!!req.eligible;'),'Canje no protegido');
+          const patchedScripts=[...patched.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)];
+          assert.ok(patchedScripts.length>0,'Script de núcleo actualizado ausente');
+          for(const script of patchedScripts) new vm.Script(script[1],{filename:'tienda-reparada.js'});
+          const incompatible=core.replace('const recent=v30ShopRecentIds();','const recent=null;');
+          assert.notEqual(incompatible,core,'No se encontró el caso de regresión');
+          assert.equal(applyStoreFix(incompatible),incompatible,'Un parche incompatible no debe interrumpir el arranque');
           const assets=JSON.parse(sw.match(/const APP_FILES=(\[[\s\S]*?\]);/)?.[1]||'[]');
           assert.ok(assets.length>40,'Lista offline incompleta');
           const missing=assets.filter(p=>p!=='./'&&!exists(p.replace(/^\.\//,'')));
