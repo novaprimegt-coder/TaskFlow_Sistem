@@ -102,88 +102,61 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
       // Los historiales sincronizados pueden contener null o registros incompletos.
       // Se ignoran solo durante la lectura; no se borran ni se reescriben los datos.
       const tfShopHistoryIntegrityV130126="function v30ShopRecentIds(){const cutoff=Date.now()-365*86400000;return new Set(meta.shop.selectedHistory.filter(x=>Number(x.ts)>=cutoff).map(x=>x.id));}";
-      const tfShopHistorySafeV130126="function v30ShopRecentIds(){const cutoff=Date.now()-365*86400000;const history=Array.isArray(meta.shop&&meta.shop.selectedHistory)?meta.shop.selectedHistory:[];return new Set(history.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.id==='string'&&x.id.trim()&&Number.isFinite(Number(x.ts))&&Number(x.ts)>=cutoff).map(x=>x.id.trim()));}";
+      const tfShopHistorySafeV130126="function v30ShopRecentIds(){const cutoff=Date.now()-365*86400000;const history=meta&&meta.shop&&meta.shop.selectedHistory;if(!Array.isArray(history)||history.some(x=>!x||typeof x!=='object'||Array.isArray(x)||typeof x.id!=='string'||!x.id.trim()||!Number.isFinite(Number(x.ts)))){console.warn('TaskFlow: historial de Tienda incompleto; canjes protegidos');return new Set(V30_SHOP_POOL.map(x=>x.id));}return new Set(history.filter(x=>Number(x.ts)>=cutoff).map(x=>x.id.trim()));}";
       if(html.includes(tfShopHistoryIntegrityV130126)){
         html=html.replace(tfShopHistoryIntegrityV130126,tfShopHistorySafeV130126);
       }else{
         console.warn('TaskFlow: la revisión de historial de tienda no coincide con el núcleo actual');
       }
 
-      // V130.12.7 — Evitar que datos incompletos bloqueen la Tienda.
-      // No se cambian recompensas, historial, fechas ni validaciones de canje.
+      // V130.13.2 — Un solo parche de Tienda sobre el núcleo ORIGINAL.
+      // Nunca bloquear el arranque si una revisión del código no coincide.
       (function(){
-        const from=html.indexOf('function v30OpenStore(){');
-        const end=from<0?-1:html.indexOf('\n            }\n            function setupQuickActionButtons(){',from);
-        if(from<0||end<0)return;
-        const tail='\n            }';
-        const endAt=end+tail.length;
-        let part=html.slice(from,endAt);
-        const replacements=[
-          ['function v30OpenStore(){','function v30OpenStore(){\n                let tfShopChecksValid=true;'],
-          ['v32ProcessPerfectShopHistory();',"try{v32ProcessPerfectShopHistory()}catch(err){tfShopChecksValid=false;console.error('TaskFlow tienda: ciclo',err)}"],
-          ['req=v32CurrentRequirements()',"req=(()=>{try{return v32CurrentRequirements()}catch(err){tfShopChecksValid=false;console.error('TaskFlow tienda: requisitos',err);return {eligible:false}}})()"],
-          ['const recent=v30ShopRecentIds();',"const recent=(()=>{try{return v30ShopRecentIds()}catch(err){tfShopChecksValid=false;console.error('TaskFlow tienda: historial',err);return new Set(V30_SHOP_POOL.map(x=>x.id))}})();"],
-          ['const canRedeem=!!meta.shop.open&&!!req.eligible;','const canRedeem=tfShopChecksValid&&!!meta.shop.open&&!!req.eligible;']
-        ];
-        for(const [oldCode,newCode] of replacements){
-          const i=part.indexOf(oldCode);
-          if(i<0||part.indexOf(oldCode,i+oldCode.length)!==-1)return;
-          part=part.slice(0,i)+newCode+part.slice(i+oldCode.length);
+        const start='function v30OpenStore(){';
+        const endToken='\n            }\n            function setupQuickActionButtons(){';
+        const at=html.indexOf(start),end=at<0?-1:html.indexOf(endToken,at);
+        if(at<0||end<0){console.warn('TaskFlow: el módulo Tienda conservó su código original');return;}
+        const closePart='\n            }',after=end+closePart.length;
+        let body=html.slice(at+start.length,end);
+        function once(value,needle,replacement){
+          const pos=value.indexOf(needle);
+          if(pos<0||value.indexOf(needle,pos+needle.length)!==-1)
+            throw new Error('Cambio inesperado en el módulo Tienda: '+needle.slice(0,50));
+          return value.slice(0,pos)+replacement+value.slice(pos+needle.length);
         }
-        html=html.slice(0,from)+part+html.slice(endAt);
-      })();
-
-      // V130.12.8: proteger toda apertura de Tienda; nunca desbloquear canjes al fallar.
-      (function(){
-        const start='function v30OpenStore(){',endToken='\n            }\n            function setupQuickActionButtons(){';
-        const from=html.indexOf(start),end=from<0?-1:html.indexOf(endToken,from);
-        if(from<0||end<0){console.warn('TaskFlow: Tienda no localizada en núcleo.');return}
-        const tail='\n            }',endAt=end+tail.length,old=html.slice(from,endAt);
-        let body=old.slice(start.length,old.lastIndexOf('}'));
-        const once=(s,a,b)=>{const i=s.indexOf(a);return i<0||s.indexOf(a,i+a.length)>=0?s:s.slice(0,i)+b+s.slice(i+a.length)};
-        body=once(body,'const elapsed=Math.max(0,v30DaysBetween(meta.shop.cycleStart,iso));',
-          "const elapsed=(()=>{try{const d=v30DaysBetween(meta.shop.cycleStart,iso);return Number.isFinite(d)?Math.max(0,d):0}catch(e){console.warn('TaskFlow: fecha de ciclo incorrecta',e);return 0}})();");
-        body=once(body,'const unlock=new Date(Number(meta.shop.unlockAt||Date.now()));',
-          "const unlock=(()=>{const timestamp=Number(meta.shop.unlockAt);return new Date(Number.isFinite(timestamp)&&timestamp>0?timestamp:Date.now())})();");
-        // Contener cualquier fallo restante del catálogo sin activar canjes.
-        const recovery=[
-          "console.error('TaskFlow: fallo controlado de tienda',storeError);",
-          "try{window.__tfStoreLastIssue={time:Date.now(),message:String(storeError&&storeError.message||storeError)}}catch(_){}",
-          "try{",
-          "const modal=document.getElementById('windowContent'),container=document.getElementById('windowContainer');",
-          "if(!modal||!container)return;",
-          "const root=document.createElement('section');root.className='tf130122-store-recovery';",
+        try{
+          body=once(body,'v32ProcessPerfectShopHistory();',
+            "try{v32ProcessPerfectShopHistory()}catch(error){tfShopChecksValid=false;console.error('TaskFlow: cálculo del ciclo de Tienda',error)}");
+          body=once(body,'req=v32CurrentRequirements()',
+            "req=(()=>{try{return v32CurrentRequirements()}catch(error){tfShopChecksValid=false;console.error('TaskFlow: requisitos de Tienda',error);return {eligible:false}}})()");
+          body=once(body,'const recent=v30ShopRecentIds();',
+            "const recent=(()=>{try{return v30ShopRecentIds()}catch(error){tfShopChecksValid=false;console.error('TaskFlow: historial de Tienda',error);return new Set(V30_SHOP_POOL.map(x=>x.id))}})();");
+          body=once(body,'const canRedeem=!!meta.shop.open&&!!req.eligible;',
+            'const canRedeem=tfShopChecksValid&&!!meta.shop.open&&!!req.eligible;');
+          body=once(body,'const elapsed=Math.max(0,v30DaysBetween(meta.shop.cycleStart,iso));',
+            "const elapsed=(()=>{try{const value=v30DaysBetween(meta.shop.cycleStart,iso);if(!Number.isFinite(value))throw Error('Duración no verificable');return Math.max(0,value)}catch(error){tfShopChecksValid=false;console.error('TaskFlow: fechas de Tienda',error);return 0}})();");
+          body=once(body,'const unlock=new Date(Number(meta.shop.unlockAt||Date.now()));',
+            "const stamp=Number(meta.shop.unlockAt),validStamp=Number.isFinite(stamp)&&stamp>0;if(!validStamp)tfShopChecksValid=false;const unlock=new Date(validStamp?stamp:Date.now());");
+          body=once(body,'$'+'{v79StoreProductIcon(item)}',
+            '$'+"{(()=>{try{return v79StoreProductIcon(item)}catch(error){console.error('TaskFlow: icono de recompensa',error);return '✦'}})()}");
+        }catch(patchError){console.error('TaskFlow: se conservó la Tienda original',patchError);return;}
+        body='\n                let tfShopChecksValid=true;'+body;
+        const fallback=[
+          "console.error('TaskFlow: apertura de Tienda',error);",
+          "try{window.__tfStoreLastIssue={time:Date.now(),message:String(error&&error.message||error)}}catch(_){}",
+          "try{const modal=document.getElementById('windowContent'),box=document.getElementById('windowContainer');",
+          "if(!modal||!box)return;",
+          "const panel=document.createElement('section');panel.className='tf130122-store-recovery';",
           "const title=document.createElement('h2');title.textContent='Tienda TaskFlow';",
-          "const note=document.createElement('p');note.textContent='El catálogo se muestra en modo protegido. Los canjes permanecen bloqueados mientras se verifican los datos.';",
-          "const actions=document.createElement('div');actions.className='tf130128-actions';",
+          "const note=document.createElement('p');note.textContent='No fue posible verificar el catálogo. Los canjes están bloqueados hasta completar la validación.';",
           "const retry=document.createElement('button');retry.type='button';retry.className='tf130122-retry';retry.textContent='Reintentar Tienda';retry.onclick=()=>v30OpenStore();",
-          "const close=document.createElement('button');close.type='button';close.className='tf130122-close';close.textContent='Cerrar';close.onclick=()=>{try{closeWindow()}catch(_){container.classList.remove('open');modal.replaceChildren()}};",
-          "actions.append(retry,close);root.append(title,note,actions);",
-          "const gallery=document.createElement('div');gallery.className='tf130128-safe-catalog';",
-          "if(typeof V30_SHOP_POOL!=='undefined'&&Array.isArray(V30_SHOP_POOL)){",
-          "V30_SHOP_POOL.forEach(item=>{if(!item||typeof item!=='object')return;",
-          "const card=document.createElement('article');card.className='tf130128-safe-card';",
-          "const name=document.createElement('strong');name.textContent=String(item.name||'Recompensa');",
-          "const desc=document.createElement('p');desc.textContent=String(item.desc||'');",
-          "const status=document.createElement('small');status.textContent='Canje bloqueado';",
-          "card.append(name,desc,status);gallery.appendChild(card)});}",
-          "root.appendChild(gallery);modal.replaceChildren(root);",
-          "modal.classList.add('store-mode','v79-store-mode');container.classList.add('open','store-modal');",
-          "container.scrollTop=0;",
-          "}catch(recoveryError){console.error('TaskFlow: recuperación de Tienda fallida',recoveryError)}"
+          "const close=document.createElement('button');close.type='button';close.className='tf130122-close';close.textContent='Cerrar';close.onclick=()=>{try{closeWindow()}catch(_){box.classList.remove('open');modal.replaceChildren()}};",
+          "panel.append(title,note,retry,close);modal.replaceChildren(panel);",
+          "modal.classList.add('store-mode','v79-store-mode');box.classList.add('open','store-modal')",
+          "}catch(recoveryError){console.error('TaskFlow: recuperación de Tienda',recoveryError)}"
         ].join('');
-        const safe=start+'try{'+body+'}catch(storeError){'+recovery+'}}';
-        try{new Function(safe)}catch(syntaxError){console.error('TaskFlow: protección de tienda sin aplicar',syntaxError);return}
-        html=html.slice(0,from)+safe+html.slice(endAt);
-      })();
-      // V130.12.9 — Reemplazo seguro de la función de apertura de Tienda.
-      (function(){
-        const start='function v30OpenStore(){',token='\n            function setupQuickActionButtons(){';
-        const at=html.indexOf(start),end=at<0?-1:html.indexOf(token,at);
-        if(at<0||end<0){console.warn('TaskFlow: no se pudo localizar Tienda; núcleo conservado');return}
-        const source="function v30OpenStore(){\ntry{\nconst container=document.getElementById('windowContainer'),target=document.getElementById('windowContent');\nif(!container||!target)return;\nconst el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e};\nlet safe=true;try{v32EnsureMeta();v32ProcessPerfectShopHistory()}catch(e){safe=false;console.warn('Tienda: ciclo',e)}\nconst shop=meta&&meta.shop&&typeof meta.shop==='object'?meta.shop:{};\nlet requirements={eligible:false};try{requirements=v32CurrentRequirements()||requirements}catch(e){safe=false;console.warn('Tienda: requisitos',e)}\nif(requirements.eligible!==true)requirements.eligible=false;\nlet today='';try{today=v30IsoToday()}catch(e){safe=false}\nconst isIso=x=>typeof x==='string'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(x)&&Number.isFinite(Date.parse(x+'T12:00:00'));\nlet elapsed=0;if(isIso(today)&&isIso(shop.cycleStart))elapsed=Math.max(0,Math.floor((Date.parse(today+'T12:00:00')-Date.parse(shop.cycleStart+'T12:00:00'))/86400000));else safe=false;\nconst stamp=Number(shop.unlockAt);if(!Number.isFinite(stamp)||stamp<=0)safe=false;\nconst days=Number.isFinite(stamp)&&stamp>0?Math.max(0,Math.ceil((stamp-Date.now())/86400000)):0;\nconst progress=safe?(shop.open===true?100:Math.max(0,Math.min(100,Math.round(100*elapsed/Math.max(1,elapsed+days))))):0;\nconst pool=typeof V30_SHOP_POOL!=='undefined'&&Array.isArray(V30_SHOP_POOL)?V30_SHOP_POOL:[];\nif(!pool.length)safe=false;\nlet recent;try{recent=v30ShopRecentIds();if(!(recent instanceof Set))throw Error('historial')}catch(e){safe=false;recent=new Set(pool.map(x=>x&&x.id));console.warn('Tienda: historial',e)}\nconst active=safe&&shop.open===true&&requirements.eligible===true;\nconst shell=el('div','v79-store-shell'),header=el('div','v79-store-header'),headText=el('div','v79-store-headcopy');\nheadText.append(el('span','','SISTEMA DE RECOMPENSAS · HUNTER'),el('h2','','Tienda TaskFlow'),el('p','','El catálogo completo es visible. El canje requiere que el ciclo y el día estén completos.'));\nconst close=el('button','window-close','×');close.type='button';close.setAttribute('aria-label','Cerrar Tienda');close.onclick=()=>{container.classList.remove('open','store-modal');target.classList.remove('store-mode','v79-store-mode');target.replaceChildren()};\nheader.append(el('div','v79-store-sigil','♜'),headText,close);shell.append(header);\nconst gate=el('section','v79-vault-gate '+(active?'open':'locked')),top=el('div','v79-gate-top'),note=el('div');\nnote.append(el('span','v79-kicker','BÓVEDA DEL SISTEMA'),el('h3','',!safe?'VERIFICACIÓN PENDIENTE':shop.open?'ACCESO TEMPORAL DESBLOQUEADO':'SELLADA · '+days+' DÍAS'),el('p','',safe?'Solo se habilitan canjes cuando se cumplen todas las condiciones.':'La información del ciclo no pudo verificarse. Canjes bloqueados por seguridad.'));\ntop.append(note,el('div','v79-gate-rune','🔒'));gate.append(top);\nconst bar=el('div','v79-cycle-progress'),barhead=el('div');barhead.append(el('b','','Progreso del ciclo'),el('strong','',progress+'%'));const track=el('span'),fill=el('i');fill.style.width=progress+'%';track.append(fill);bar.append(barhead,track);gate.append(bar);\nconst stats=el('div','v79-gate-stats');\nfunction stat(value,label){const e=el('article');e.append(el('b','',value),el('span','',label));return e}\nlet mission=false;try{mission=!!meta.incomeMissionLog?.[today]?.completed}catch(e){}\nstats.append(stat(elapsed,'DÍAS SUPERADOS'),stat(safe&&requirements.eligible?'PERFECTO':'PENDIENTE','ESTADO DE HOY'),stat(mission?'Q100 ✓':'Q100 —','MISIÓN ECONÓMICA'));gate.append(stats);shell.append(gate);\nconst title=el('div','v79-catalog-head'),intro=el('div');intro.append(el('span','','CATÁLOGO COMPLETO'),el('h3','',pool.length+' recompensas disponibles en el sistema'),el('p','','Verlas no significa poder canjearlas. Una elección por ciclo, después de completar todos los requisitos.'));title.append(intro,el('span','v79-catalog-status '+(active?'ready':'sealed'),active?'CANJE HABILITADO':'CANJE BLOQUEADO'));shell.append(title);\nconst grid=el('div','v79-store-grid');\nfor(const item of pool){if(!item||typeof item!=='object')continue;\nconst cooldown=recent.has(item.id),eligible=active&&!cooldown,card=el('article','v79-store-card '+(eligible?'ready':'locked')+(cooldown?' cooling':''));\nconst topCard=el('div','v79-card-top'),icon=el('span','v79-product-icon');\ntry{const svg=v79StoreProductIcon(item);if(typeof svg==='string'&&svg.length<8000)icon.innerHTML=svg;else icon.textContent='✦'}catch(e){icon.textContent='✦'}\ntopCard.append(icon,el('span','v79-card-state',cooldown?'ENFRIAMIENTO':eligible?'DISPONIBLE':safe?'BLOQUEADO '+days+'D':'NO DISPONIBLE'));\nconst body=el('div','v79-card-copy');body.append(el('h4','',item.name||'Recompensa'),el('p','',item.desc||''));\nconst footer=el('div','v79-card-bottom');footer.append(el('strong','','Máx. Q'+(Number.isFinite(Number(item.max))?item.max:'—')),el('small','',cooldown?'No repetible todavía':'1 elección por ciclo'));\nconst button=el('button','v79-redeem-btn',eligible?'Canjear recompensa':'Canje bloqueado');button.type='button';button.disabled=!eligible;\nif(eligible)button.onclick=()=>{try{v30ChooseStoreItem(item.id)}catch(e){button.disabled=true;console.error('Tienda: canje',e)}};\ncard.append(topCard,body,footer,button);grid.append(card)}\nshell.append(grid);const rule=el('div','v79-store-rule');rule.append(el('span','','🛡'),el('div','','Se conservan los ciclos, recompensas y restricciones de canje de TaskFlow.'));shell.append(rule);\ntarget.replaceChildren(shell);target.classList.add('store-mode','v79-store-mode');container.classList.add('open','store-modal');container.scrollTop=0;\n}catch(error){\nconsole.error('TaskFlow: fallo aislado en Tienda',error);\ntry{window.__tfStoreLastIssue={time:Date.now(),message:String(error&&error.message||error)}}catch(_){}\ntry{\nconst modal=document.getElementById('windowContent'),box=document.getElementById('windowContainer');\nif(modal&&box){const pane=document.createElement('section');pane.className='tf130122-store-recovery';const title=document.createElement('h2');title.textContent='Tienda TaskFlow';const note=document.createElement('p');note.textContent='No se pudo completar el catálogo. Las demás funciones siguen disponibles y ningún canje se autorizó.';const retry=document.createElement('button');retry.textContent='Reintentar Tienda';retry.type='button';retry.className='tf130122-retry';retry.onclick=()=>{try{v30OpenStore()}catch(e){console.error('TaskFlow: reintento de Tienda',e)}};\nconst close=document.createElement('button');close.textContent='Cerrar';close.type='button';close.className='tf130122-close';close.onclick=()=>{try{box.classList.remove('open','store-modal');modal.replaceChildren()}catch(e){console.error('TaskFlow: cierre Tienda',e)}};\npane.append(title,note,retry,close);modal.replaceChildren(pane);box.classList.add('open','store-modal')}\n}catch(recoveryError){console.error('TaskFlow: interfaz de recuperación fallida',recoveryError)}\n}\n}";
-        // Función validada antes de publicar; evitar eval en navegadores restrictivos.
-        html=html.slice(0,at)+source+html.slice(end);
+        // Una función y un solo manejo de errores; conservar todo el HTML existente.
+        html=html.slice(0,at)+start+'try{'+body+'}catch(error){'+fallback+'}'+closePart+html.slice(after);
       })();
       if(html.length<600000||!html.includes('<html')||!html.includes('TaskFlow'))throw new Error('Contenido reconstruido inválido');
       msgEl.textContent='Aplicando configuración…';
