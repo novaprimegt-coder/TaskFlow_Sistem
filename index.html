@@ -223,7 +223,7 @@ html,body{margin:0!important;min-height:100%!important;background:#030712!import
     const launchHead=JSON.stringify(finalLaunchStyle+finalLaunchScript).replace(/<\/script/gi,'<\\/script');
     const launchBody=JSON.stringify(finalLaunchMarkup);
     const profileHeadLink=JSON.stringify('<link id="tfProfileReferenceV130116" rel="stylesheet" href="./taskflow-v130114-profile-reference.css?v=130119-20261025">');
-    const settingsRewardHeadLink=JSON.stringify('<link id="tfV130120Visual" rel="stylesheet" href="./taskflow-v130120-settings-rewards.css?v=130124-20261025">');
+    const settingsRewardHeadLink=JSON.stringify('<link id="tfV130120Visual" rel="stylesheet" href="./taskflow-v130120-settings-rewards.css?v=130128-20261025">');
     const launchStatement="if(!html.includes('</head>')||!html.includes('<body>'))throw new Error('Interfaz incompleta');"+
        "html=html.replace('</head>',"+launchHead+"+"+profileHeadLink+"+"+settingsRewardHeadLink+"+'</head>');"+
        "html=html.replace('<body>','<body>'+"+launchBody+");";
