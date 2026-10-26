@@ -682,3 +682,51 @@
 #windowContent .tf130128-safe-card p{margin:0;font-size:clamp(10px,2.5vw,12px);line-height:1.45;color:#9facd0}
 #windowContent .tf130128-safe-card small{margin-top:auto;font-size:10px;font-weight:800;color:#c4a4fb}
 @media(max-width:400px){#windowContent .tf130128-safe-catalog{grid-template-columns:1fr}}
+
+
+/* V130.13.4 — Catálogo de consulta cuando falla la comprobación de la Tienda.
+   Las recompensas siempre proceden de V30_SHOP_POOL; ningún canje se habilita aquí. */
+#windowContent .tf130134-catalog-fallback{
+ display:flex!important;flex-direction:column!important;gap:15px!important;
+ box-sizing:border-box!important;width:min(100%,760px)!important;max-width:none!important;
+ margin:0 auto 45px!important;padding:13px!important;
+ border-radius:22px!important;
+ background:linear-gradient(160deg,#0c1a3b,#090f29)!important;
+ border:1px solid rgba(75,115,250,.45)!important;
+ box-shadow:0 18px 55px rgba(0,3,20,.45),inset 0 1px 0 rgba(190,215,255,.07)!important;
+ color:#e9f4ff!important;
+}
+#windowContent .tf130134-catalog-head{
+ display:flex!important;flex-direction:column!important;align-items:center!important;
+ gap:8px!important;padding:19px 13px!important;
+ border-radius:17px!important;text-align:center!important;
+ background:radial-gradient(circle at 50% 0,rgba(107,64,231,.18),transparent 56%),linear-gradient(110deg,rgba(17,28,69,.95),rgba(8,21,48,.92))!important;
+ border:1px solid rgba(96,110,255,.26)!important;
+}
+#windowContent .tf130134-kicker{color:#b98cff!important;font-size:10px!important;letter-spacing:.15em!important;font-weight:900!important}
+#windowContent .tf130134-catalog-head h2{color:#f4f8ff!important;font-size:clamp(21px,5.8vw,29px)!important;margin:0!important}
+#windowContent .tf130134-catalog-head p{max-width:530px!important;color:#acbadb!important;font-size:clamp(11px,2.8vw,13px)!important;line-height:1.5!important;margin:0!important}
+#windowContent .tf130134-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;width:100%!important;max-width:500px!important;margin-top:10px!important}
+#windowContent .tf130134-actions button{display:block!important;min-width:0!important;min-height:44px!important;border-radius:12px!important;font-size:clamp(11px,3vw,13px)!important;font-weight:850!important;cursor:pointer!important}
+#windowContent .tf130134-actions .tf130122-retry{border:1px solid #41e5ef!important;color:#eaffff!important;background:linear-gradient(120deg,#077c97,#0ca6ad)!important}
+#windowContent .tf130134-actions .tf130122-close{border:1px solid rgba(131,146,226,.40)!important;background:#121e47!important;color:#c7d1f4!important}
+#windowContent .tf130134-status{display:flex!important;flex-direction:column!important;align-items:center!important;gap:4px!important;padding:8px 0 2px!important;color:#aebaeb!important;text-align:center!important}
+#windowContent .tf130134-status strong{color:#f4f7ff!important;font-size:clamp(15px,3.7vw,18px)!important}
+#windowContent .tf130134-status span{color:#b7a2ff!important;font-size:clamp(10px,2.7vw,13px)!important}
+#windowContent .tf130134-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+#windowContent .tf130134-grid .v79-store-card{display:flex!important;flex-direction:column!important;min-width:0!important;border:1px solid rgba(76,122,239,.49)!important;background:linear-gradient(128deg,rgba(20,41,91,.93),rgba(14,24,65,.96))!important;border-radius:15px!important;padding:10px!important}
+#windowContent .tf130134-grid .v79-card-top{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:6px!important}
+#windowContent .tf130134-grid .v79-product-icon{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;border-radius:11px!important;color:#b68cff!important;background:rgba(103,68,198,.24)!important;border:1px solid rgba(152,90,241,.43)!important}
+#windowContent .tf130134-grid .v79-card-state{font-size:9px!important;border-radius:999px!important;padding:5px 8px!important;color:#b9a0fc!important;background:rgba(110,67,209,.17)!important;white-space:normal!important;word-break:break-word!important}
+#windowContent .tf130134-grid .v79-card-copy h4{font-size:clamp(12px,3vw,15px)!important;margin:8px 0 5px!important}
+#windowContent .tf130134-grid .v79-card-copy p{font-size:clamp(10px,2.45vw,12px)!important;line-height:1.42!important;color:#a7b7d8!important}
+#windowContent .tf130134-grid .v79-card-bottom{margin-top:auto!important;padding-top:9px!important}
+#windowContent .tf130134-grid .v79-card-bottom strong{color:#ad86ff!important}
+#windowContent .tf130134-grid .v79-redeem-btn{display:block!important;width:100%!important;margin-top:9px!important;min-height:35px!important;border:1px solid rgba(123,109,226,.35)!important;border-radius:10px!important;background:#141b42!important;color:#b2b1d0!important;opacity:.7!important;cursor:not-allowed!important;font-size:11px!important}
+#windowContent .tf130134-empty{color:#b5bddb!important;text-align:center!important;padding:20px!important}
+@media(max-width:360px){
+ #windowContent .tf130134-catalog-fallback{padding:8px!important}
+ #windowContent .tf130134-grid{gap:7px!important}
+ #windowContent .tf130134-grid .v79-store-card{padding:8px!important}
+ #windowContent .tf130134-grid .v79-card-state{font-size:8px!important}
+}
