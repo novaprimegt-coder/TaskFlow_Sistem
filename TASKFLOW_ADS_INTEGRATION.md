@@ -1,7 +1,7 @@
 # TaskFlow ADS — contrato de integración (preparado, no activado)
 
 ## Arquitectura acordada
-TaskFlow_Sistem es el sistema principal. El sistema de anuncios será otro proyecto, con **repositorio y código independientes**, enlazado mediante el puente `taskflow-ads-bridge.js`. **No existe todavía un repositorio ADS autorizado o una URL pública verificada**.
+TaskFlow_Sistem es el sistema principal. El sistema de anuncios será otro proyecto, con **repositorio y código independientes**, enlazado mediante el puente `taskflow-ads-bridge.js`. **El repositorio `novaprimegt-coder/TaskFlow_Ads` todavía no existe; la conexión pública sigue desactivada y no hay URL desplegada verificada**.
 
 ## Estado
 - El puente está incluido en el arranque, pero comienza deshabilitado.
@@ -40,4 +40,4 @@ Las posiciones deben agregarse explícitamente mediante `TaskFlowADS.mount(tipo,
 6. No confundir el repositorio de presentación TaskFlow_Home con TaskFlow_Sistem ni con el futuro repositorio de ADS.
 
 ## Pendiente
-Crear el repositorio de ADS, definir URL final, implementar el panel administrativo y permisos, publicar manifiesto válido, aprobar ubicaciones y activar el puente después de pruebas.
+Crear el repositorio independiente `TaskFlow_Ads`, cargar el paquete de código preparado, habilitar GitHub Pages y fusionar reglas administrativas en el Firebase actual. Autorizar una cuenta mediante claim del servidor, comprobar el catálogo y activar el puente después de pruebas. No activar publicidad antes de verificar la publicación.
