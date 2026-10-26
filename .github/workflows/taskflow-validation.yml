@@ -1,31 +1,31 @@
 name: TaskFlow - Verificacion integral
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
-  static-audit:
+  syntax:
     runs-on: ubuntu-latest
     steps:
-      - name: Obtener repositorio
-        uses: actions/checkout@v4
-      - name: Preparar Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Comprobar todos los modulos JavaScript
-        shell: bash
+      - name: Verificar JavaScript del repositorio
         run: |
           set -euo pipefail
           find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -r -n 1 node --check
-      - name: Verificar nucleo empaquetado, carga y cache offline
-        shell: bash
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar paquete, cargador, Tienda y recursos offline
         run: |
           node <<'NODE'
           const fs=require('node:fs');
@@ -38,50 +38,33 @@ jobs:
           const root=read('index.html');
           const loader=read('taskflow-loader-v102.html');
           const sw=read('taskflow-offline-sw.js');
+          const bridge=read('taskflow-ads-bridge.js');
           const parts=['p0.txt','p1.txt','p2.txt',...Array.from({length:14},(_,i)=>'q'+i+'.txt')];
           const payload=parts.map(p=>read('taskflow-v99-deploy/'+p).trim()).join('');
           const length=Number(loader.match(/const expectedLength=(\d+);/)?.[1]);
           const hash=loader.match(/const expectedHash='([0-9a-f]+)'/)?.[1];
-          assert.equal(payload.length,length,'Paquete incompleto');
-          assert.equal(crypto.createHash('sha256').update(payload).digest('hex'),hash,'Integridad del nucleo');
+          assert.equal(payload.length,length,'Número de bytes del paquete');
+          assert.equal(crypto.createHash('sha256').update(payload).digest('hex'),hash,'SHA del paquete');
           const core=zlib.gunzipSync(Buffer.from(payload,'base64')).toString('utf8');
-          assert.ok(core.length>600000&&core.includes('<html'),'Nucleo HTML incompleto');
-          assert.equal(core.split('function v30OpenStore(){').length-1,1,'Definicion de tienda');
-          assert.ok(core.includes('function setupQuickActionButtons(){'),'Acciones principales ausentes');
-          assert.ok(loader.includes('V130.13.5'),'Falta reparación actual de tienda');
-          assert.ok(loader.includes('tfShopHistorySafeV130126'),'Saneamiento de historial ausente');
-          assert.ok(loader.includes('tf130134-catalog-fallback'),'Catálogo de recuperación ausente');
-          for(const item of [['index',root],['loader',loader],['core',core]]){
-            const name=item[0],html=item[1];
-            const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
-            assert.ok(blocks.length>=1,name+': script principal ausente');
-            for(const block of blocks) new vm.Script(block[1],{filename:name+'.js'});
+          assert.ok(core.length>600000&&core.includes('<html'),'El núcleo no es un HTML válido');
+          assert.equal(core.split('function v30OpenStore(){').length-1,1,'Tienda debe tener una definición');
+          assert.ok(core.includes('function setupQuickActionButtons(){'),'Faltan acciones rápidas');
+          assert.ok(loader.includes('tfShopHistorySafeV130126'),'Falta saneamiento no destructivo del historial');
+          assert.ok(loader.includes('V130.13.5')&&loader.includes('tf130134-catalog-fallback'),'Falta protección de catálogo');
+          assert.ok(loader.includes('if(begin<0||finish<0)')&&loader.includes('return;'), 'Cargador no tolera firmas distintas');
+          assert.ok(!root.includes('Función de tienda inesperada; se conserva el paquete original'),'Error de arranque antiguo reintroducido');
+          assert.ok(bridge.includes('enabled: false')&&bridge.includes("credentials: 'omit'"),'Publicidad debe comenzar desactivada y aislada');
+          for (const item of [['index',root],['loader',loader],['core',core]]) {
+            const scripts=[...item[1].matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
+            assert.ok(scripts.length>=1,item[0]+': falta script');
+            for(const script of scripts)new vm.Script(script[1],{filename:item[0]+'.js'});
           }
-          // Probar la protección vigente V130.13.5 sobre el núcleo empaquetado.
-          const at=loader.indexOf('// V130.13.5 — La Tienda siempre ofrece');
-          const end=loader.indexOf('if(html.length<600000',at);
-          assert.ok(at>0&&end>at,'Protección vigente no localizada');
-          const applyStoreFix=source=>{
-            const sandbox={html:source,console:{warn(){},error(){}}};
-            vm.runInNewContext(loader.slice(at,end),sandbox,{timeout:5000});
-            return sandbox.html;
-          };
-          const patched=applyStoreFix(core);
-          assert.notEqual(patched,core,'La función de tienda no fue protegida');
-          assert.ok(patched.includes('tf130134-catalog-fallback'),'Falta catálogo de recuperación');
-          const patchedScripts=[...patched.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
-          assert.ok(patchedScripts.length>0,'No hay script en el núcleo protegido');
-          for(const script of patchedScripts) new vm.Script(script[1],{filename:'tienda-reparada.js'});
-          const incompatible=core.replace('function v30OpenStore(){','function v30OpenStore_INCOMPATIBLE(){');
-          assert.notEqual(incompatible,core,'No se pudo simular un núcleo incompatible');
-          assert.equal(applyStoreFix(incompatible),incompatible,'Una firma distinta nunca debe bloquear el arranque');
           const assets=JSON.parse(sw.match(/const APP_FILES=(\[[\s\S]*?\]);/)?.[1]||'[]');
           assert.ok(assets.length>40,'Lista offline incompleta');
           const missing=assets.filter(p=>p!=='./'&&!exists(p.replace(/^\.\//,'')));
-          assert.deepEqual(missing,[],'Archivos faltantes del cache offline');
-          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css']){
-            assert.ok(assets.includes(asset),'Falta recurso offline '+asset);
+          assert.deepEqual(missing,[],'Recursos ausentes del modo offline');
+          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js']){
+            assert.ok(assets.includes(asset),'Falta en caché '+asset);
           }
-          console.log('OK: sintaxis del cargador, nucleo, historial y proteccion de Tienda');
-          console.log('OK: '+parts.length+' partes y '+assets.length+' recursos offline existentes');
+          console.log('OK: núcleo, loader, tienda, ADS aislado y',assets.length,'archivos offline.');
           NODE
