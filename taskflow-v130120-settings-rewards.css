@@ -672,3 +672,13 @@
 #windowContent .tf130122-store-recovery .tf130122-retry{background:linear-gradient(110deg,#047994,#0bc1bd);border:1px solid #39e9f1;color:#fff;box-shadow:0 0 17px rgba(15,220,236,.21)}
 #windowContent .tf130122-store-recovery .tf130122-close{background:#111b3c;border:1px solid #5367a2;color:#c1d0e9}
 #windowContent .tf130122-store-recovery button:focus-visible{outline:2px solid #3fe9f6;outline-offset:3px}
+
+/* V130.12.8 — Vista de recuperación de tienda, sin canjes. */
+#windowContent .tf130128-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;width:100%}
+#windowContent .tf130128-actions button{flex:1 1 145px;width:auto;max-width:220px}
+#windowContent .tf130128-safe-catalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;width:100%;text-align:left;margin-top:15px}
+#windowContent .tf130128-safe-card{display:flex;flex-direction:column;min-width:0;gap:6px;padding:15px;border-radius:15px;border:1px solid rgba(108,128,231,.40);background:linear-gradient(140deg,rgba(26,48,94,.84),rgba(16,24,59,.88))}
+#windowContent .tf130128-safe-card strong{font-size:clamp(12px,2.9vw,15px);color:#f3f7ff}
+#windowContent .tf130128-safe-card p{margin:0;font-size:clamp(10px,2.5vw,12px);line-height:1.45;color:#9facd0}
+#windowContent .tf130128-safe-card small{margin-top:auto;font-size:10px;font-weight:800;color:#c4a4fb}
+@media(max-width:400px){#windowContent .tf130128-safe-catalog{grid-template-columns:1fr}}
