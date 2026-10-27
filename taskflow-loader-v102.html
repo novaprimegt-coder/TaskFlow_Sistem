@@ -179,7 +179,29 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
             console.error('TaskFlow: tienda no pudo mostrar la recuperación',recoveryError);
           }
         `;
-        const candidate=signature+'try{'+originalBody+'}catch(error){'+fallback+'}'+endClose;
+        // V130.13.9: apertura tolerante a errores de lectura, sin alterar reglas de canje.
+        const storeEntry=String.raw`
+          const tfStorePanel=document.getElementById('windowContent');
+          const tfStoreOuter=document.getElementById('windowContainer');
+          if(!tfStoreOuter||!tfStorePanel)throw new Error('Falta la ventana de Tienda');
+          tfStoreOuter.classList.add('open','store-modal');
+          tfStorePanel.classList.add('store-mode','v79-store-mode');
+          tfStoreOuter.scrollTop=0;
+          let tfStoreCycleVerified=true;
+        `;
+        const storeFixes=[
+          ['v32ProcessPerfectShopHistory();',String.raw`try{v32ProcessPerfectShopHistory();}catch(tfCycleError){tfStoreCycleVerified=false;console.error('TaskFlow: ciclo de tienda',tfCycleError)}`],
+          ['req=v32CurrentRequirements()',String.raw`req=(()=>{try{return v32CurrentRequirements()}catch(tfReqError){tfStoreCycleVerified=false;console.error('TaskFlow: requisitos de tienda',tfReqError);return {eligible:false}}})()`],
+          ['const elapsed=Math.max(0,v30DaysBetween(meta.shop.cycleStart,iso));',String.raw`const elapsed=/^\d{4}-\d{2}-\d{2}$/.test(String(meta.shop.cycleStart||''))?Math.max(0,v30DaysBetween(meta.shop.cycleStart,iso)):0;`],
+          ['const recent=v30ShopRecentIds();',String.raw`const recent=(()=>{try{return v30ShopRecentIds()}catch(tfHistoryError){tfStoreCycleVerified=false;console.error('TaskFlow: historial de tienda',tfHistoryError);return new Set(V30_SHOP_POOL.map(x=>x.id))}})();`],
+          ['const canRedeem=!!meta.shop.open&&!!req.eligible;','const canRedeem=!!meta.shop.open&&!!req.eligible&&tfStoreCycleVerified;']
+        ];
+        let storeBody=originalBody;
+        for(const [from,to] of storeFixes){
+          if(storeBody.split(from).length!==2)throw new Error('Firma de Tienda no coincide: '+from);
+          storeBody=storeBody.replace(from,to);
+        }
+        const candidate=signature+'try{'+storeEntry+storeBody+'}catch(error){'+fallback+'}'+endClose;
         try{
           new Function(candidate);
           html=html.slice(0,begin)+candidate+html.slice(rest);
