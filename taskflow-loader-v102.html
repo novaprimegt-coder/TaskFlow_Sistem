@@ -201,6 +201,11 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
           if(storeBody.split(from).length!==2)throw new Error('Firma de Tienda no coincide: '+from);
           storeBody=storeBody.replace(from,to);
         }
+        // V130.14.0: aislar el clic de Tienda de los manejadores globales.
+        const storeClickBinding='store.onclick=v30OpenStore;';
+        const safeStoreClickBinding=String.raw`store.onclick=function(event){if(event&&typeof event.stopPropagation==='function')event.stopPropagation();return v30OpenStore();};`;
+        if(!html.includes(storeClickBinding))throw new Error('Botón Tienda no encontrado en el núcleo');
+        html=html.split(storeClickBinding).join(safeStoreClickBinding);
         const candidate=signature+'try{'+storeEntry+storeBody+'}catch(error){'+fallback+'}'+endClose;
         try{
           new Function(candidate);
