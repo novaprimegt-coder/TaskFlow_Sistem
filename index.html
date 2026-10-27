@@ -149,7 +149,7 @@ async function start(){
   try{
     let res=null,bootNetworkError=null;
     try{
-      res=await fetch('./taskflow-loader-v102.html?v=130141-20261026',{cache:'no-store',signal:ctrl.signal});
+      res=await fetch('./taskflow-loader-v102.html?v=130142-20261026',{cache:'no-store',signal:ctrl.signal});
       if(!res.ok)bootNetworkError=new Error('No se pudo cargar la base de TaskFlow ('+res.status+')');
     }catch(networkError){bootNetworkError=networkError;}
     if(!res||!res.ok){
