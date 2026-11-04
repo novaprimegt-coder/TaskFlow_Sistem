@@ -7,36 +7,32 @@
 <title>TaskFlow</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#030814;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-#tf41boot{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 34%,rgba(26,235,238,.12),transparent 30%),linear-gradient(160deg,#020713,#07142a 58%,#050817);z-index:2147483647}
-.tf41card{width:min(430px,100%);padding:30px 24px;border-radius:28px;border:1px solid rgba(29,231,244,.42);background:rgba(7,15,34,.94);box-shadow:0 28px 90px rgba(0,0,0,.55),0 0 42px rgba(32,221,240,.12);text-align:center}
-.tf41name{font-size:42px;font-weight:950;letter-spacing:-.04em;color:#28edf2}.tf41msg{margin-top:10px;color:#c9d6ed;font-size:13px}
-.tf41bar{height:9px;margin-top:22px;border-radius:999px;background:#0a1730;overflow:hidden}.tf41bar i{display:block;height:100%;width:100%;transform-origin:left;animation:tf41load 8s linear infinite;background:linear-gradient(90deg,#22edf2,#6c5cff,#a32dff)}
-.tf41err{display:none;margin-top:14px;color:#ff9aa8;font-size:12px;line-height:1.45}.tf41retry{display:none;margin:15px auto 0;border:1px solid #26dce7;border-radius:12px;padding:10px 17px;background:#0d2636;color:#8ffaff;font-weight:850}
-#tf41boot.error .tf41err,#tf41boot.error .tf41retry{display:block}
-@keyframes tf41load{0%{transform:scaleX(.08)}50%{transform:scaleX(.68)}100%{transform:scaleX(1)}}
+#tfBoot{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 34%,rgba(26,235,238,.12),transparent 30%),linear-gradient(160deg,#020713,#07142a 58%,#050817);z-index:2147483647}
+.tfCard{width:min(430px,100%);padding:30px 24px;border-radius:28px;border:1px solid rgba(29,231,244,.42);background:rgba(7,15,34,.94);box-shadow:0 28px 90px rgba(0,0,0,.55),0 0 42px rgba(32,221,240,.12);text-align:center}
+.tfName{font-size:42px;font-weight:950;letter-spacing:-.04em;color:#28edf2}.tfMsg{margin-top:10px;color:#c9d6ed;font-size:13px}
+.tfBar{height:9px;margin-top:22px;border-radius:999px;background:#0a1730;overflow:hidden}.tfBar i{display:block;height:100%;width:100%;transform-origin:left;animation:tfLoad 8s linear infinite;background:linear-gradient(90deg,#22edf2,#6c5cff,#a32dff)}
+.tfErr{display:none;margin-top:14px;color:#ff9aa8;font-size:12px;line-height:1.45}.tfRetry{display:none;margin:15px auto 0;border:1px solid #26dce7;border-radius:12px;padding:10px 17px;background:#0d2636;color:#8ffaff;font-weight:850}
+#tfBoot.error .tfErr,#tfBoot.error .tfRetry{display:block}
+@keyframes tfLoad{0%{transform:scaleX(.08)}50%{transform:scaleX(.68)}100%{transform:scaleX(1)}}
 </style>
 </head>
 <body>
-<div id="tf41boot"><div class="tf41card"><div class="tf41name">TaskFlow</div><div class="tf41msg">Cargando el sistema…</div><div class="tf41bar"><i></i></div><div class="tf41err" id="tf41err"></div><button class="tf41retry" type="button" onclick="location.reload()">Reintentar</button></div></div>
+<div id="tfBoot"><div class="tfCard"><div class="tfName">TaskFlow</div><div class="tfMsg">Cargando el sistema…</div><div class="tfBar"><i></i></div><div class="tfErr" id="tfErr">No fue posible iniciar TaskFlow.</div><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 <script>
 (async function(){
 'use strict';
-const boot=document.getElementById('tf41boot'),err=document.getElementById('tf41err');
-const parts=["t41/runtime-00.txt","t41/runtime-01.txt","t41/runtime-02.txt","t41/runtime-03.txt","t41/runtime-04.txt","t41/runtime-05.txt","t41/runtime-06.txt","t41/runtime-07.txt"];
+const boot=document.getElementById('tfBoot');
+const parts=["t57/runtime-00.txt","t57/runtime-01.txt","t57/runtime-02.txt","t57/runtime-03.txt","t57/runtime-04.txt","t57/runtime-05.txt","t57/runtime-06.txt","t57/runtime-07.txt","t57/runtime-08.txt","t57/runtime-09.txt","t57/runtime-10.txt","t57/runtime-11.txt","t57/runtime-12.txt","t57/runtime-13.txt","t57/runtime-14.txt","t57/runtime-15.txt","t57/runtime-16.txt","t57/runtime-17.txt","t57/runtime-18.txt","t57/runtime-19.txt","t57/runtime-20.txt","t57/runtime-21.txt","t57/runtime-22.txt","t57/runtime-23.txt","t57/runtime-24.txt"];
 try{
  const texts=await Promise.all(parts.map(async p=>{
-   const r=await fetch('./'+p,{cache:'default'});
-   if(!r.ok)throw new Error('No se pudo cargar '+p+' ('+r.status+')');
+   const r=await fetch('./'+p+'?v=57',{cache:'no-store'});
+   if(!r.ok)throw new Error('LOAD');
    return r.text();
  }));
  const html=texts.join('');
- if(!/^<!doctype html>/i.test(html)||!html.includes('TaskFlow · T41 · Inicio visual y estabilidad offline'))throw new Error('Paquete T41 incompleto o inválido');
+ if(!html.toLowerCase().includes('<!doctype html>')||!html.includes('TF_T57'))throw new Error('INVALID');
  document.open();document.write(html);document.close();
-}catch(e){
- console.error('TaskFlow T41 bootstrap:',e);
- boot.classList.add('error');
- err.textContent='No se pudo iniciar TaskFlow. Conéctate una vez a Internet para preparar la copia sin conexión y toca Reintentar.';
-}
+}catch(_){boot.classList.add('error')}
 })();
 </script>
 </body>
