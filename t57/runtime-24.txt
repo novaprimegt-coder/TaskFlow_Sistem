@@ -36,7 +36,8 @@ const bodyExtras='<script id="tfBootDefaultsT49">'+TF_T49_BOOT_DEFAULTS_JS+'<'+'
  '<script id="tfAdSlotsT50JS">'+TF_T50_AD_SLOTS_JS+'<'+'/script>'+
  '<script id="tfAdAudioT57JS">'+TF_T57_AD_AUDIO_JS+'<'+'/script>'+
  '<script id="tfEntryAdT56JS">'+TF_T56_ENTRY_AD_JS+'<'+'/script>'+
- '<script id="tfInteractionAdT57JS">'+TF_T57_INTERACTION_AD_JS+'<'+'/script>';
+ '<script id="tfInteractionAdT57JS">'+TF_T57_INTERACTION_AD_JS+'<'+'/script>'+
+ '<script src="./taskflow-v58-ui.js"><'+'/script>';
 // El navegador gestiona los archivos públicos del sistema; nunca almacena credenciales.
 /* V130.14.3-T1: protección limitada a la apertura de la Tienda.
  * Conserva intacto el catálogo original y sus reglas; si una lectura falla,
