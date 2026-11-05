@@ -97,7 +97,7 @@ async function writeRoutineConfig(uid,stamp){
 
 function gtClock(){
  const p={};
- new Intl.DateTimeFormat('en-CA',{timeZone:(function(){try{return localStorage.getItem('taskflow_region_tz_v58')||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}})(),year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).forEach(x=>{if(x.type!=='literal')p[x.type]=x.value});
+ new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guatemala',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).forEach(x=>{if(x.type!=='literal')p[x.type]=x.value});
  const y=+p.year,m=+p.month,d=+p.day,h=+p.hour||0;
  const todayDMY=`${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
  const logical=new Date(Date.UTC(y,m-1,d,12));
