@@ -1,43 +1,123 @@
-# TaskFlow ADS — contrato de integración (preparado, no activado)
+# TaskFlow ADS — integración V2
 
-## Arquitectura acordada
-TaskFlow_Sistem es el sistema principal. El sistema de anuncios será otro proyecto, con **repositorio y código independientes**, enlazado mediante el puente `taskflow-ads-bridge.js`. **El repositorio `novaprimegt-coder/TaskFlow_Ads` todavía no existe; la conexión pública sigue desactivada y no hay URL desplegada verificada**.
+## Arquitectura actual
 
-## Estado
-- El puente está incluido en el arranque, pero comienza deshabilitado.
-- No crea anuncios, espacios vacíos, navegación ni elementos administrativos visibles por defecto.
-- No llama a Firebase ni envía datos de usuario.
-- Se soportan exclusivamente los tipos solicitados: `banner`, `interstitial`, `native_profile`, `native_menu`, `in_chat`, `rewarded_video`.
-- La concesión de recompensas por vídeo **no está implementada**: requerirá verificación segura del servidor, separada del renderizado.
-- El panel de ADS, autenticación administrativa y catálogo se implementarán en el nuevo repositorio, **sin modificar los módulos de rutinas, perfiles o tienda**.
+TaskFlow_Sistem permanece como sistema principal.
 
-## Contrato futuro de conexión
-Tras crear y aprobar el nuevo repositorio ADS y publicar su URL HTTPS, el sistema podrá conectarse mediante:
+El administrador comercial vive en el repositorio independiente:
+
+`novaprimegt-coder/TaskFlow_ADS_Manager`
+
+Ambos proyectos usan el mismo Firebase:
+
+`taskflow-b0ece`
+
+## Conexión
+
+TaskFlow_Sistem carga `taskflow-ads-bridge.js` V2.
+
+El puente:
+- consulta únicamente la colección pública `adsPublicCampaigns`;
+- no recibe correo, contraseña, uid privado, hábitos, tareas ni datos administrativos;
+- acepta únicamente campañas `active + approved`;
+- valida HTTPS;
+- valida las medidas del creativo;
+- evita video en Banner;
+- valida video vertical de 10 segundos;
+- evita repetir inmediatamente el mismo anuncio cuando hay alternativas;
+- no bloquea el arranque de TaskFlow si Firebase ADS no está disponible.
+
+## Ubicaciones conectadas
+
+### Banner
+
+Una campaña de tipo `banner` puede aparecer en cualquiera de estos tres espacios existentes:
+
+- `tfAdBannerTimer`
+- `tfAdBannerHabitsTasks`
+- `tfAdBannerFooter`
+
+El puente selecciona anuncios Banner aprobados para los espacios disponibles.
+
+Especificación:
+- 1200 × 180 px;
+- imagen o GIF;
+- video prohibido.
+
+### Ingreso
+
+El puente entrega el creativo seleccionado mediante:
+
+`TaskFlowEntryAdV56.setCreative(...)`
+
+Especificación:
+- 1080 × 1920 px;
+- imagen, GIF o video;
+- video de 10 segundos;
+- audio permitido cuando la campaña lo habilita;
+- TaskFlow conserva su control de audio y pausa/reanudación de música.
+
+### Interacción
+
+El puente entrega el creativo mediante:
+
+`TaskFlowInteractionAdV57.setCreative(...)`
+
+Especificación:
+- 1080 × 1920 px;
+- imagen, GIF o video;
+- video de 10 segundos;
+- TaskFlow conserva el contador acumulativo de 10 interacciones.
+
+## Segmentación
+
+El catálogo incluye país, región y ciudad.
+
+El puente puede recibir contexto local mediante:
+
 ```js
-TaskFlowADS.configure({
-  enabled: true,
-  manifestUrl: "https://DOMINIO_APROBADO/ads.json",
-  adminUrl: "https://DOMINIO_APROBADO/"
+TaskFlowADS.setContext({
+  country: "GT",
+  region: "Huehuetenango",
+  city: "Huehuetenango"
 });
-TaskFlowADS.refresh();
 ```
-Estos dominios son ejemplos que **no deben copiarse al código publicado**.
 
-Ejemplo de manifiesto público futuro:
-```json
-{"ads":[{"id":"ejemplo","type":"banner","title":"Anuncio de demostración","description":"Texto","destination":"https://example.com","image":"https://example.com/banner.jpg"}]}
-```
-`example.com` es solamente un ejemplo técnico.
+Ese contexto se usa localmente para filtrar campañas y no se transmite al ADS Manager.
 
-Las posiciones deben agregarse explícitamente mediante `TaskFlowADS.mount(tipo, elementoDOM)`; el puente no altera las pantallas existentes por su cuenta. Renderiza texto como texto, restringe recursos y destinos a HTTPS y etiqueta cada pieza como «Publicidad».
+Cuando no existe región/ciudad disponible en TaskFlow, las campañas que exijan esos niveles no se entregan incorrectamente.
 
-## Reglas
-1. No publicar contraseñas, claves de servidor ni credenciales privadas en GitHub.
-2. No hacer accesible la administración de anuncios desde el código público sin autenticación y autorización del servidor.
-3. No usar datos de cuentas, rutinas ni perfiles para segmentar anuncios sin consentimiento y diseño específico.
-4. Los anuncios no deben afectar la carga ni la operación offline de TaskFlow.
-5. El catálogo público no concede canjes ni recompensas: esos procesos necesitan validación del servidor.
-6. No confundir el repositorio de presentación TaskFlow_Home con TaskFlow_Sistem ni con el futuro repositorio de ADS.
+## Aprobación
 
-## Pendiente
-Crear el repositorio independiente `TaskFlow_Ads`, cargar el paquete de código preparado, habilitar GitHub Pages y fusionar reglas administrativas en el Firebase actual. Autorizar una cuenta mediante claim del servidor, comprobar el catálogo y activar el puente después de pruebas. No activar publicidad antes de verificar la publicación.
+El anunciante no publica directamente al sistema principal.
+
+Flujo:
+
+1. Crea o edita la campaña en ADS Manager.
+2. La campaña queda `pending`.
+3. Una cuenta administrativa con custom claim `taskflowAdsAdmin=true` revisa la campaña.
+4. Solo al aprobarla se crea/actualiza el espejo público en `adsPublicCampaigns`.
+5. El puente V2 la incorpora a TaskFlow.
+6. Pausar o eliminar la campaña elimina la entrega pública.
+
+## Estado de publicación
+
+El código de conexión ya está integrado en el repositorio.
+
+Antes del lanzamiento público todavía se debe:
+- fusionar/desplegar las reglas Firestore de ADS;
+- fusionar/desplegar las reglas Storage de ADS;
+- asignar el custom claim administrativo;
+- autorizar el dominio definitivo del ADS Manager en Firebase Authentication;
+- publicar el ADS Manager;
+- realizar prueba real de extremo a extremo.
+
+No se habilitó hosting ni GitHub Pages desde esta actualización porque la orden actual fue dejarlo listo para publicar, no ejecutar el lanzamiento.
+
+## Seguridad
+
+No incluir claves privadas ni service accounts en GitHub.
+
+La API key web de Firebase es configuración pública del cliente; la autorización real depende de Firebase Authentication, Firestore Rules, Storage Rules y el custom claim administrativo.
+
+El puente nunca debe conceder permisos administrativos ni aceptar campañas privadas directamente.
