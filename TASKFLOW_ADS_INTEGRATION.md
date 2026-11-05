@@ -8,9 +8,7 @@ El administrador comercial vive en el repositorio independiente:
 
 `novaprimegt-coder/TaskFlow_ADS_Manager`
 
-Ambos proyectos usan el mismo Firebase:
-
-`taskflow-b0ece`
+Ambos proyectos usan el mismo backend Firebase de TaskFlow.
 
 ## Conexión
 
@@ -95,7 +93,7 @@ Flujo:
 
 1. Crea o edita la campaña en ADS Manager.
 2. La campaña queda `pending`.
-3. Una cuenta administrativa con custom claim `taskflowAdsAdmin=true` revisa la campaña.
+3. Una cuenta administrativa autorizada revisa la campaña.
 4. Solo al aprobarla se crea/actualiza el espejo público en `adsPublicCampaigns`.
 5. El puente V2 la incorpora a TaskFlow.
 6. Pausar o eliminar la campaña elimina la entrega pública.
@@ -107,7 +105,7 @@ El código de conexión ya está integrado en el repositorio.
 Antes del lanzamiento público todavía se debe:
 - fusionar/desplegar las reglas Firestore de ADS;
 - fusionar/desplegar las reglas Storage de ADS;
-- asignar el custom claim administrativo;
+- autorizar la cuenta administrativa en Firebase;
 - autorizar el dominio definitivo del ADS Manager en Firebase Authentication;
 - publicar el ADS Manager;
 - realizar prueba real de extremo a extremo.
@@ -118,6 +116,6 @@ No se habilitó hosting ni GitHub Pages desde esta actualización porque la orde
 
 No incluir claves privadas ni service accounts en GitHub.
 
-La API key web de Firebase es configuración pública del cliente; la autorización real depende de Firebase Authentication, Firestore Rules, Storage Rules y el custom claim administrativo.
+La autorización depende de Firebase Authentication y de las reglas de seguridad desplegadas.
 
 El puente nunca debe conceder permisos administrativos ni aceptar campañas privadas directamente.
