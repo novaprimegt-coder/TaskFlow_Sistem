@@ -1,11 +1,12 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t41-20261103';
+const SHELL_CACHE='taskflow-offline-shell-t57-perf-20261105';
+const RUNTIME_CACHE='taskflow-offline-runtime-t57-20261105';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
-const APP_FILES=["./","index.html","taskflow-loading-reference.jpg","novavision-watermark.svg","taskflow-503020-inputformat.js","taskflow-503020.css","taskflow-503020.js","taskflow-firebase-v108.js","taskflow-firestore-sync-v110.js","taskflow-loader-v102.html","taskflow-profile-v108.css","taskflow-profile-v110.js","taskflow-profile-v1101.js","taskflow-profile-v111.js","taskflow-touch-v105.js","taskflow-v113.js","taskflow-v114.js","taskflow-v115.js","taskflow-v116.js","taskflow-v117.js","taskflow-v118.js","taskflow-v119.js","taskflow-v1193-spacing.js","taskflow-v120.js","taskflow-v121-resetfix.js","taskflow-v122-habit-visual.js","taskflow-v125-routine-layout.js","taskflow-v126-routine-tight.js","taskflow-v127-ui-fixes.js","taskflow-v1281-requested-layout.js","taskflow-v129-rank-visual-system.js","taskflow-v130-unified-layout.js","taskflow-v1301-bottom-gap-fix.js","taskflow-v130103-color-filters.css","taskflow-v130108-reference-ui.css","taskflow-v130110-header-mobile.css","taskflow-v130111-policy-reference.css","taskflow-v130112-policy-compact.css","taskflow-v130114-profile-reference.css","taskflow-v130120-settings-rewards.css","taskflow-ads-bridge.js","taskflow-v1302-routine-spacing.js","taskflow-v1303-routine-guard-restore.js","taskflow-v1303-routine-guard.js","taskflow-v1303-routine-stability.js","taskflow-v1304-sound.js","taskflow-v1305-search-results.js","taskflow-v13051-profile-compact.css","taskflow-v13051-profile-compact.js","taskflow-v13051-search-modal.js","taskflow-v13052-search-fix.js","taskflow-v13053-search-stability.js","taskflow-v13053-visual-polish.js","taskflow-v13054-search-complete.js","taskflow-v13058-audio-boost.js","taskflow-v13062-mentalista-search-guard.js","taskflow-v13065-ui-stability.js","taskflow-v13066-mentalist-stability.js","taskflow-v13067-mind-legal-style.js","taskflow-v13068-mind-legal-style-fix.js","taskflow-v13068-mind-legal-style.js","taskflow-v13068-sung-exact-style.js","taskflow-v13069-mission-sound.js","taskflow-v13070-mission-sound.js","taskflow-v13070-reset-progress.js","taskflow-v13073-mission-sound.js","taskflow-v13074-mind-controls-icons.js","taskflow-v13076-all-routines-reference-style.js","taskflow-v13078-mind-unified-style.js","taskflow-v99-deploy/p0.txt","taskflow-v99-deploy/p1.txt","taskflow-v99-deploy/p2.txt","taskflow-v99-deploy/q0.txt","taskflow-v99-deploy/q1.txt","taskflow-v99-deploy/q10.txt","taskflow-v99-deploy/q11.txt","taskflow-v99-deploy/q12.txt","taskflow-v99-deploy/q13.txt","taskflow-v99-deploy/q2.txt","taskflow-v99-deploy/q3.txt","taskflow-v99-deploy/q4.txt","taskflow-v99-deploy/q5.txt","taskflow-v99-deploy/q6.txt","taskflow-v99-deploy/q7.txt","taskflow-v99-deploy/q8.txt","taskflow-v99-deploy/q9.txt","t41/runtime-00.txt","t41/runtime-01.txt","t41/runtime-02.txt","t41/runtime-03.txt","t41/runtime-04.txt","t41/runtime-05.txt","t41/runtime-06.txt","t41/runtime-07.txt"];
+const APP_FILES=["./","index.html","taskflow-loading-reference.jpg","novavision-watermark.svg","taskflow-503020-inputformat.js","taskflow-503020.css","taskflow-503020.js","taskflow-firebase-v108.js","taskflow-firestore-sync-v110.js","taskflow-loader-v102.html","taskflow-profile-v108.css","taskflow-profile-v110.js","taskflow-profile-v1101.js","taskflow-profile-v111.js","taskflow-touch-v105.js","taskflow-v113.js","taskflow-v114.js","taskflow-v115.js","taskflow-v116.js","taskflow-v117.js","taskflow-v118.js","taskflow-v119.js","taskflow-v1193-spacing.js","taskflow-v120.js","taskflow-v121-resetfix.js","taskflow-v122-habit-visual.js","taskflow-v125-routine-layout.js","taskflow-v126-routine-tight.js","taskflow-v127-ui-fixes.js","taskflow-v1281-requested-layout.js","taskflow-v129-rank-visual-system.js","taskflow-v130-unified-layout.js","taskflow-v1301-bottom-gap-fix.js","taskflow-v130103-color-filters.css","taskflow-v130108-reference-ui.css","taskflow-v130110-header-mobile.css","taskflow-v130111-policy-reference.css","taskflow-v130112-policy-compact.css","taskflow-v130114-profile-reference.css","taskflow-v130120-settings-rewards.css","taskflow-ads-bridge.js","taskflow-v1302-routine-spacing.js","taskflow-v1303-routine-guard-restore.js","taskflow-v1303-routine-guard.js","taskflow-v1303-routine-stability.js","taskflow-v1304-sound.js","taskflow-v1305-search-results.js","taskflow-v13051-profile-compact.css","taskflow-v13051-profile-compact.js","taskflow-v13051-search-modal.js","taskflow-v13052-search-fix.js","taskflow-v13053-search-stability.js","taskflow-v13053-visual-polish.js","taskflow-v13054-search-complete.js","taskflow-v13058-audio-boost.js","taskflow-v13062-mentalista-search-guard.js","taskflow-v13065-ui-stability.js","taskflow-v13066-mentalist-stability.js","taskflow-v13067-mind-legal-style.js","taskflow-v13068-mind-legal-style-fix.js","taskflow-v13068-mind-legal-style.js","taskflow-v13068-sung-exact-style.js","taskflow-v13069-mission-sound.js","taskflow-v13070-mission-sound.js","taskflow-v13070-reset-progress.js","taskflow-v13073-mission-sound.js","taskflow-v13074-mind-controls-icons.js","taskflow-v13076-all-routines-reference-style.js","taskflow-v13078-mind-unified-style.js","taskflow-v99-deploy/p0.txt","taskflow-v99-deploy/p1.txt","taskflow-v99-deploy/p2.txt","taskflow-v99-deploy/q0.txt","taskflow-v99-deploy/q1.txt","taskflow-v99-deploy/q10.txt","taskflow-v99-deploy/q11.txt","taskflow-v99-deploy/q12.txt","taskflow-v99-deploy/q13.txt","taskflow-v99-deploy/q2.txt","taskflow-v99-deploy/q3.txt","taskflow-v99-deploy/q4.txt","taskflow-v99-deploy/q5.txt","taskflow-v99-deploy/q6.txt","taskflow-v99-deploy/q7.txt","taskflow-v99-deploy/q8.txt","taskflow-v99-deploy/q9.txt"];
 const MEDIA_FILES=["audio/Vídeo corto de TaskFlow con ♬ sonido original(MP3).mp3","audio/notificaciones/SONIDO DE NOTIFICACIONES.mp3"];
 const SDK_FILES=[
  'https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js',
@@ -17,6 +18,7 @@ const keyFor=path=>new URL(path,base).href;
 const staticKeys=new Set(APP_FILES.map(path=>new URL(path,base).pathname));
 const mediaKeys=new Set(MEDIA_FILES.map(path=>new URL(path,base).pathname));
 const sdkKeys=new Set(SDK_FILES);
+const runtimePattern=/\/t57\/runtime-(?:0\d|1\d|2[0-4])\.txt$/;
 async function store(cache,path){
  const url=keyFor(path);
  const response=await fetch(new Request(url,{cache:'reload',credentials:'same-origin'}));
@@ -63,7 +65,7 @@ self.addEventListener('message',event=>{
 self.addEventListener('activate',event=>{
  event.waitUntil((async()=>{
    const names=await caches.keys();
-   await Promise.all(names.filter(n=>n.startsWith(PREFIX)&&![SHELL_CACHE,MEDIA_CACHE,SDK_CACHE].includes(n)).map(n=>caches.delete(n)));
+   await Promise.all(names.filter(n=>n.startsWith(PREFIX)&&![SHELL_CACHE,MEDIA_CACHE,SDK_CACHE,RUNTIME_CACHE].includes(n)).map(n=>caches.delete(n)));
    await self.clients.claim();
  })());
 });
@@ -132,12 +134,34 @@ async function cachedResource(request,cacheName,url){
  }
  return response;
 }
+async function runtimeResource(request,url,event){
+ const cache=await caches.open(RUNTIME_CACHE);
+ const key=url.origin+url.pathname;
+ const saved=await cache.match(key);
+ try{
+   // La caché HTTP evita descargar los fragmentos otra vez mientras sigan vigentes.
+   const fresh=await fetch(request);
+   if(fresh&&fresh.ok){
+     const oldTag=saved&&(saved.headers.get('etag')||saved.headers.get('last-modified'));
+     const newTag=fresh.headers.get('etag')||fresh.headers.get('last-modified');
+     if(!saved||!oldTag||!newTag||oldTag!==newTag){
+       event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));
+     }
+     return fresh;
+   }
+ }catch(_){}
+ // Sin conexión, solo se utilizan copias de archivos públicos ya obtenidos.
+ return saved||Response.error();
+}
 self.addEventListener('fetch',event=>{
  const request=event.request;
  if(request.method!=='GET')return;
  const url=new URL(request.url);
  if(url.origin===self.location.origin){
    if(!url.href.startsWith(base))return;
+   if(runtimePattern.test(url.pathname)){
+     event.respondWith(runtimeResource(request,url,event));return;
+   }
    if(request.mode==='navigate'){
      event.respondWith(navigation(request));return;
    }
