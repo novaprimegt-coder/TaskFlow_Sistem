@@ -17,7 +17,7 @@
   function compareMonth(a,b){return monthIndex(a)-monthIndex(b);}
   function currentMonthGT(){
     try{
-      var parts=new Intl.DateTimeFormat('en-CA',{timeZone:(function(){try{return localStorage.getItem('taskflow_region_tz_v58')||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}})(),year:'numeric',month:'2-digit'}).formatToParts(new Date());
+      var parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guatemala',year:'numeric',month:'2-digit'}).formatToParts(new Date());
       var y=parts.find(function(x){return x.type==='year';}).value;
       var m=parts.find(function(x){return x.type==='month';}).value;
       return y+'-'+m;
@@ -25,7 +25,7 @@
   }
   function monthLabel(key){
     var p=String(key).split('-'),d=new Date(Number(p[0]),Number(p[1])-1,1,12,0,0);
-    try{return new Intl.DateTimeFormat('es-GT',{month:'long',year:'numeric',timeZone:(function(){try{return localStorage.getItem('taskflow_region_tz_v58')||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(_){return 'UTC'}})()}).format(d).replace(/^./,function(c){return c.toUpperCase();});}
+    try{return new Intl.DateTimeFormat('es-GT',{month:'long',year:'numeric',timeZone:'America/Guatemala'}).format(d).replace(/^./,function(c){return c.toUpperCase();});}
     catch(_){return key;}
   }
   function fmt(amount){
