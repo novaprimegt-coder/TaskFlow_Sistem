@@ -145,7 +145,7 @@ async function runtimeResource(request,url,event){
      const oldTag=saved&&(saved.headers.get('etag')||saved.headers.get('last-modified'));
      const newTag=fresh.headers.get('etag')||fresh.headers.get('last-modified');
      if(!saved||!oldTag||!newTag||oldTag!==newTag){
-       event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));
+       try{event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));}catch(_){/* Entregar el recurso fresco aunque no sea posible prolongar la caché. */}
      }
      return fresh;
    }
