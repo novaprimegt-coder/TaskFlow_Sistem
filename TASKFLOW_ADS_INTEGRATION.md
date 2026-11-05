@@ -6,7 +6,7 @@ TaskFlow_Sistem permanece como sistema principal.
 
 El administrador comercial vive en el repositorio independiente:
 
-`novaprimegt-coder/TaskFlow_ADS_Manager`
+`TaskFlow_ADS_Manager`
 
 Ambos proyectos usan el mismo backend Firebase de TaskFlow.
 
