@@ -51,6 +51,8 @@ jobs:
           assert.ok(core.includes('function setupQuickActionButtons(){'),'Faltan acciones rápidas');
           assert.ok(loader.includes('tfShopHistorySafeV130126'),'Falta saneamiento no destructivo del historial');
           assert.ok(!loader.includes('Preparando el sistema')&&loader.includes('.boot.error'),'El cargador visual antiguo sigue disponible o falta recuperación');
+          assert.ok(root.includes('const SPLASH_MS=10000')&&root.includes('taskflow-loading-reference.jpg')&&root.includes('await keepSplashExactlyTenSeconds()'),'Falta pantalla colorida oficial de 10 segundos en inicio principal');
+          assert.ok(loader.includes('SPLASH_MS=10000')&&loader.includes('await waitForColorSplash()')&&loader.includes('taskflow-loading-reference.jpg'),'Falta pantalla colorida en cargador auxiliar');
           assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.4.1'"),'Falta módulo vigente y puente ADS actualizado');
           assert.ok(bridge.includes('function testedBanner(ad)')&&bridge.includes('async function displayBanner(slot)')&&bridge.includes('function validBannerPixels(img)'),'No se comprueba la carga real de banners');
           assert.ok(root.includes('t57/runtime-24.txt')&&root.includes('TF_T57'),'Falta el arranque vigente T57');
@@ -78,6 +80,7 @@ jobs:
           assert.ok(root.includes('63-no-splash-assets-20261106'),'El cargador referencia fragmentos antiguos');
           assert.ok(bridge.includes('mediaWidth:width')&&bridge.includes('function queueBanner(slot)'),'Falta preferencia HD y carga diferida');
           assert.ok(live.includes('.tf56-entry-continue.tf56-ready')&&live.includes("b.classList.toggle('tf56-ready',ready)"),'El botón Continuar no cambia a estilo brillante');
+          assert.ok(live.includes("v.preload='auto'")&&live.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
 
           assert.ok(root.includes('Math.min(6,parts.length)')&&root.includes('AbortController'),'Cargador T57 sin límite de concurrencia');
           assert.ok(root.includes("p==='t57/runtime-06.txt'"),'Falta versión de autenticación segura');
