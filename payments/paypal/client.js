@@ -137,7 +137,15 @@ async function waitForFirstPayment(root,target){
 }
 async function showCheckout(){
  if(busy)return false;
- try{await (ready||Promise.resolve());if(!enabled)return false;
+ try{
+  await (ready||Promise.resolve());
+  if(!enabled){
+   const root=panel();root.hidden=false;root.querySelector('#tfPayPalButtons').replaceChildren();
+   root.querySelector('#tfPayPalCancel').hidden=true;
+   root.querySelector('#tfPayPalPlan').textContent='US$6.00 mensuales · Suscripción con renovación automática.';
+   statusText('La suscripción PayPal todavía no está habilitada. No se ha realizado ningún cargo.');
+   return false;
+  }
   const root=panel(),target=root.querySelector('#tfPayPalButtons');
   root.hidden=false;target.replaceChildren();
   root.querySelector('#tfPayPalCancel').hidden=true;
@@ -198,15 +206,15 @@ async function showCheckout(){
  }
 }
 function onClick(event){
- const button=event.target&&event.target.closest&&event.target.closest('#btnNoAds,a[href="http://action_noads"]');
- if(!button||!enabled)return;
+ const button=event.target&&event.target.closest&&event.target.closest('#btnNoAds,#qaNoAds,a[href="http://action_noads"],a[href="#tfNoAds"]');
+ if(!button)return;
  event.preventDefault();event.stopImmediatePropagation();
  void showCheckout();
 }
 async function initialize(){
+ document.addEventListener('click',onClick,true);
  try{await config()}catch(_){return false}
  if(!enabled)return false;
- document.addEventListener('click',onClick,true);
  void verifyStatus();
  window.addEventListener('focus',()=>void verifyStatus(),{passive:true});
  document.addEventListener('taskflow:account-state-updated',()=>void verifyStatus());
