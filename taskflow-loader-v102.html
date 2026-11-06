@@ -9,20 +9,20 @@
 <meta http-equiv="Expires" content="0">
 <title>TaskFlow</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#050914;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{min-height:100dvh}.boot{min-height:100dvh;display:grid;place-items:center;padding:28px 22px;background:radial-gradient(circle at 25% 20%,rgba(44,225,208,.10),transparent 33%),radial-gradient(circle at 78% 74%,rgba(255,126,37,.09),transparent 32%),#050914}.card{width:min(430px,100%);text-align:center}.mark{width:72px;height:72px;margin:0 auto 18px;border-radius:22px;display:grid;place-items:center;border:1px solid rgba(74,229,215,.28);background:linear-gradient(145deg,rgba(13,52,63,.95),rgba(12,17,35,.98));box-shadow:0 20px 50px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.03)}.mark svg{width:38px;height:38px;color:#4be3d4}.logo{font-size:34px;line-height:1;font-weight:900;letter-spacing:-1.2px;background:linear-gradient(90deg,#42e1d1 0%,#55d6c8 48%,#ff8a2b 100%);-webkit-background-clip:text;background-clip:text;color:transparent}.version{margin-top:8px;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#8191ad}.msg{margin-top:19px;color:#a7b2c5;font-size:14px;line-height:1.5}.bar{height:5px;border-radius:999px;background:#111a2b;overflow:hidden;margin:24px auto 0;max-width:310px}.bar>i{display:block;height:100%;width:40%;border-radius:inherit;background:linear-gradient(90deg,#40dfd0,#ff8a2b);animation:move .9s ease-in-out infinite alternate}@keyframes move{from{transform:translateX(-15%)}to{transform:translateX(165%)}}.retry{display:none;margin:20px auto 0;border:1px solid rgba(75,226,212,.3);border-radius:14px;padding:12px 18px;background:#12323a;color:#55e1d3;font-weight:850;font-size:14px;cursor:pointer}.error .bar{display:none}.error .retry{display:inline-flex}.fine{margin-top:14px;font-size:10px;color:#5f6c83}.detail{display:none;margin:12px auto 0;max-width:370px;color:#75849d;font-size:10px;line-height:1.45;word-break:break-word}.error .detail{display:block}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#030814;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100dvh}
+.boot{display:none!important;position:fixed;inset:0;min-height:100dvh;padding:20px;background:#030814;place-items:center}
+.boot.error{display:grid!important}
+.card{width:min(420px,100%);padding:24px;border:1px solid rgba(68,220,238,.44);border-radius:18px;background:#07172a;text-align:center}
+.msg{margin:0;color:#ebfaff;font-size:14px;line-height:1.45}
+.detail{margin:10px 0 0;color:#afc0d3;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.retry{display:none;margin:18px auto 0;min-height:44px;padding:10px 20px;border:1px solid #42dae7;border-radius:12px;background:#087e9a;color:#fff;font-weight:850}
+.error .retry{display:inline-flex}
 </style>
 </head>
 <body>
-<div class="boot" id="boot"><div class="card">
-  <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14v12H5z"/><path d="M8 9h8M8 13h5"/><path d="m16 16 1.5 1.5L20 15"/></svg></div>
-  <div class="logo">TaskFlow</div>
-  <div class="version">V102 · iconos y desplazamiento estable</div>
-  <div class="msg" id="msg">Preparando el sistema…</div>
-  <div class="bar"><i></i></div>
-  <button class="retry" id="retry" type="button">Reintentar</button>
-  <div class="detail" id="detail"></div>
-  <div class="fine">Carga segura por HTTPS · TaskFlow</div>
-</div></div>
+<div class="boot" id="boot" role="alert" aria-live="assertive"><div class="card"><p class="msg" id="msg">No fue posible iniciar TaskFlow.</p><div class="detail" id="detail"></div><button class="retry" id="retry" type="button">Reintentar</button></div></div>
 <script>
 (()=>{
   'use strict';
