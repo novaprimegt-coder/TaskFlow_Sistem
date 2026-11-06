@@ -126,6 +126,12 @@ function adClick(event){
  link.rel='noopener noreferrer sponsored';
  link.referrerPolicy='no-referrer';
  captureAdReturn();
+ // En WebViews que dispongan de un navegador externo nativo, abrirlo sin sustituir TaskFlow.
+ try{const external=window.cordova&&window.cordova.InAppBrowser;
+  if(external&&typeof external.open==='function'){
+   external.open(u.href,'_system','location=yes');event.preventDefault();return;
+  }
+ }catch(_){/* La apertura normal en otra pestaña permanece disponible. */}
 }
 function actionClick(event){
  const target=event.target;
@@ -154,7 +160,7 @@ function start(){
  let queued=false;
  const observer=new MutationObserver(records=>{
   if(queued)return;
-  if(!records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&n.matches&&n.matches('#btnNoAds,#qaNoAds,[href="#tfNoAds"],[href="http://action_noads"]'))))return;
+  if(!records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&n.matches&&(n.matches('#btnNoAds,#qaNoAds,[href="#tfNoAds"],[href="http://action_noads"]')||n.querySelector('#btnNoAds,#qaNoAds,[href="#tfNoAds"],[href="http://action_noads"]')))))return;
   queued=true;requestAnimationFrame(()=>{queued=false;fitNoAdsAction()});
  });
  observer.observe(document.body,{childList:true,subtree:true});
