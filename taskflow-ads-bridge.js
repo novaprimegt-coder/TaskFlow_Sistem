@@ -13,6 +13,9 @@ const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','nati
 let config={enabled:true,adminUrl:null,refreshMs:60000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
 let slotObserver=null,slotUpdateQueued=false;
+let geoPending=null,lastGeoGrid='',lastGeoAt=0;
+const GEO_GRID_CACHE='tf_ads_geo_gt_grid_v1';
+const GEO_API='https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_guatemala/FeatureServer/0/query';
 let context={country:localeCountry(),region:'',city:''};
 
 function validHTTPS(value){
@@ -175,13 +178,54 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>30000)void refresh();else applyWhenReady()},{passive:true});
 window.addEventListener('online',()=>{void refresh()},{passive:true});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>30000)void refresh()});
+// Convierte coordenadas autorizadas a municipio/departamento con una consulta
+// geográfica de precisión reducida. No transmite UID, correo ni hábitos.
+async function resolveAuthorizedRegion(position){
+ const lat=Number(position&&position.latitude),lng=Number(position&&position.longitude);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<13.7||lat>18||lng< -92.3||lng> -88)return false;
+ const qlat=Number(lat.toFixed(3)),qlng=Number(lng.toFixed(3));
+ const grid=qlat+','+qlng;
+ if(geoPending&&lastGeoGrid===grid)return geoPending;
+ if(Date.now()-lastGeoAt<15*60*1000&&lastGeoGrid===grid&&context.region&&context.city)return true;
+ lastGeoGrid=grid;
+ geoPending=(async()=>{
+  try{
+   const cached=JSON.parse(localStorage.getItem(GEO_GRID_CACHE)||'null');
+   if(cached&&cached.grid===grid&&Date.now()-Number(cached.at)<12*60*60*1000&&cached.region&&cached.city){
+    API.setContext({country:'GT',region:cached.region,city:cached.city});lastGeoAt=Date.now();return true;
+   }
+  }catch(_){}
+  const url=new URL(GEO_API);
+  const query={f:'json',where:'1=1',geometry:qlng+','+qlat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'nombre_1,depto_1',returnGeometry:'false'};
+  Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,v));
+  const ctrl=new AbortController(),stop=setTimeout(()=>ctrl.abort(),9000);
+  try{
+   const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:ctrl.signal});
+   if(!res.ok)return false;
+   const result=await res.json();
+   const matches=Array.isArray(result.features)?result.features:[];
+   if(matches.length!==1)return false;
+   const attrs=matches[0].attributes||{};
+   const region=String(attrs.depto_1||'').trim(),city=String(attrs.nombre_1||'').trim();
+   if(!region||!city||region.length>100||city.length>100)return false;
+   API.setContext({country:'GT',region,city});lastGeoAt=Date.now();
+   try{localStorage.setItem(GEO_GRID_CACHE,JSON.stringify({grid,region,city,at:lastGeoAt}))}catch(_){}
+   return true;
+  }catch(_){return false}finally{clearTimeout(stop)}
+ })().finally(()=>{geoPending=null});
+ return geoPending;
+}
 function useLocationDetail(detail){
  const data=detail&&typeof detail==='object'?detail:{};
  const place=data.address&&typeof data.address==='object'?data.address:data;
  const region=place.region||place.department||place.state||'';
  const city=place.city||place.municipality||place.locality||'';
  if(region||city)API.setContext({country:place.country||context.country,region,city});
- else applyWhenReady();
+ else{
+  const pos=data.position&&typeof data.position==='object'?data.position:place;
+  if(Number.isFinite(Number(pos.latitude))&&Number.isFinite(Number(pos.longitude)))void resolveAuthorizedRegion(pos);
+  else applyWhenReady();
+ }
 }
 document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
 document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
