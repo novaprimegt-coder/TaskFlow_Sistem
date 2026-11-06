@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.0.0
+/* TaskFlow ADS Bridge v2.1.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -10,15 +10,17 @@ const COLLECTION='adsPublicCampaigns';
 const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(PROJECT_ID)+'/databases/(default)/documents/'+encodeURIComponent(COLLECTION);
 const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'];
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
-let config={enabled:true,adminUrl:null,refreshMs:300000};
-let catalog=[],lastRefresh=0,refreshTimer=0;
+let config={enabled:true,adminUrl:null,refreshMs:60000};
+let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
+let slotObserver=null,slotUpdateQueued=false;
 let context={country:localeCountry(),region:'',city:''};
 
 function validHTTPS(value){
  if(typeof value!=='string'||!value.trim())return '';
  try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch(_){return ''}
 }
-function normText(v){return String(v||'').trim().toLocaleLowerCase('es')}
+function normText(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es')}
+function countryCode(v){const c=normText(v);return c==='guatemala'||c==='gt'?'GT':c.toUpperCase()}
 function localeCountry(){
  try{const lang=String(navigator.language||'');const m=lang.match(/[-_]([A-Za-z]{2})$/);return m?m[1].toUpperCase():''}catch(_){return ''}
 }
@@ -45,7 +47,7 @@ function dateEligible(c){
  return true
 }
 function targetEligible(c){
- const cc=String(c.country||'').toUpperCase(),xc=String(context.country||'').toUpperCase();
+ const cc=countryCode(c.country),xc=countryCode(context.country);
  if(cc&&cc!=='ALL'&&xc&&cc!==xc)return false;
  if(c.region){if(!context.region||normText(c.region)!==normText(context.region))return false}
  if(c.city){if(!context.city||normText(c.city)!==normText(context.city))return false}
@@ -88,6 +90,7 @@ function runtimeReady(){
 }
 function apply(){
  if(!config.enabled||!runtimeReady())return false;
+ try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
  BANNER_SLOTS.forEach(slot=>{const ad=pick('banner',slot);try{window.TaskFlowAdsV50.render(slot,bannerNode(ad))}catch(e){console.warn('TaskFlow ADS banner:',e)}});
  const entry=pick('entry','entry');
  try{window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,sound:entry.sound}:null)}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
@@ -95,44 +98,72 @@ function apply(){
  try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
  return true
 }
+function observeSlots(){
+ if(slotObserver||!document.documentElement||typeof MutationObserver!=='function')return;
+ slotObserver=new MutationObserver(records=>{
+  if(slotUpdateQueued||!config.enabled||!catalog.some(a=>a.placement==='banner'))return;
+  for(const record of records){
+   for(const node of record.addedNodes){
+    if(node.nodeType!==1)continue;
+    if(BANNER_SLOTS.some(id=>node.id===id||(node.querySelector&&node.querySelector('#'+id)))){
+     slotUpdateQueued=true;
+     requestAnimationFrame(()=>{slotUpdateQueued=false;apply()});return;
+    }
+   }
+  }
+ });
+ slotObserver.observe(document.documentElement,{childList:true,subtree:true});
+}
 function applyWhenReady(){
+ observeSlots();
  if(apply())return;
  let tries=0;const t=setInterval(()=>{tries++;if(apply()||tries>=40)clearInterval(t)},250)
+}
+function rebuildCatalog(){
+ catalog=rawCampaigns.flatMap(normalizeCampaign).slice(0,1200);
+ applyWhenReady();
+ try{document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated',{detail:{available:catalog.length}}))}catch(_){}
 }
 async function fetchCatalog(){
  const all=[];let token='',pages=0;
  do{
    const u=new URL(REST_BASE);u.searchParams.set('pageSize','100');if(token)u.searchParams.set('pageToken',token);
-   const r=await fetch(u.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
-   if(!r.ok)throw new Error('ADS HTTP '+r.status);
-   const data=await r.json();(data.documents||[]).forEach(doc=>all.push(documentData(doc)));token=String(data.nextPageToken||'');pages++
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+   let r,data;
+   try{
+    r=await fetch(u.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
+    if(!r.ok)throw new Error('ADS HTTP '+r.status);
+    data=await r.json();
+   }finally{clearTimeout(timer)}(data.documents||[]).forEach(doc=>all.push(documentData(doc)));token=String(data.nextPageToken||'');pages++
  }while(token&&pages<5);
- catalog=all.flatMap(normalizeCampaign).slice(0,1200);lastRefresh=Date.now();applyWhenReady();return true
+ rawCampaigns=all;lastRefresh=Date.now();lastError='';rebuildCatalog();return true
 }
 async function refresh(){
- if(!config.enabled){catalog=[];applyWhenReady();return false}
- try{return await fetchCatalog()}catch(e){console.warn('TaskFlow ADS no disponible:',e&&e.message||e);return false}
+ if(!config.enabled){catalog=[];rawCampaigns=[];applyWhenReady();return false}
+ if(refreshing)return refreshing;
+ refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);return false}).finally(()=>{refreshing=null});
+ return refreshing;
 }
 function schedule(){
  clearInterval(refreshTimer);refreshTimer=0;if(!config.enabled)return;
- const ms=Math.max(60000,Number(config.refreshMs)||300000);refreshTimer=setInterval(()=>{void refresh()},ms)
+ const ms=Math.max(60000,Number(config.refreshMs)||60000);refreshTimer=setInterval(()=>{void refresh()},ms)
 }
 const API={
- version:'2.0.0',
+ version:'2.1.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
    if('enabled'in options)config.enabled=!!options.enabled;
    if('adminUrl'in options)config.adminUrl=validHTTPS(options.adminUrl)||null;
-   if('refreshMs'in options)config.refreshMs=Math.max(60000,Number(options.refreshMs)||300000);
-   schedule();if(config.enabled)void refresh();else{catalog=[];applyWhenReady()}return true
+   if('refreshMs'in options)config.refreshMs=Math.max(60000,Number(options.refreshMs)||60000);
+   schedule();if(config.enabled)void refresh();else{catalog=[];rawCampaigns=[];applyWhenReady()}return true
  },
  setContext(next){
    if(!next||typeof next!=='object')return false;
-   context={country:String(next.country||context.country||'').toUpperCase(),region:String(next.region||''),city:String(next.city||'')};
-   applyWhenReady();return true
+   context={country:countryCode(next.country||context.country||''),region:String(next.region??context.region??''),city:String(next.city??context.city??'')};
+   rebuildCatalog();return true
  },
- connection(){return Object.freeze({enabled:config.enabled,connected:catalog.length>0,lastRefresh,adsLoaded:catalog.length,adminUrl:config.adminUrl,source:'firestore'})},
+ connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
  refresh,
  getCatalog(){return catalog.map(a=>Object.assign({},a))},
  mount(){return false},
@@ -140,7 +171,18 @@ const API={
 };
 try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writable:false,configurable:false})}catch(_){window.TaskFlowADS=Object.freeze(API)}
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{void refresh();schedule()},{once:true});else{void refresh();schedule()}
-window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>60000)void refresh()},{passive:true});
-document.addEventListener('taskflow:permissions-ready',()=>applyWhenReady(),false);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule()},{once:true});else{observeSlots();void refresh();schedule()}
+window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>30000)void refresh();else applyWhenReady()},{passive:true});
+window.addEventListener('online',()=>{void refresh()},{passive:true});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>30000)void refresh()});
+function useLocationDetail(detail){
+ const data=detail&&typeof detail==='object'?detail:{};
+ const place=data.address&&typeof data.address==='object'?data.address:data;
+ const region=place.region||place.department||place.state||'';
+ const city=place.city||place.municipality||place.locality||'';
+ if(region||city)API.setContext({country:place.country||context.country,region,city});
+ else applyWhenReady();
+}
+document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
+document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
 })();
