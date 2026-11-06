@@ -177,8 +177,8 @@ function backupConflict(uid,snapshot){
 function clearLiveForNewAccount(uid){applying=true;try{[MAIN_KEY,MAIN_BACKUP,MAIN_RECOVERY,FIN_KEY,FIN_BACKUP,'taskflow_share_reward_claimed_v1','taskflow_share_count_v1'].forEach(nativeRemove);nativeSet(TOUCH_KEY,String(now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:0,lastSyncedHash:'',lastSyncedAt:0,lastRemoteClientUpdatedAt:0})}finally{applying=false}}
 
 async function reconcile(uid){if(!uid)return;const remote=await readManifest(uid);const local=capture();const bound=getBound();const meta=readMeta(uid);
-if(!remote){if(bound&&bound!==uid){log('cuenta nueva en dispositivo previamente vinculado; estado local limpio');clearLiveForNewAccount(uid);notifySnapshotApplied(uid);return}await uploadSnapshot(uid,local,null);return}
-if(bound!==uid){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);log('restaurando cuenta en este dispositivo');notifySnapshotApplied(uid);return}
+if(!remote){if(bound&&bound!==uid){log('cuenta nueva en dispositivo previamente vinculado; estado local limpio');clearLiveForNewAccount(uid);location.reload();return}await uploadSnapshot(uid,local,null);return}
+if(bound!==uid){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);log('restaurando cuenta en este dispositivo');if(bound)location.reload();else notifySnapshotApplied(uid);return}
 if(remote.hash===local.hash){writeMeta(uid,{lastRemoteRevision:remote.revision,lastSyncedHash:local.hash,lastSyncedAt:now(),lastRemoteClientUpdatedAt:remote.clientUpdatedAt||0});setBound(uid);dirty=false;return}
 if(!meta){if(remote.clientUpdatedAt>local.updatedAt){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}await uploadSnapshot(uid,local,remote);return}
 const localChanged=local.hash!==String(meta.lastSyncedHash||'');const remoteChanged=Number(remote.revision)>Number(meta.lastRemoteRevision||0)||remote.hash!==String(meta.lastSyncedHash||'');
