@@ -229,6 +229,27 @@ function useLocationDetail(detail){
 }
 document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
 document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
+
+/* Recuperar la ubicación ya autorizada si el evento se emitió durante el arranque,
+   antes de que se cargara este puente. La ubicación no se entrega a anunciantes. */
+async function restoreAuthorizedLocation(){
+ try{
+  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
+  if(navigator.permissions&&typeof navigator.permissions.query==='function'){
+   try{
+    const permission=await navigator.permissions.query({name:'geolocation'});
+    if(permission.state!=='granted')return false;
+   }catch(_){}
+  }
+  const position=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
+  if(!position||typeof position!=='object')return false;
+  return await resolveAuthorizedRegion(position);
+ }catch(_){return false}
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{void restoreAuthorizedLocation()},{once:true});
+else void restoreAuthorizedLocation();
+window.addEventListener('pageshow',()=>{void restoreAuthorizedLocation()},{passive:true});
+
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){
