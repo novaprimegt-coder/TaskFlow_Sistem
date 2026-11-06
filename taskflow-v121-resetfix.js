@@ -7,6 +7,15 @@ const BACK='taskflow_db_v26_backup';
 const REC='taskflow_db_v26_recovery';
 const TOUCH='taskflow_cloud_local_touch_v1';
 const APPLIED_PREFIX='taskflow_global_reset_applied_v121_';
+const SAFE_SEEN_PREFIX='tf_profile_manual_reset_seen_v1_';
+function lastAppliedReset(uid){
+ try{return Math.max(Number(localStorage.getItem(APPLIED_PREFIX+uid))||0,
+  Number(localStorage.getItem(SAFE_SEEN_PREFIX+uid))||0)}catch(_){return 0}
+}
+function markAppliedReset(uid,stamp){
+ localStorage.setItem(APPLIED_PREFIX+uid,String(stamp));
+ localStorage.setItem(SAFE_SEEN_PREFIX+uid,String(stamp));
+}
 const WELCOME_KEY='taskflow_welcome_seen_v13083_release';
 function tf121LockWelcomeOff(){
  try{localStorage.setItem(WELCOME_KEY,'1')}catch(_){}
@@ -299,7 +308,7 @@ async function performReset(e){
   await syncAccount(u.uid);
   await writeRoutineConfig(u.uid,stamp);
   await writeMarker(u.uid,stamp);
-  localStorage.setItem(APPLIED_PREFIX+u.uid,String(stamp));
+  markAppliedReset(u.uid,stamp);
   status('Cuenta reiniciada. El cambio se aplicará automáticamente en los demás dispositivos.','ok');
   tf121FreshReload(750);
  }catch(err){
@@ -319,9 +328,9 @@ function bindConfirm(){
 
 async function applyRemote(uid,stamp){
  const key=APPLIED_PREFIX+uid;
- const last=Number(localStorage.getItem(key))||0;
+ const last=lastAppliedReset(uid);
  if(!stamp||stamp<=last)return false;
- localStorage.setItem(key,String(stamp));
+ markAppliedReset(uid,stamp);
  try{
   // Primero reconcilia la cuenta para conservar las tareas/hábitos más recientes.
   try{await syncAccount(uid)}catch(_){}
@@ -335,6 +344,7 @@ async function applyRemote(uid,stamp){
  }catch(err){
   // Si falla, permite reintentar el mismo evento en la siguiente comprobación.
   localStorage.removeItem(key);
+  try{localStorage.removeItem(SAFE_SEEN_PREFIX+uid)}catch(_){}
   throw err;
  }
 }
