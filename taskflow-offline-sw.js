@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t59-performance-20261106';
-const RUNTIME_CACHE='taskflow-offline-runtime-t59-performance-20261106';
+const SHELL_CACHE='taskflow-offline-shell-t59-performance-auth-20261106';
+const RUNTIME_CACHE='taskflow-offline-runtime-t59-performance-auth-20261106';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -73,7 +73,11 @@ self.addEventListener('message',event=>{
 self.addEventListener('activate',event=>{
  event.waitUntil((async()=>{
    const names=await caches.keys();
-   await Promise.all(names.filter(n=>n.startsWith(PREFIX)&&![SHELL_CACHE,MEDIA_CACHE,SDK_CACHE,RUNTIME_CACHE].includes(n)).map(n=>caches.delete(n)));
+   // Mantener una copia anterior de los fragmentos hasta que la nueva versión
+   // se haya visitado en línea. Nunca eliminar la única versión offline disponible.
+   const oldRuntime=names.filter(n=>n.startsWith(PREFIX+'runtime-')&&n!==RUNTIME_CACHE).sort().pop();
+   const keep=new Set([SHELL_CACHE,MEDIA_CACHE,SDK_CACHE,RUNTIME_CACHE,oldRuntime].filter(Boolean));
+   await Promise.all(names.filter(n=>n.startsWith(PREFIX)&&!keep.has(n)).map(n=>caches.delete(n)));
    await self.clients.claim();
  })());
 });
@@ -154,10 +158,23 @@ async function cachedResource(request,cacheName,url){
  }
  return response;
 }
+async function previousRuntimeResource(url){
+ const names=await caches.keys();
+ const previous=names.filter(n=>n.startsWith(PREFIX+'runtime-')&&n!==RUNTIME_CACHE).sort().reverse();
+ for(const name of previous){
+   try{
+     const old=await caches.open(name);
+     const saved=await old.match(url.origin+url.pathname,{ignoreSearch:true});
+     if(saved)return saved;
+   }catch(_){}
+ }
+ return null;
+}
 async function runtimeResource(request,url,event){
  const cache=await caches.open(RUNTIME_CACHE);
- const key=url.origin+url.pathname;
- const saved=await cache.match(key);
+ const key=url.href;
+ const exact=await cache.match(key);
+ const saved=exact||await previousRuntimeResource(url);
  const controller=new AbortController();
  // Si hay un fragmento verificado en caché, no esperar indefinidamente por la red.
  const timeout=setTimeout(()=>controller.abort(),saved?3500:12000);
@@ -166,7 +183,7 @@ async function runtimeResource(request,url,event){
    if(fresh&&fresh.ok){
      const oldTag=saved&&(saved.headers.get('etag')||saved.headers.get('last-modified'));
      const newTag=fresh.headers.get('etag')||fresh.headers.get('last-modified');
-     if(!saved||!oldTag||!newTag||oldTag!==newTag){
+     if(!exact||!oldTag||!newTag||oldTag!==newTag){
        try{event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));}catch(_){}
      }
      return fresh;
