@@ -18,14 +18,63 @@ body{min-height:100dvh}
 .tfErr{margin:0;color:#e6edf7;font-size:14px;line-height:1.5}
 .tfRetry{margin-top:18px;min-height:44px;border:1px solid #34e3ee;border-radius:12px;padding:10px 22px;background:#086577;color:#fff;font:800 14px system-ui,-apple-system,"Segoe UI",sans-serif}
 .tfRetry:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+/* Pantalla ilustrada oficial TaskFlow. La imagen es el recurso original de NovaVision GT. */
+#tfSplash{position:fixed;inset:0;z-index:2147483644;display:grid;place-items:center;overflow:hidden;background:#030814;overscroll-behavior:none}
+#tfSplash[hidden]{display:none!important}
+.tfSplashArt{position:relative;width:min(100vw,56.25dvh);max-width:100%;aspect-ratio:9/16;max-height:100dvh;overflow:hidden;background:radial-gradient(ellipse at 50% 28%,#06345b,#04132a 65%,#030814)}
+.tfSplashArt>img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:none}
+.tfSplashMeter{position:absolute;top:57.15%;left:16.25%;width:72.8%;height:3.2%;display:flex;align-items:center;gap:3%;padding:0 1.2%;border-radius:999px;background:linear-gradient(90deg,#031328 0%,#06142b 100%);box-shadow:0 0 12px #03102aab;pointer-events:none}
+.tfSplashTrack{display:block;flex:1;height:45%;min-height:5px;overflow:hidden;border:1px solid #165382;border-radius:999px;background:#04112c;box-shadow:inset 0 1px 6px #0009}
+#tfSplashFill{display:block;width:100%;height:100%;border-radius:inherit;transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,#04f4f9 0%,#1687ff 27%,#7646ff 53%,#db3aff 77%,#ffb46d 100%);box-shadow:0 0 9px #55dffb77}
+#tfSplashPercent{min-width:10%;font-weight:900;font-size:clamp(10px,2.8cqw,22px);text-align:right;color:#e8f7ff;font-variant-numeric:tabular-nums;text-shadow:0 0 5px #0a1b43}
+.tfSplashArt{container-type:inline-size}
+#tfSplash.fallback .tfSplashArt>img{opacity:0}
+#tfSplash.fallback .tfSplashArt::after{content:'TaskFlow';position:absolute;left:0;top:37%;width:100%;text-align:center;font-size:clamp(36px,12cqw,70px);font-weight:950;letter-spacing:-.04em;background:linear-gradient(95deg,#02eeef,#77c4ff,#ffac65);color:transparent;background-clip:text;-webkit-background-clip:text}
 </style>
 </head>
 <body>
+<div id="tfSplash" role="status" aria-label="Cargando TaskFlow con la pantalla ilustrada oficial">
+  <div class="tfSplashArt">
+    <img src="./taskflow-loading-reference.jpg" width="864" height="1536" alt="TaskFlow · Organiza · Avanza · Cumple · NovaVision GT" fetchpriority="high" decoding="async" onerror="document.getElementById('tfSplash').classList.add('fallback')">
+    <div class="tfSplashMeter" role="progressbar" aria-label="Inicio de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="tfSplashMeter">
+      <span class="tfSplashTrack"><i id="tfSplashFill"></i></span><strong id="tfSplashPercent">0%</strong>
+    </div>
+  </div>
+</div>
 <div id="tfBoot" role="alert" aria-live="assertive" hidden><div class="tfCard"><p class="tfErr" id="tfErr">No fue posible iniciar TaskFlow. Comprueba tu conexión y vuelve a intentarlo.</p><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 <script>
 (async function(){
 'use strict';
 const boot=document.getElementById('tfBoot');
+const splash=document.getElementById('tfSplash');
+const splashFill=document.getElementById('tfSplashFill');
+const splashPct=document.getElementById('tfSplashPercent');
+const splashMeter=document.getElementById('tfSplashMeter');
+const SPLASH_MS=10000;
+const splashStart=performance.now();
+let splashDone=false,progressRaf=0;
+function showProgress(now){
+ if(splashDone||!splash.isConnected)return;
+ const value=Math.max(0,Math.min(100,Math.floor((now-splashStart)*100/SPLASH_MS)));
+ if(splashFill)splashFill.style.transform='scaleX('+(value/100)+')';
+ if(splashPct)splashPct.textContent=value+'%';
+ if(splashMeter)splashMeter.setAttribute('aria-valuenow',String(value));
+ if(value<100)progressRaf=requestAnimationFrame(showProgress);
+}
+progressRaf=requestAnimationFrame(showProgress);
+function endSplash(){
+ splashDone=true;
+ if(progressRaf)cancelAnimationFrame(progressRaf);
+ splash.hidden=true;
+}
+async function keepSplashExactlyTenSeconds(){
+ const remaining=Math.max(0,SPLASH_MS-(performance.now()-splashStart));
+ if(remaining>0)await new Promise(resolve=>setTimeout(resolve,remaining));
+ // Los temporizadores pueden retrasarse si la aplicación queda en segundo plano.
+ // Nunca sustituir una app incompleta por una pantalla vacía.
+}
+
 const parts=["t57/runtime-00.txt","t57/runtime-01.txt","t57/runtime-02.txt","t57/runtime-03.txt","t57/runtime-04.txt","t57/runtime-05.txt","t57/runtime-06.txt","t57/runtime-07.txt","t57/runtime-08.txt","t57/runtime-09.txt","t57/runtime-10.txt","t57/runtime-11.txt","t57/runtime-12.txt","t57/runtime-13.txt","t57/runtime-14.txt","t57/runtime-15.txt","t57/runtime-16.txt","t57/runtime-17.txt","t57/runtime-18.txt","t57/runtime-19.txt","t57/runtime-20.txt","t57/runtime-21.txt","t57/runtime-22.txt","t57/runtime-23.txt","t57/runtime-24.txt"];
 try{
  // Limitar conexiones simultáneas evita saturar redes móviles y WebViews.
@@ -59,8 +108,10 @@ try{
  await Promise.all(Array.from({length:Math.min(6,parts.length)},()=>worker()));
  const html=texts.join('');
  if(!html.toLowerCase().includes('<!doctype html>')||!html.includes('TF_T57')||!/<\/html>\s*$/i.test(html))throw new Error('INVALID');
+ await keepSplashExactlyTenSeconds();
+ endSplash();
  document.open();document.write(html);document.close();
-}catch(error){console.warn('TaskFlow: fallo de arranque',error&&error.message||error);boot.hidden=false;boot.classList.add('error')}
+}catch(error){console.warn('TaskFlow: fallo de arranque',error&&error.message||error);endSplash();boot.hidden=false;boot.classList.add('error')}
 })();
 </script>
 </body>
