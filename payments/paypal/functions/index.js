@@ -67,13 +67,14 @@ async function paypal(path,method='GET',body){
 function monthlyPlanValid(plan){
   const cycles=Array.isArray(plan&&plan.billing_cycles)?plan.billing_cycles:[];
   const regular=cycles.filter(c=>c.tenure_type==='REGULAR');
-  return plan&&plan.id===PLAN&&plan.status==='ACTIVE'&&regular.length===1&&
+  return plan&&plan.id===PLAN&&plan.status==='ACTIVE'&&cycles.length===1&&regular.length===1&&
     regular[0].frequency&&regular[0].frequency.interval_unit==='MONTH'&&
     Number(regular[0].frequency.interval_count)===1&&
     Number(regular[0].total_cycles)===0&&
     regular[0].pricing_scheme&&regular[0].pricing_scheme.fixed_price&&
     regular[0].pricing_scheme.fixed_price.currency_code===CURRENCY&&
-    Number(regular[0].pricing_scheme.fixed_price.value)===Number(PRICE);
+    Number(regular[0].pricing_scheme.fixed_price.value)===Number(PRICE)&&
+    Number(plan.payment_preferences&&plan.payment_preferences.setup_fee&&plan.payment_preferences.setup_fee.value||0)===0;
 }
 async function verifyPlan(){
   if(Date.now()-cachedPlanAt<120000)return cachedPlanValid;
@@ -147,6 +148,7 @@ async function confirmSubscription(uid,req,res){
   const intentSnap=await intentRef(nonce).get();
   if(!intentSnap.exists||intentSnap.data().uid!==uid||intentSnap.data().planId!==PLAN||
      Number(intentSnap.data().expiresAt)<Date.now())return json(res,403,{error:'INTENT_INVALID'});
+  if(!await verifyPlan())return json(res,503,{error:'PLAN_NOT_READY'});
   const sub=await paypalSubscription(id);
   if(sub.custom_id!==nonce)return json(res,403,{error:'SUBSCRIPTION_NOT_OWNED'});
   if(sub.status==='APPROVAL_PENDING'||sub.status==='APPROVED')return json(res,202,{paid:false,pending:true});
@@ -169,7 +171,7 @@ async function cancelSubscription(uid,res){
 }
 function saleMatches(resource){
   const amount=resource&&resource.amount;
-  return resource&&resource.state==='completed'&&amount&&amount.currency==='USD'&&Number(amount.total)===6;
+  return resource&&String(resource.state||'').toLowerCase()==='completed'&&amount&&amount.currency==='USD'&&Number(amount.total)===6;
 }
 async function findOwner(sub){
   const record=await subscriptionRef(sub.id).get();
@@ -203,7 +205,7 @@ async function handleWebhook(req,res){
     if(previous.exists)return json(res,200,{duplicate:true});
     await assignPayment(uid,sub,'paypal-recurring-payment');
     await sale.set({uid,subscriptionId:sub.id,status:'COMPLETED',amount:PRICE,currency:CURRENCY,
-      createdAt:admin.firestore.FieldValue.serverTimestamp()});
+      paidAt:lastPayment(sub),createdAt:admin.firestore.FieldValue.serverTimestamp()});
     return json(res,200,{ok:true});
   }
   if(type==='PAYMENT.SALE.REFUNDED'||type==='PAYMENT.SALE.REVERSED'){
@@ -217,7 +219,7 @@ async function handleWebhook(req,res){
       if(!s.exists)return;
       tx.set(sale,{status:'REVERSED',updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
       if(e.exists&&e.data().subscriptionId===s.data().subscriptionId&&
-         Number(e.data().lastPaidAt)<=Number(s.data().paidAt||Infinity))
+         Number.isFinite(Number(s.data().paidAt))&&Number(e.data().lastPaidAt)===Number(s.data().paidAt))
         tx.set(ent,{state:'revoked',updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
     });
     return json(res,200,{ok:true});
