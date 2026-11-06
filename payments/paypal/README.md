@@ -1,59 +1,77 @@
-# TaskFlow — PayPal «Eliminar anuncios» (preparación segura)
+# TaskFlow — Eliminar anuncios por PayPal
 
-**Estado: NO activado y NO desplegado.** Este código está aislado en la rama `feature/paypal-noads`. El TaskFlow público continúa funcionando como antes.
+## Estado
 
-## Qué hará la integración
+**Código preparado, NO desplegado, NO cobra dinero real.** Rama de trabajo: `feature/paypal-noads`. No fusionar con `main` hasta desplegar, probar y aprobar la configuración de PayPal y Firebase.
 
-1. Un usuario autenticado en Firebase abre el botón existente **Eliminar anuncios**.
-2. El navegador muestra PayPal Checkout. Según la cuenta del comercio y del comprador, PayPal ofrece tarjetas de débito o crédito (pago invitado) además de su cartera.
-3. El backend calcula el importe configurado en el servidor, crea la orden PayPal y asocia su ID a la cuenta de Firebase. El cliente **no elige ni puede modificar** el importe.
-4. Tras aprobarse el pago, **el backend** lo captura, comprueba `COMPLETED`, moneda e importe, registra la captura y activa `users/{uid}/entitlements/noAds`.
-5. La aplicación consulta el estado autenticado; únicamente cuando está confirmado oculta banners, anuncio de entrada y anuncios por interacción.
-6. El backend recibe reembolsos y reversiones mediante un webhook de PayPal con firma verificada. Nunca concede beneficios por redirecciones, capturas de pantalla o cambios en `localStorage`.
+**Precio autorizado: US$6.00 al mes**, renovación automática. No es un enlace de pago único, no es un período fijo de 30 días, no incluye prueba gratuita ni cuota de instalación. El cargo es mensual hasta que el titular cancele. PayPal puede ofrecer tarjeta de crédito/débito sin cuenta PayPal, sujeto a elegibilidad de la región y cuenta comercial.
 
-La implementación está diseñada para **pago único** sin renovación automática. La duración se configura explícitamente (número de días o `lifetime`), no se ha elegido ninguna todavía.
+## Componentes
 
-## Datos indispensables que faltan
+- `functions/index.js`: Firebase Functions v2 protegida por Firebase Auth y secretos PayPal. Verifica que el plan de PayPal sea ACTIVO, USD 6, frecuencia MONTH e intervalo 1, sin ciclos promocionales ni cuota de alta; rechaza cualquier plan diferente.
+- `client.js`: PayPal JavaScript SDK con `vault=true&intent=subscription`. Presenta el importe y la renovación. Permite cancelar futuras renovaciones. No procesa datos de tarjetas.
+- `public-config.json`: inicia deliberadamente en `{"enabled":false,"apiBase":""}`.
+- `create-monthly-plan.cjs`: utilidad para aprovisionar un producto y un plan mensual PayPal usando credenciales del entorno; por defecto opera en Sandbox. No almacena ni imprime claves.
+- `t57/runtime-24.txt` y `taskflow-ads-bridge.js`: integración preparada para impedir banners, anuncio al abrir y anuncios de interacción **solo** cuando el servidor confirme que la cuenta tiene un período pagado vigente.
+- `taskflowPayPalEntitlements/{uid}`: colección privada en Firestore, gestionada exclusivamente por Firebase Admin. El navegador consulta `/status`, no puede concederse el beneficio a sí mismo.
 
-- Precio exacto.
-- Moneda admitida por PayPal para la cuenta comercial.
-- Duración del beneficio (días concretos o permanente).
-- Credenciales oficiales `Client ID` y `Client Secret` de una aplicación PayPal REST y su `Webhook ID`. **Nunca deben enviarse por chat ni subirse a GitHub**. Configurarlas directamente como secretos de Firebase.
-- Confirmación de elegibilidad de pagos con tarjeta en la cuenta comercial PayPal.
+## Requisitos antes de activar
 
-## Backend (Firebase Functions)
+1. Cuenta comercial PayPal con suscripciones habilitadas y capacidades de cobro aplicables. El plugin PayPal de ChatGPT disponible actualmente solo ofrece enlaces de pago **único**, no crea planes recurrentes.
+2. Aplicación REST PayPal Live: Client ID y Client Secret, configurados directamente como secretos de Firebase; **no los compartas por chat ni en GitHub**.
+3. Plan de PayPal **ACTIVE**, `6.00 USD` cada `MONTH`, de duración indefinida (total_cycles 0), sin prueba gratuita ni comisión de activación.
+4. ID del webhook de PayPal, entregado al registrar la dirección HTTPS de Firebase para los eventos indicados a continuación.
+5. Proyecto Firebase `taskflow-b0ece`, acceso administrativo autorizado, plan con Cloud Functions disponible, facturación habilitada si aplica y política de Firestore revisada.
+6. Verificar dónde se distribuye la app Android. Si está en Google Play, la compra dentro de la app para desactivar anuncios puede estar sujeta a Google Play Billing, salvo excepción o programa alternativo aplicable. No habilitar pagos externos dentro de la versión Play sin comprobar las reglas vigentes.
 
-La función se encuentra en `payments/paypal/functions/index.js`; proyecto Firebase actual: `taskflow-b0ece`. Usa Firebase Authentication, Firestore Admin, PayPal Orders API y firma de webhooks.
+## Configuración (operador autorizado)
 
-1. Instalar Node compatible y Firebase CLI, y configurar acceso autorizado al proyecto Firebase.
-2. Desde `payments/paypal/functions`, ejecutar `npm install`.
-3. Configurar secretos en Firebase con `firebase functions:secrets:set TASKFLOW_PAYPAL_CLIENT_ID`, `TASKFLOW_PAYPAL_CLIENT_SECRET` y `TASKFLOW_PAYPAL_WEBHOOK_ID`.
-4. En el entorno privado del proyecto de Functions, configurar **todas** estas variables sin publicar su contenido:
+Ejecutar en un entorno privado y protegido — nunca en un navegador, repositorio público o chat.
+
+Crear primero el plan en Sandbox usando `payments/paypal/create-monthly-plan.cjs` (o el panel empresarial PayPal Subscriptions). Tras aprobar pruebas, crear el plan correspondiente en Live. En ambos casos comprobar precio y periodicidad.
+
+Configurar los siguientes **secretos** de Firebase Functions:
+
+- `TASKFLOW_PAYPAL_CLIENT_ID`
+- `TASKFLOW_PAYPAL_CLIENT_SECRET`
+- `TASKFLOW_PAYPAL_WEBHOOK_ID`
+
+Configurar las siguientes **variables de servidor** (no son secretos comerciales):
 
 ```env
-NOADS_PRICE=<PRECIO_ELEGIDO_CON_DOS_DECIMALES>
-NOADS_CURRENCY=<MONEDA_ADMITIDA>
-NOADS_DURATION=<CANTIDAD_DE_DIAS_O_lifetime>
+TASKFLOW_PAYPAL_MONTHLY_PLAN_ID=P-ID_VERIFICADO_DEL_PLAN_USD6_MONTH
 PAYPAL_ENV=sandbox
 ```
 
-5. Realizar pruebas en Sandbox sin cargos reales. Después de aprobarlas, configurar producción conscientemente con `PAYPAL_ENV=live` y credenciales `live` en secretos.
-6. Desplegar únicamente la función `taskflowNoAds`, según la configuración local de Firebase Functions.
-7. Registrar el endpoint HTTPS `/paypal/webhook` en PayPal para los eventos `PAYMENT.CAPTURE.REFUNDED` y `PAYMENT.CAPTURE.REVERSED`; verificarlo con PayPal y configurar el `Webhook ID` real.
-8. Revisar y aplicar reglas de Firestore que permitan leer el estado al usuario autenticado pero **nunca escribir el beneficio desde el cliente**. Asegurar que ninguna regla amplia permita editar `users/{uid}/entitlements/noAds`.
-9. Probar pago correcto, cancelación, intento duplicado, usuario distinto, reembolso, caducidad, error de red, inicio de sesión y restauración de sesión.
+Para producción, usar `PAYPAL_ENV=live` y credenciales e ID de plan **Live**, luego desplegar desde la carpeta `payments/paypal` el codebase `taskflow-noads`, función `taskflowNoAds` en `us-central1`.
 
-## Frontend
+Registrar en PayPal el webhook HTTPS de la función, con ruta `/paypal/webhook` y eventos:
 
-El archivo `payments/paypal/client.js` muestra PayPal Checkout y verifica el derecho a no ver anuncios. `public-config.json` comienza con `enabled:false` y `apiBase:""`. **No activar** hasta que el backend y la verificación de pagos funcionen y se haya determinado precio y duración.
+- `PAYMENT.SALE.COMPLETED`
+- `PAYMENT.SALE.REFUNDED`
+- `PAYMENT.SALE.REVERSED`
+- `BILLING.SUBSCRIPTION.CANCELLED`
+- `BILLING.SUBSCRIPTION.SUSPENDED`
+- `BILLING.SUBSCRIPTION.EXPIRED`
 
-Cuando el servidor esté disponible, configurar `apiBase` con su URL HTTPS pública (sin final `/`) y solo entonces cambiar `enabled` a `true`, tras probar el enlace y las reglas de datos. Ningún dato de tarjeta se recopila en TaskFlow; todo lo maneja PayPal.
+Confirmar que las reglas de Firestore **deniegan por completo todas las escrituras desde clientes** a `taskflowPayPalEntitlements`, `taskflowPayPalSubscriptions`, `taskflowPayPalSales` y `taskflowPayPalIntents`. El Admin SDK puede escribir independientemente de reglas. Revisar reglas existentes antes de publicar otras para evitar alterar TaskFlow.
 
-La aceptación de tarjeta sin abrir una cuenta PayPal depende de la elegibilidad regional y del análisis de riesgo de PayPal. No se puede garantizar para todos los compradores.
+**No activar `public-config.json`** hasta que el backend esté desplegado, el webhook firme y procese eventos válidos, y el equipo haya probado suscripción aprobada, primer pago, renovación, cancelación, reembolso, sesión de usuario, recarga, cambio de cuenta y estados pendientes. Cuando esté listo, fijar `apiBase` a la URL HTTPS real de la función y `enabled:true`, y fusionar los archivos de la rama de forma revisada.
 
-## Alcance y limitaciones
+## Contrato de pagos y seguridad
 
-- No hay pagos activos ni enlaces de pago publicados.
-- Sin importe y vigencia no hay manera segura de cobrar ni atribuir un beneficio correcto. **No inventar estos datos.**
-- No fusionar con `main` hasta la prueba de Sandbox y aprobación de la configuración comercial.
-- Los códigos de usuario se publican en GitHub Pages; las credenciales comerciales permanecen exclusivamente en los secretos del backend.
+1. El usuario inicia sesión en TaskFlow y abre el botón existente «Eliminar anuncios».
+2. El backend entrega un `intent` temporal vinculado a su UID. El SDK PayPal crea la suscripción asociada a ese `intent` y al plan de USD 6 mensuales.
+3. PayPal verifica la autorización del cliente. El backend consulta los detalles de la suscripción directamente a PayPal: ID, plan, `custom_id`, estado ACTIVE y último pago de USD 6.
+4. **Nunca** se activan beneficios solo por `onApprove`, redirección, texto en pantalla, almacenamiento local o envío del ID desde el cliente.
+5. PayPal informa renovaciones y reembolsos con webhooks verificados. Firebase establece y caduca `paidUntil`; tras cancelación, el beneficio puede mantenerse durante lo pagado, pero no se renueva.
+6. Si el backend no puede verificar el derecho, no se debe ocultar la publicidad; tampoco debe cobrarse mediante un enlace de pago único haciéndolo pasar por suscripción.
+
+## Estado actual verificable
+
+- Precio y periodicidad en código: **6.00 USD / MONTH**.
+- Frontend: **integrado solo en rama de desarrollo**.
+- Backend: **código de integración preparado, no desplegado ni probado con PayPal Live**.
+- PayPal: **no se ha creado un plan real ni se ha ejecutado ningún cargo desde esta conversación**.
+- Configuración pública: **desactivada** para evitar ventas incorrectas.
+- La versión en `main` permanece separada mientras falten estas comprobaciones.
