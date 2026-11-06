@@ -185,4 +185,10 @@ function useLocationDetail(detail){
 }
 document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
 document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
+// Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
+window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
+try{if(typeof BroadcastChannel==='function'){
+ const channel=new BroadcastChannel('taskflow-ads-catalog-v1');
+ channel.addEventListener('message',e=>{if(e.data&&e.data.type==='catalog-changed')void refresh()});
+}}catch(_){}
 })();
