@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.1.0
+/* TaskFlow ADS Bridge v2.1.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -100,7 +100,10 @@ function apply(){
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
  BANNER_SLOTS.forEach(slot=>{const ad=pick('banner',slot);try{window.TaskFlowAdsV50.render(slot,bannerNode(ad))}catch(e){console.warn('TaskFlow ADS banner:',e)}});
  const entry=pick('entry','entry');
- try{window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,sound:entry.sound}:null)}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
+ let entryReady=false;
+ try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
+ // Notifica solo al cargarse un creativo aprobado; evita consumir el ingreso con un espacio vacío.
+ if(entryReady){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
  const interaction=pick('interaction','interaction');
  try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
  return true
@@ -157,7 +160,7 @@ function schedule(){
  const ms=Math.max(60000,Number(config.refreshMs)||60000);refreshTimer=setInterval(()=>{void refresh()},ms)
 }
 const API={
- version:'2.1.0',
+ version:'2.1.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
