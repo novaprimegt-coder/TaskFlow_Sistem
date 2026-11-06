@@ -250,10 +250,16 @@ button,a,[role="button"]{touch-action:manipulation!important;-webkit-tap-highlig
 }
 </style>
 
-<style id="tfSkipSplashT57">html body main#boot:not(.error){display:none!important}html body main#boot.error{display:block!important;background:#030814!important}</style>
 </head>
 <body>
-<main id="boot" aria-label="Error al iniciar TaskFlow" role="alert">
+<main id="boot" aria-label="Cargando TaskFlow" role="status">
+<div class="tf-art-wrap">
+<div class="tf-art" role="img" aria-label="TaskFlow · Organiza · Avanza · Cumple"></div>
+<div class="tf-live-progress" id="tfLiveProgress" role="progressbar" aria-label="Carga de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="tf-live-progress-track"><div class="tf-live-progress-fill" id="tfProgressFill"></div></div>
+  <span class="tf-live-progress-label" id="tfProgressLabel">0%</span>
+</div>
+</div>
 <div class="tf-boot-panel"><p id="msg">Preparando TaskFlow…</p><div id="detail" aria-live="polite"></div><button id="retry" type="button">Reintentar</button></div>
 </main>
 <script>
@@ -299,17 +305,18 @@ const JS_FILES=[
 ];
 const $=id=>document.getElementById(id);
 const boot=$('boot'),message=$('msg'),detail=$('detail'),retry=$('retry');
-// 0 % al iniciar; avance lineal hasta 100 % exactamente a los 10 segundos.
+// La ilustración permanece visible mientras se prepara TaskFlow, sin espera artificial.
 const progress=$('tfLiveProgress'),progressFill=$('tfProgressFill'),progressLabel=$('tfProgressLabel');
 function advanceLoadingProgress(now){
-  const value=Math.max(0,Math.min(100,Math.floor((now-STARTED)*100/MIN_BOOT_MS)));
+  if(!document.contains(boot)||boot.classList.contains('error'))return;
+  const elapsed=Math.max(0,now-STARTED);
+  const value=Math.min(95,Math.floor(95*(1-Math.exp(-elapsed/5200))));
   if(progressFill)progressFill.style.transform='scaleX('+(value/100)+')';
   if(progressLabel)progressLabel.textContent=value+'%';
   if(progress)progress.setAttribute('aria-valuenow',String(value));
-  if(value<100)requestAnimationFrame(advanceLoadingProgress);
-  else if(message&&!bootResolved&&!boot.classList.contains('error'))message.textContent='Preparando las funciones…';
+  requestAnimationFrame(advanceLoadingProgress);
 }
-/* Sin pantalla de carga ni animación artificial. */
+requestAnimationFrame(advanceLoadingProgress);
 let fetching=false;
 const ERROR_TEXT='No fue posible iniciar todas las funciones de TaskFlow.';
 const MAX_BOOT_MS=29000;
