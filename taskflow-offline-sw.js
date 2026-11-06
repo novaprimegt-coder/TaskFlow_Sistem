@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t57-perf-20261105';
-const RUNTIME_CACHE='taskflow-offline-runtime-t57-20261105';
+const SHELL_CACHE='taskflow-offline-shell-t57-ads-v21-20261105';
+const RUNTIME_CACHE='taskflow-offline-runtime-t57-ads-v21-20261105';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -103,6 +103,18 @@ async function coreLoaderNetworkFirst(request,url){
  finally{clearTimeout(timer)}
  return await cache.match(key,{ignoreSearch:true})||await fetch(request);
 }
+/* El módulo publicitario se actualiza en línea; la copia local solo se usa sin conexión. */
+async function adsBridgeNetworkFirst(request,url){
+ const cache=await caches.open(SHELL_CACHE);
+ const key=url.origin+url.pathname;
+ const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),5500);
+ try{
+  const fresh=await fetch(new Request(url.href,{cache:'no-store',credentials:'same-origin',signal:ctl.signal}));
+  if(fresh&&fresh.ok){try{await cache.put(key,fresh.clone())}catch(_){}return fresh}
+ }catch(_){}
+ finally{clearTimeout(timeout)}
+ return await cache.match(key,{ignoreSearch:true})||Response.error();
+}
 async function cachedResource(request,cacheName,url){
  const cache=await caches.open(cacheName);
  const key=url.origin===self.location.origin?url.origin+url.pathname:url.href;
@@ -166,6 +178,9 @@ self.addEventListener('fetch',event=>{
      event.respondWith(navigation(request));return;
    }
    if(staticKeys.has(url.pathname)){
+     if(url.pathname===new URL('taskflow-ads-bridge.js',base).pathname){
+       event.respondWith(adsBridgeNetworkFirst(request,url));return;
+     }
      if(url.pathname===new URL('taskflow-loader-v102.html',base).pathname){
        event.respondWith(coreLoaderNetworkFirst(request,url));return;
      }
