@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t58-banner-223-20261106';
-const RUNTIME_CACHE='taskflow-offline-runtime-t58-banner-223-20261106';
+const SHELL_CACHE='taskflow-offline-shell-t59-performance-20261106';
+const RUNTIME_CACHE='taskflow-offline-runtime-t59-performance-20261106';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -27,9 +27,17 @@ async function store(cache,path){
 }
 async function prepareShell(){
  const cache=await caches.open(SHELL_CACHE);
- // Limitar simultaneidad de solicitudes para no saturar el navegador móvil.
+ // El arranque offline es obligatorio; un recurso adicional fallido no debe
+ // impedir la instalación de una actualización completa del Service Worker.
+ const required=new Set(['./','index.html']);
  for(let index=0;index<APP_FILES.length;index+=6){
-   await Promise.all(APP_FILES.slice(index,index+6).map(path=>store(cache,path)));
+   await Promise.all(APP_FILES.slice(index,index+6).map(async path=>{
+     try{await store(cache,path)}
+     catch(error){
+       if(required.has(path))throw error;
+       console.warn('TaskFlow: recurso opcional pendiente para modo offline:',path);
+     }
+   }));
  }
 }
 async function prepareOptional(){
@@ -150,19 +158,21 @@ async function runtimeResource(request,url,event){
  const cache=await caches.open(RUNTIME_CACHE);
  const key=url.origin+url.pathname;
  const saved=await cache.match(key);
+ const controller=new AbortController();
+ // Si hay un fragmento verificado en caché, no esperar indefinidamente por la red.
+ const timeout=setTimeout(()=>controller.abort(),saved?3500:12000);
  try{
-   // La caché HTTP evita descargar los fragmentos otra vez mientras sigan vigentes.
-   const fresh=await fetch(request);
+   const fresh=await fetch(request,{signal:controller.signal});
    if(fresh&&fresh.ok){
      const oldTag=saved&&(saved.headers.get('etag')||saved.headers.get('last-modified'));
      const newTag=fresh.headers.get('etag')||fresh.headers.get('last-modified');
      if(!saved||!oldTag||!newTag||oldTag!==newTag){
-       try{event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));}catch(_){/* Entregar el recurso fresco aunque no sea posible prolongar la caché. */}
+       try{event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}));}catch(_){}
      }
      return fresh;
    }
  }catch(_){}
- // Sin conexión, solo se utilizan copias de archivos públicos ya obtenidos.
+ finally{clearTimeout(timeout)}
  return saved||Response.error();
 }
 self.addEventListener('fetch',event=>{
