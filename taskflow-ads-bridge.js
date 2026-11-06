@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.4.2
+/* TaskFlow ADS Bridge v2.5.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -110,7 +110,7 @@ function bindAnalyticsTracking(){
   if(!['entry','interaction'].includes(slot))return;
   const root=document.getElementById(slot==='entry'?'tf56EntryStage':'tf57TouchStage');
   const ad=activeVerticalAds[slot];
-  if(ad&&root&&root.querySelector('img,video'))recordVisibleAd(ad,slot,root);
+  if(ad&&root){const media=root.querySelector('img,video');if(media&&(media.tagName==='IMG'?media.complete&&media.naturalWidth>0:media.readyState>=1))recordVisibleAd(ad,slot,root)}
  });
  document.addEventListener('click',e=>{
   const target=e.target?.closest?.('a');
@@ -121,8 +121,8 @@ function bindAnalyticsTracking(){
    if(ad&&target.href===ad.destination)recordAdEvent('click',ad,banner.id);
    return;
   }
-  const entry=target.closest('#tf56EntryAdV56');
-  const interaction=target.closest('#tf57TouchAdV57');
+  const entry=target.closest('#tfEntryAdV56');
+  const interaction=target.closest('#tfInteractionAdV57');
   const placement=entry?'entry':interaction?'interaction':'';
   const ad=activeVerticalAds[placement];
   if(ad&&target.href===ad.destination)recordAdEvent('click',ad,placement);
@@ -131,7 +131,7 @@ function bindAnalyticsTracking(){
   for(const slot of BANNER_SLOTS){
    const status=bannerStatus.get(slot),el=document.getElementById(slot);
    const ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
-   if(ad&&el&&el.querySelector('img')?.complete)recordVisibleAd(ad,slot,el);
+   if(ad&&el){const img=el.querySelector('img');if(img?.complete&&img.naturalWidth>0)recordVisibleAd(ad,slot,el)}
   }
  };
  window.addEventListener('scroll',checkBannerImpressions,{passive:true});
@@ -305,13 +305,22 @@ function apply(){
  }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
  BANNER_SLOTS.forEach(slot=>{queueBanner(slot)});
- const entry=pick('entry','entry');activeVerticalAds.entry=entry;
- let entryReady=false;
- try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
- // Notifica solo al cargarse un creativo aprobado; evita consumir el ingreso con un espacio vacío.
- if(entryReady){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
- const interaction=pick('interaction','interaction');activeVerticalAds.interaction=interaction;
- try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
+ // No reemplazar un creativo que ya está reproduciéndose en pantalla.
+ const entryRunning=!!window.TaskFlowEntryAdV56.isRunning?.();
+ if(!entryRunning){
+  const entry=pick('entry','entry');
+  let accepted=false;
+  try{accepted=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
+  activeVerticalAds.entry=accepted?entry:null;
+  if(accepted){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
+ }
+ const interactionRunning=!!window.TaskFlowInteractionAdV57.isRunning?.();
+ if(!interactionRunning){
+  const interaction=pick('interaction','interaction');
+  let accepted=false;
+  try{accepted=window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)===true}catch(e){console.warn('TaskFlow ADS interacción:',e)}
+  activeVerticalAds.interaction=accepted?interaction:null;
+ }
  return true
 }
 function observeSlots(){
@@ -366,7 +375,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.5.0',
+ version:'2.5.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
