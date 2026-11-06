@@ -109,7 +109,7 @@ async function paypalSubscription(id){
   if(sub.id!==id||sub.plan_id!==PLAN)throw Object.assign(new Error('PLAN_MISMATCH'),{status:409});
   return sub;
 }
-async function assignPayment(uid,sub,source){
+async function assignPayment(uid,sub,source,saleId){
   const timestamp=lastPayment(sub);
   if(!timestamp)return false;
   if(!['ACTIVE','CANCELLED'].includes(sub.status))return false;
@@ -124,9 +124,10 @@ async function assignPayment(uid,sub,source){
     if(old&&old.subscriptionId===sub.id&&old.state==='revoked'&&Number(old.lastPaidAt)>=timestamp)return;
     if(old&&old.subscriptionId===sub.id&&Number(old.lastPaidAt)>timestamp)return;
     tx.set(linked,{uid,planId:PLAN,environment:ENV,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
-    tx.set(ref,{uid,subscriptionId:sub.id,planId:PLAN,state:'active',renewalStatus:sub.status,
+    tx.set(ref,Object.assign({uid,subscriptionId:sub.id,planId:PLAN,state:'active',renewalStatus:sub.status,
       lastPaidAt:timestamp,paidUntil:period,source,
-      updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()},
+      saleId?{lastSaleId:saleId}:{}),{merge:true});
   });
   return true;
 }
@@ -203,7 +204,7 @@ async function handleWebhook(req,res){
     if(!uid||!lastPayment(sub))return json(res,200,{pending:true});
     const sale=saleRef(resource.id),previous=await sale.get();
     if(previous.exists)return json(res,200,{duplicate:true});
-    await assignPayment(uid,sub,'paypal-recurring-payment');
+    await assignPayment(uid,sub,'paypal-recurring-payment',resource.id);
     await sale.set({uid,subscriptionId:sub.id,status:'COMPLETED',amount:PRICE,currency:CURRENCY,
       paidAt:lastPayment(sub),createdAt:admin.firestore.FieldValue.serverTimestamp()});
     return json(res,200,{ok:true});
@@ -218,8 +219,7 @@ async function handleWebhook(req,res){
       const [s,e]=await Promise.all([tx.get(sale),tx.get(ent)]);
       if(!s.exists)return;
       tx.set(sale,{status:'REVERSED',updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
-      if(e.exists&&e.data().subscriptionId===s.data().subscriptionId&&
-         Number.isFinite(Number(s.data().paidAt))&&Number(e.data().lastPaidAt)===Number(s.data().paidAt))
+      if(e.exists&&e.data().subscriptionId===s.data().subscriptionId&&e.data().lastSaleId===saleId)
         tx.set(ent,{state:'revoked',updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
     });
     return json(res,200,{ok:true});
