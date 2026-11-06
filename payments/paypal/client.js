@@ -5,7 +5,7 @@
 if(window.TaskFlowNoAds)return;
 const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).href;
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
-let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,statusPromise=null,pendingIntent=null,subscriptionStatus=null;
+let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,statusPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
 function safeBase(value){
  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return '';return u.href.replace(/\/$/,'')}catch(_){return ''}
 }
@@ -49,6 +49,7 @@ function panel(){
 function statusText(msg){const e=document.getElementById('tfPayPalStatus');if(e)e.textContent=msg}
 function setActive(next){
  active=next===true;
+ if(active)pendingApproval=false;
  if(document.body)document.body.classList.toggle('tf-paypal-noads',active);
  try{document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active}}))}catch(_){}
 }
@@ -120,9 +121,11 @@ function paypalSdk(){
  });return sdkPromise;
 }
 async function showCheckout(){
+ if(busy)return false;
  try{await (ready||Promise.resolve());if(!enabled)return false;
   const root=panel(),target=root.querySelector('#tfPayPalButtons');
   root.hidden=false;target.replaceChildren();
+  root.querySelector('#tfPayPalCancel').hidden=true;
   root.querySelector('#tfPayPalPlan').textContent=displayPeriod();
   statusText('Verificando la cuenta y el estado de los anuncios…');
   await authToken();
@@ -134,6 +137,7 @@ async function showCheckout(){
    cancel.hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
    return true
   }
+  if(pendingApproval){statusText('La suscripción anterior está pendiente de confirmación. No inicies otro cobro.');return false}
   statusText('US$6.00 al mes. Elige PayPal o, cuando esté disponible, tarjeta de débito o crédito.');
   const pp=await paypalSdk();
   if(!pp||!pp.Buttons)throw new Error('PAYPAL_SDK_UNAVAILABLE');
@@ -148,7 +152,9 @@ async function showCheckout(){
     }finally{busy=false}
    },
    onApprove:async data=>{
-    busy=true;statusText('Comprobando la suscripción y el primer pago con PayPal…');
+    busy=true;pendingApproval=true;
+    target.replaceChildren();
+    statusText('Comprobando la suscripción y el primer pago con PayPal…');
     try{
      if(!pendingIntent||!data.subscriptionID)throw new Error('INVALID_SUBSCRIPTION');
      const result=await request('POST','/confirm',
@@ -163,7 +169,7 @@ async function showCheckout(){
     }catch(_){statusText('La suscripción necesita confirmación. Comprueba el estado antes de volver a pagar.');}
     finally{busy=false}
    },
-   onCancel:()=>statusText('Pago cancelado. No se ha modificado tu cuenta.'),
+   onCancel:()=>{pendingApproval=false;pendingIntent=null;statusText('Pago cancelado. No se ha modificado tu cuenta.')},
    onError:()=>statusText('PayPal no pudo completar la operación.')
   });
   if(buttons.isEligible&& !buttons.isEligible())throw new Error('PAYPAL_NOT_ELIGIBLE');
