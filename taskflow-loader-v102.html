@@ -19,9 +19,29 @@ body{min-height:100dvh}
 .detail{margin:10px 0 0;color:#afc0d3;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .retry{display:none;margin:18px auto 0;min-height:44px;padding:10px 20px;border:1px solid #42dae7;border-radius:12px;background:#087e9a;color:#fff;font-weight:850}
 .error .retry{display:inline-flex}
+/* Pantalla ilustrada oficial TaskFlow. La imagen es el recurso original de NovaVision GT. */
+#tfSplash{position:fixed;inset:0;z-index:2147483644;display:grid;place-items:center;overflow:hidden;background:#030814;overscroll-behavior:none}
+#tfSplash[hidden]{display:none!important}
+.tfSplashArt{position:relative;width:min(100vw,56.25dvh);max-width:100%;aspect-ratio:9/16;max-height:100dvh;overflow:hidden;background:radial-gradient(ellipse at 50% 28%,#06345b,#04132a 65%,#030814)}
+.tfSplashArt>img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:none}
+.tfSplashMeter{position:absolute;top:57.15%;left:16.25%;width:72.8%;height:3.2%;display:flex;align-items:center;gap:3%;padding:0 1.2%;border-radius:999px;background:linear-gradient(90deg,#031328 0%,#06142b 100%);box-shadow:0 0 12px #03102aab;pointer-events:none}
+.tfSplashTrack{display:block;flex:1;height:45%;min-height:5px;overflow:hidden;border:1px solid #165382;border-radius:999px;background:#04112c;box-shadow:inset 0 1px 6px #0009}
+#tfSplashFill{display:block;width:100%;height:100%;border-radius:inherit;transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,#04f4f9 0%,#1687ff 27%,#7646ff 53%,#db3aff 77%,#ffb46d 100%);box-shadow:0 0 9px #55dffb77}
+#tfSplashPercent{min-width:10%;font-weight:900;font-size:clamp(10px,2.8cqw,22px);text-align:right;color:#e8f7ff;font-variant-numeric:tabular-nums;text-shadow:0 0 5px #0a1b43}
+.tfSplashArt{container-type:inline-size}
+#tfSplash.fallback .tfSplashArt>img{opacity:0}
+#tfSplash.fallback .tfSplashArt::after{content:'TaskFlow';position:absolute;left:0;top:37%;width:100%;text-align:center;font-size:clamp(36px,12cqw,70px);font-weight:950;letter-spacing:-.04em;background:linear-gradient(95deg,#02eeef,#77c4ff,#ffac65);color:transparent;background-clip:text;-webkit-background-clip:text}
 </style>
 </head>
 <body>
+<div id="tfSplash" role="status" aria-label="Cargando TaskFlow con la pantalla ilustrada oficial">
+  <div class="tfSplashArt">
+    <img src="./taskflow-loading-reference.jpg" width="864" height="1536" alt="TaskFlow · Organiza · Avanza · Cumple · NovaVision GT" fetchpriority="high" decoding="async" onerror="document.getElementById('tfSplash').classList.add('fallback')">
+    <div class="tfSplashMeter" role="progressbar" aria-label="Inicio de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="tfSplashMeter">
+      <span class="tfSplashTrack"><i id="tfSplashFill"></i></span><strong id="tfSplashPercent">0%</strong>
+    </div>
+  </div>
+</div>
 <div class="boot" id="boot" role="alert" aria-live="assertive"><div class="card"><p class="msg" id="msg">No fue posible iniciar TaskFlow.</p><div class="detail" id="detail"></div><button class="retry" id="retry" type="button">Reintentar</button></div></div>
 <script>
 (()=>{
@@ -30,6 +50,29 @@ body{min-height:100dvh}
   const msgEl=document.getElementById('msg');
   const detailEl=document.getElementById('detail');
   const retryEl=document.getElementById('retry');
+  // La pantalla oficial se presenta 10 segundos cuando se visita este cargador directamente.
+  // Si la aplicación principal inyecta este script, no existe splash y no hay segundo retraso.
+  const splash=document.getElementById('tfSplash'),splashStart=performance.now(),SPLASH_MS=10000;
+  let colorRaf=0,colorFinished=false;
+  function tickSplash(now){
+    if(!splash||colorFinished||!splash.isConnected)return;
+    const percent=Math.max(0,Math.min(100,Math.floor((now-splashStart)*100/SPLASH_MS)));
+    const fill=document.getElementById('tfSplashFill'),label=document.getElementById('tfSplashPercent'),meter=document.getElementById('tfSplashMeter');
+    if(fill)fill.style.transform='scaleX('+(percent/100)+')';
+    if(label)label.textContent=percent+'%';
+    if(meter)meter.setAttribute('aria-valuenow',String(percent));
+    if(percent<100)colorRaf=requestAnimationFrame(tickSplash);
+  }
+  if(splash)colorRaf=requestAnimationFrame(tickSplash);
+  async function waitForColorSplash(){
+    if(!splash)return;
+    const remaining=Math.max(0,SPLASH_MS-(performance.now()-splashStart));
+    if(remaining>0)await new Promise(resolve=>setTimeout(resolve,remaining));
+    colorFinished=true;
+    if(colorRaf)cancelAnimationFrame(colorRaf);
+    splash.hidden=true;
+  }
+
   const base='./taskflow-v99-deploy/';
   const parts=['p0.txt','p1.txt','p2.txt','q0.txt','q1.txt','q2.txt','q3.txt','q4.txt','q5.txt','q6.txt','q7.txt','q8.txt','q9.txt','q10.txt','q11.txt','q12.txt','q13.txt'];
   const expectedLength=190428;
@@ -131,8 +174,8 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
       if(!html.includes(iconPortalCloseOld)||!html.includes(iconPortalOpenOld))throw new Error('No se pudo activar el selector de iconos V102.');
       html=html.replace(iconPortalCloseOld,iconPortalCloseNew).replace(iconPortalOpenOld,iconPortalOpenNew);
       if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+scrollBridgeScript+iconPortalGuard+'</head>');
-      document.open();document.write(html);document.close();
-    }catch(error){console.error('TaskFlow boot error:',error);bootEl.classList.add('error');msgEl.textContent='No se pudo iniciar TaskFlow. Toca Reintentar.';detailEl.textContent=String(error&&error.message?error.message:error);retryEl.disabled=false;}
+      await waitForColorSplash();document.open();document.write(html);document.close();
+    }catch(error){if(splash){colorFinished=true;splash.hidden=true;if(colorRaf)cancelAnimationFrame(colorRaf)}console.error('TaskFlow boot error:',error);bootEl.classList.add('error');msgEl.textContent='No se pudo iniciar TaskFlow. Toca Reintentar.';detailEl.textContent=String(error&&error.message?error.message:error);retryEl.disabled=false;}
   }
   retryEl.addEventListener('click',boot);boot();
 })();
