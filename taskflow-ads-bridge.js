@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.2.0
+/* TaskFlow ADS Bridge v2.2.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -79,8 +79,8 @@ function normalizeCampaign(c){
    if(!src||!['image','gif','video'].includes(type))return null;
    if(placement==='banner'&&type==='video')return null;
    const width=Number(a.width)||0,height=Number(a.height)||0,duration=Number(a.duration)||0;
-   if(placement==='banner'&&(width!==1200||height!==180))return null;
-   if((placement==='entry'||placement==='interaction')&&(width!==1080||height!==1920))return null;
+   if(placement==='banner'&&!((width===1200&&height===180)||(width===2400&&height===360)))return null;
+   if((placement==='entry'||placement==='interaction')&&!((width===1080&&height===1920)||(width===2160&&height===3840)))return null;
    if(type==='video'&&Math.abs(duration-10)>.09)return null;
    return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
@@ -172,7 +172,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.2.0',
+ version:'2.2.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
