@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.5.1
+/* TaskFlow ADS Bridge v2.5.2
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -84,11 +84,43 @@ function analyticsSessionId(){
  }
  return analyticsSession;
 }
+// Diagnóstico local y agregado, separado de las métricas de eventos almacenados en Vercel.
+// Nunca se considera una petición enviada como una impresión o clic confirmado.
+const ANALYTICS_DIAG_KEY='taskflow_ads_analytics_delivery_v1';
+function telemetryDiagnostic(kind,state,error){
+ try{
+  const allowed=['attempted','acknowledged','failed'];if(!allowed.includes(state))return;
+  const saved=JSON.parse(localStorage.getItem(ANALYTICS_DIAG_KEY)||'{}');
+  const now=Date.now(),record=saved&&typeof saved==='object'?saved:{};
+  if(!record.since||now-record.since>30*86400000)Object.assign(record,{since:now,attempted:{},acknowledged:{},failed:{},lastError:''});
+  if(!record[state]||typeof record[state]!=='object')record[state]={};
+  record[state][kind]=Math.max(0,Number(record[state][kind])||0)+1;
+  record.lastAt=now;
+  if(state==='failed')record.lastError=String(error||'No se confirmó el registro').slice(0,115);
+  if(state==='acknowledged')record.lastSuccessAt=now;
+  localStorage.setItem(ANALYTICS_DIAG_KEY,JSON.stringify(record));
+ }catch(_){}
+}
 function recordAdEvent(type,ad,slot){
  if(!ad||!['impression','click'].includes(type)||!catalog.some(x=>x.id===ad.id&&x.campaignId===ad.campaignId&&x.src===ad.src))return;
  const sessionId=analyticsSessionId();if(!sessionId)return;
  const payload={event:type,campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId};
- try{fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{})}catch(_){}
+ telemetryDiagnostic(type,'attempted');
+ try{
+  fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+   .then(async response=>{
+    if(response.ok){telemetryDiagnostic(type,'acknowledged');return}
+    let detail='';
+    try{const data=await response.json();detail=String(data?.error||'')}catch(_){}
+    const reason='HTTP '+response.status+(detail?' · '+detail:'');
+    telemetryDiagnostic(type,'failed',reason);
+    console.warn('TaskFlow ADS: evento de '+type+' no confirmado:',reason);
+   })
+   .catch(error=>{
+    telemetryDiagnostic(type,'failed','Conexión no disponible');
+    console.warn('TaskFlow ADS: no se pudo registrar '+type,error?.message||'Sin conexión');
+   });
+ }catch(error){telemetryDiagnostic(type,'failed','No se pudo enviar la petición')}
 }
 function visibleRect(el){
  if(!el||document.hidden)return false;
@@ -375,7 +407,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.5.1',
+ version:'2.5.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
