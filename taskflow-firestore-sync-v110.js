@@ -152,6 +152,21 @@ function queuePreference(){
 
 function applySnapshot(uid,snapshot,manifest){applying=true;try{const v=snapshot.values||{};const main=v[MAIN_KEY]||'';const fin=v[FIN_KEY]||'';if(main){nativeSet(MAIN_KEY,main);nativeSet(MAIN_BACKUP,main);nativeSet(MAIN_RECOVERY,main)}else{nativeRemove(MAIN_KEY);nativeRemove(MAIN_BACKUP);nativeRemove(MAIN_RECOVERY)}if(fin){nativeSet(FIN_KEY,fin);nativeSet(FIN_BACKUP,fin)}else{nativeRemove(FIN_KEY);nativeRemove(FIN_BACKUP)}for(const k of ['taskflow_share_reward_claimed_v1','taskflow_share_count_v1']){if(v[k])nativeSet(k,v[k]);else nativeRemove(k)}nativeSet(TOUCH_KEY,String(snapshot.updatedAt||now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:Number(manifest&&manifest.revision)||0,lastSyncedHash:snapshot.hash||hashValues(v),lastSyncedAt:now(),lastRemoteClientUpdatedAt:Number(manifest&&manifest.clientUpdatedAt)||snapshot.updatedAt||now()})}finally{applying=false;dirty=false}}
 
+// Refrescar la sesión existente sin repetir el arranque ni los anuncios.
+function notifySnapshotApplied(uid){
+ try{
+  for(const key of [MAIN_KEY,FIN_KEY]){
+   const latest=safeGet(key);
+   window.dispatchEvent(new StorageEvent('storage',{
+    key,newValue:latest,storageArea:localStorage,url:location.href
+   }));
+  }
+ }catch(e){warn('Notificación interna de almacenamiento no disponible',e)}
+ try{document.dispatchEvent(new CustomEvent('taskflow:cloud-snapshot-applied',{detail:{uid}}))}catch(_){}
+ for(const name of ['TaskFlowV117','TaskFlowV119']){
+  try{const api=window[name];if(api&&typeof api.refresh==='function')api.refresh()}catch(_){}
+ }
+}
 function backupConflict(uid,snapshot){
  try{
    const stamp=now(),key='taskflow_cloud_conflict_backup_v1_'+uid+'_'+stamp;
@@ -162,15 +177,15 @@ function backupConflict(uid,snapshot){
 function clearLiveForNewAccount(uid){applying=true;try{[MAIN_KEY,MAIN_BACKUP,MAIN_RECOVERY,FIN_KEY,FIN_BACKUP,'taskflow_share_reward_claimed_v1','taskflow_share_count_v1'].forEach(nativeRemove);nativeSet(TOUCH_KEY,String(now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:0,lastSyncedHash:'',lastSyncedAt:0,lastRemoteClientUpdatedAt:0})}finally{applying=false}}
 
 async function reconcile(uid){if(!uid)return;const remote=await readManifest(uid);const local=capture();const bound=getBound();const meta=readMeta(uid);
-if(!remote){if(bound&&bound!==uid){log('cuenta nueva en dispositivo previamente vinculado; estado local limpio');clearLiveForNewAccount(uid);location.reload();return}await uploadSnapshot(uid,local,null);return}
-if(bound!==uid){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);log('restaurando cuenta en este dispositivo');location.reload();return}
+if(!remote){if(bound&&bound!==uid){log('cuenta nueva en dispositivo previamente vinculado; estado local limpio');clearLiveForNewAccount(uid);notifySnapshotApplied(uid);return}await uploadSnapshot(uid,local,null);return}
+if(bound!==uid){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);log('restaurando cuenta en este dispositivo');notifySnapshotApplied(uid);return}
 if(remote.hash===local.hash){writeMeta(uid,{lastRemoteRevision:remote.revision,lastSyncedHash:local.hash,lastSyncedAt:now(),lastRemoteClientUpdatedAt:remote.clientUpdatedAt||0});setBound(uid);dirty=false;return}
-if(!meta){if(remote.clientUpdatedAt>local.updatedAt){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);location.reload();return}await uploadSnapshot(uid,local,remote);return}
+if(!meta){if(remote.clientUpdatedAt>local.updatedAt){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}await uploadSnapshot(uid,local,remote);return}
 const localChanged=local.hash!==String(meta.lastSyncedHash||'');const remoteChanged=Number(remote.revision)>Number(meta.lastRemoteRevision||0)||remote.hash!==String(meta.lastSyncedHash||'');
 if(!localChanged&&!remoteChanged){writeMeta(uid,Object.assign({},meta,{lastRemoteRevision:remote.revision,lastSyncedHash:remote.hash||local.hash,lastRemoteClientUpdatedAt:remote.clientUpdatedAt||0}));dirty=false;return}
-if(!localChanged&&remoteChanged){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);location.reload();return}
+if(!localChanged&&remoteChanged){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}
 if(localChanged&&!remoteChanged){await uploadSnapshot(uid,local,remote);return}
-if((remote.clientUpdatedAt||0)>(local.updatedAt||0)){backupConflict(uid,local);const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);location.reload();return}
+if((remote.clientUpdatedAt||0)>(local.updatedAt||0)){backupConflict(uid,local);const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}
 await uploadSnapshot(uid,local,remote)
 }
 
