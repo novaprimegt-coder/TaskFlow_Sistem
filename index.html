@@ -25,7 +25,7 @@ const boot=document.getElementById('tfBoot');
 const parts=["t57/runtime-00.txt","t57/runtime-01.txt","t57/runtime-02.txt","t57/runtime-03.txt","t57/runtime-04.txt","t57/runtime-05.txt","t57/runtime-06.txt","t57/runtime-07.txt","t57/runtime-08.txt","t57/runtime-09.txt","t57/runtime-10.txt","t57/runtime-11.txt","t57/runtime-12.txt","t57/runtime-13.txt","t57/runtime-14.txt","t57/runtime-15.txt","t57/runtime-16.txt","t57/runtime-17.txt","t57/runtime-18.txt","t57/runtime-19.txt","t57/runtime-20.txt","t57/runtime-21.txt","t57/runtime-22.txt","t57/runtime-23.txt","t57/runtime-24.txt"];
 try{
  const texts=await Promise.all(parts.map(async p=>{
-   const version=p==='t57/runtime-24.txt'?'?v=58-hd-daily-paypal-guard':p==='t57/runtime-19.txt'?'?v=58-ads-hd-222':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-24.txt'?'?v=58-hd-daily-paypal-guard':p==='t57/runtime-19.txt'?'?v=58-banner-image-check-223':'?v=57-ads21-paypal6-dailyfix1';
    const r=await fetch('./'+p+version,{cache:'default'});
    if(!r.ok)throw new Error('LOAD');
    return r.text();
