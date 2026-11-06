@@ -76,9 +76,9 @@ function validity(c,ad,ctx){
  if(c.start){const d=new Date(c.start+"T00:00:00");if(Number.isFinite(d.getTime())&&today<d)return"Fecha de inicio futura"}
  if(c.end){const d=new Date(c.end+"T23:59:59");if(Number.isFinite(d.getTime())&&today>d)return"Campaña vencida"}
  const cc=norm(c.country)==="guatemala"?"GT":String(c.country||"").toUpperCase();
- if(cc&&cc!=="ALL"&&(!ctx.country||cc!==ctx.country))return ctx.country?"País de la campaña distinto de la ubicación autorizada":"País no verificado mediante ubicación autorizada";
- if(c.region&&(!ctx.region||norm(c.region)!==norm(ctx.region)))return"Región no disponible o distinta";
- if(c.city&&(!ctx.city||norm(c.city)!==norm(ctx.city)))return"Municipio no disponible o distinto";
+ if(cc&&cc!=="ALL"&&ctx.country&&cc!==ctx.country)return"País de la campaña distinto de la ubicación autorizada";
+ if(c.region&&ctx.region&&norm(c.region)!==norm(ctx.region))return"Región diferente a la autorizada";
+ if(c.city&&ctx.city&&norm(c.city)!==norm(ctx.city))return"Municipio diferente al autorizado";
  if(!["banner","entry","interaction"].includes(c.placement))return"Formato de campaña desconocido";
  if(!ad||!safeUrl(ad.src))return"Sin enlace HTTPS válido del creativo";
  if(!["image","gif","video"].includes(String(ad.type||"image")))return"Tipo de archivo no válido";
@@ -118,9 +118,9 @@ async function scan(){
   else if(valid===0)lines.push("Hay campañas publicadas, pero ningún creativo supera todos los filtros de TaskFlow en este dispositivo.");
   else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles. Si no aparecen en TaskFlow, revisa la carga de la app, el estado «Sin anuncios» y los archivos multimedia.");
   Object.entries(reasons).sort((a,b)=>b[1]-a[1]).forEach(([reason,count])=>lines.push("• "+reason+": "+count));
-  lines.push("País verificado por ubicación: "+(ctx.country||"No disponible")+".");
+  lines.push("País verificado por ubicación: "+(ctx.country||"Pendiente; la entrega no se suspende por ausencia de datos")+".");
   if(ctx.region||ctx.city)lines.push("Ubicación autorizada: "+[ctx.region,ctx.city].filter(Boolean).join(", ")+".");
-  else if(records.some(d=>{const c=data(d);return!!(c.region||c.city)}))lines.push("Aviso: no se verificó el departamento o municipio necesarios para anuncios segmentados.");
+  else if(records.some(d=>{const c=data(d);return!!(c.region||c.city)}))lines.push("Aviso: el departamento o municipio aún no está verificado; los anuncios aprobados se muestran salvo incompatibilidad confirmada.");
   if(ctx.note)lines.push("Geolocalización: "+ctx.note);
   $("report").textContent=lines.join("\n");$("status").textContent="Comprobación completada.";
   if(samples.length){$("samplesSection").hidden=false;for(const [i,src]of samples.entries()){let card=document.createElement("div"),label=document.createElement("small"),image=new Image();card.className="sample";label.textContent="Banner "+(i+1)+" · Comprobando archivo…";image.onload=()=>{label.textContent="Banner "+(i+1)+" · Imagen accesible"};image.onerror=()=>{label.textContent="Banner "+(i+1)+" · El archivo no se pudo descargar"};image.src=src;image.alt="Vista de prueba";card.append(label,image);$("samples").appendChild(card)}}
