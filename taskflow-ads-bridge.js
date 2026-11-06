@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.3.0
+/* TaskFlow ADS Bridge v2.4.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -68,6 +68,8 @@ function targetEligible(c){
  if(c.city&&context.city&&normText(c.city)!==normText(context.city))return false;
  return true
 }
+const OBJECTIVE_CTA=Object.freeze({awareness:'Conocer la marca',traffic:'Visitar sitio web',engagement:'Participar',leads:'Solicitar información',sales:'Comprar ahora',app:'Descargar aplicación'});
+function ctaForObjective(c){return OBJECTIVE_CTA[c?.objective]||OBJECTIVE_CTA.awareness}
 function normalizeCampaign(c){
  if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c)||!targetEligible(c))return [];
  const placement=['banner','entry','interaction'].includes(c.placement)?c.placement:'';
@@ -82,7 +84,7 @@ function normalizeCampaign(c){
    if(placement==='banner'&&!((width===1200&&height===180)||(width===2400&&height===360)))return null;
    if((placement==='entry'||placement==='interaction')&&!((width===1080&&height===1920)||(width===2160&&height===3840)))return null;
    if(type==='video'&&(!Number.isFinite(duration)||duration<9.95||duration>180.05))return null;
-   return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,sound:type==='video'&&a.sound===true};
+   return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
 }
 function lastKey(placement,slot){return 'taskflow_ads_last_v2_'+placement+'_'+String(slot||'default')}
@@ -137,7 +139,13 @@ function bannerNode(ad,img){
  if(!ad.destination)return img;
  const a=document.createElement('a');a.href=ad.destination;a.target='_blank';
  a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';
- a.appendChild(img);return a;
+ a.setAttribute('aria-label',ad.ctaLabel||'Abrir anuncio');a.title=ad.ctaLabel||'Abrir anuncio';
+ a.style.position='relative';a.style.display='block';
+ a.appendChild(img);
+ const action=document.createElement('span');action.textContent=ad.ctaLabel||'Conocer más';
+ Object.assign(action.style,{position:'absolute',right:'5px',bottom:'5px',maxWidth:'66%',padding:'4px 7px',borderRadius:'5px',background:'rgba(7,20,39,.88)',border:'1px solid rgba(255,255,255,.15)',color:'#fff',fontSize:'10px',fontWeight:'700',lineHeight:'1.2',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',pointerEvents:'none'});
+ a.appendChild(action);
+ return a;
 }
 async function displayBanner(slot){
  if(bannerBusy.has(slot)||!config.enabled)return;
@@ -186,11 +194,11 @@ function apply(){
  BANNER_SLOTS.forEach(slot=>{void displayBanner(slot)});
  const entry=pick('entry','entry');
  let entryReady=false;
- try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
+ try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
  // Notifica solo al cargarse un creativo aprobado; evita consumir el ingreso con un espacio vacío.
  if(entryReady){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
  const interaction=pick('interaction','interaction');
- try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
+ try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
  return true
 }
 function observeSlots(){
@@ -245,7 +253,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.3.0',
+ version:'2.4.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
