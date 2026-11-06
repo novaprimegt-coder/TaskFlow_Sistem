@@ -83,8 +83,11 @@ function validity(c,ad,ctx){
  if(!ad||!safeUrl(ad.src))return"Sin enlace HTTPS válido del creativo";
  if(!["image","gif","video"].includes(String(ad.type||"image")))return"Tipo de archivo no válido";
  if(c.placement==="banner"&&ad.type==="video")return"Video no válido para Banner";
- const w=c.placement==="banner"?1200:1080,h=c.placement==="banner"?180:1920;
- if(Number(ad.width)!==w||Number(ad.height)!==h)return"Dimensiones incompatibles";
+ const w=Number(ad.width)||0,h=Number(ad.height)||0;
+ const validSize=c.placement==="banner"
+   ? ((w===1200&&h===180)||(w===2400&&h===360))
+   : ((w===1080&&h===1920)||(w===2160&&h===3840));
+ if(!validSize)return"Dimensiones incompatibles (se admiten tamaños estándar o HD)";
  if(ad.type==="video"&&Math.abs(Number(ad.duration)-10)>.09)return"Duración del video incompatible";
  return"ok";
 }
