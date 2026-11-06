@@ -33,6 +33,7 @@ const headExtras='<style id="tfPermissionsT52Style">'+TF_T52_PERMISSION_CSS+'</s
  '<style id="tfT44IconLibrarySize">'+TF_T44_ICON_LIBRARY_SIZE_CSS+'</style>'+
  '<style id="tfT45RecordActions">'+TF_T45_RECORD_ACTIONS_CSS+'</style>'+
  '<style id="tfT47FinalRetouch">'+TF_T47_FINAL_RETOUCH_CSS+'</style>'+
+ '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-hub-cards-v71.css'))+'">'+
  '<script src="'+htmlAttr(assetUrl('taskflow-touch-v105.js'))+'"><'+'/script>'+
  '<script defer src="'+htmlAttr(assetUrl('taskflow-ads-bridge.js')+'?v=2.5.2-click-diagnostics-20261106')+'"><'+'/script>';
 // Mantener el orden de carga de los módulos de la aplicación, como en index.html.
