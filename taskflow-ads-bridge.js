@@ -93,6 +93,10 @@ function runtimeReady(){
 }
 function apply(){
  if(!config.enabled||!runtimeReady())return false;
+ if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()){
+  BANNER_SLOTS.forEach(slot=>{try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
+  return false;
+ }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
  BANNER_SLOTS.forEach(slot=>{const ad=pick('banner',slot);try{window.TaskFlowAdsV50.render(slot,bannerNode(ad))}catch(e){console.warn('TaskFlow ADS banner:',e)}});
  const entry=pick('entry','entry');
@@ -142,6 +146,7 @@ async function fetchCatalog(){
  rawCampaigns=all;lastRefresh=Date.now();lastError='';rebuildCatalog();return true
 }
 async function refresh(){
+ if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive())return false;
  if(!config.enabled){catalog=[];rawCampaigns=[];applyWhenReady();return false}
  if(refreshing)return refreshing;
  refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);return false}).finally(()=>{refreshing=null});
@@ -177,6 +182,7 @@ try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writabl
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule()},{once:true});else{observeSlots();void refresh();schedule()}
 window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>30000)void refresh();else applyWhenReady()},{passive:true});
 window.addEventListener('online',()=>{void refresh()},{passive:true});
+document.addEventListener('taskflow:noads-status-updated',e=>{if(e.detail&&e.detail.active)apply();else void refresh()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>30000)void refresh()});
 // Convierte coordenadas autorizadas a municipio/departamento con una consulta
 // geográfica de precisión reducida. No transmite UID, correo ni hábitos.
