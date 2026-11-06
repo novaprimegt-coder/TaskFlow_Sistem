@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.1.2
+/* TaskFlow ADS Bridge v2.2.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -10,7 +10,7 @@ const COLLECTION='adsPublicCampaigns';
 const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(PROJECT_ID)+'/databases/(default)/documents/'+encodeURIComponent(COLLECTION);
 const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'];
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
-let config={enabled:true,adminUrl:null,refreshMs:60000};
+let config={enabled:true,adminUrl:null,refreshMs:10000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
 let slotObserver=null,slotUpdateQueued=false;
 let geoPending=null,lastGeoGrid='',lastGeoAt=0;
@@ -60,10 +60,12 @@ function dateEligible(c){
  return true
 }
 function targetEligible(c){
+ // Solo se excluye una campaña si existe una incompatibilidad CONFIRMADA.
+ // La ausencia temporal de datos de ubicación nunca bloquea anuncios aprobados.
  const cc=countryCode(c.country),xc=countryCode(context.country);
- if(cc&&cc!=='ALL'&&(!xc||cc!==xc))return false;
- if(c.region){if(!context.region||normText(c.region)!==normText(context.region))return false}
- if(c.city){if(!context.city||normText(c.city)!==normText(context.city))return false}
+ if(cc&&cc!=='ALL'&&xc&&cc!==xc)return false;
+ if(c.region&&context.region&&normText(c.region)!==normText(context.region))return false;
+ if(c.city&&context.city&&normText(c.city)!==normText(context.city))return false;
  return true
 }
 function normalizeCampaign(c){
@@ -167,16 +169,16 @@ async function refresh(){
 }
 function schedule(){
  clearInterval(refreshTimer);refreshTimer=0;if(!config.enabled)return;
- const ms=Math.max(60000,Number(config.refreshMs)||60000);refreshTimer=setInterval(()=>{void refresh()},ms)
+ const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.1.2',
+ version:'2.2.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
    if('enabled'in options)config.enabled=!!options.enabled;
    if('adminUrl'in options)config.adminUrl=validHTTPS(options.adminUrl)||null;
-   if('refreshMs'in options)config.refreshMs=Math.max(60000,Number(options.refreshMs)||60000);
+   if('refreshMs'in options)config.refreshMs=Math.max(10000,Number(options.refreshMs)||10000);
    schedule();if(config.enabled)void refresh();else{catalog=[];rawCampaigns=[];applyWhenReady()}return true
  },
  setContext(next){
@@ -193,10 +195,10 @@ const API={
 try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writable:false,configurable:false})}catch(_){window.TaskFlowADS=Object.freeze(API)}
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule()},{once:true});else{observeSlots();void refresh();schedule()}
-window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>30000)void refresh();else applyWhenReady()},{passive:true});
+window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>8000)void refresh();else applyWhenReady()},{passive:true});
 window.addEventListener('online',()=>{void refresh()},{passive:true});
 document.addEventListener('taskflow:noads-status-updated',e=>{if(e.detail&&e.detail.active)apply();else void refresh()});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>30000)void refresh()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>8000)void refresh()});
 // Convierte coordenadas autorizadas a municipio/departamento con una consulta
 // geográfica de precisión reducida. No transmite UID, correo ni hábitos.
 async function resolveAuthorizedRegion(position){
