@@ -1,0 +1,330 @@
+/* TaskFlow V71 · Réplica visual de las 4 tarjetas del inicio, imagen 1000021435.png.
+   Sin tocar eventos, rutinas, recompensas, tienda, presupuesto ni contadores. */
+body.tf37-home #v27MainHub{
+  column-gap:10px!important;row-gap:10px!important;
+  align-items:stretch!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button.habit,
+body.tf37-home #v27MainHub .v27-hub-button.task,
+body.tf37-home #tfPairV117 > #tf503020Hub,
+body.tf37-home #tfPairV117 > #tfMentalistPairV117{
+  position:relative!important;
+  box-sizing:border-box!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  border-radius:20px!important;
+  min-width:0!important;
+  min-height:100px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:13px 12px!important;
+  text-align:left!important;
+  transform:translateZ(0);
+  -webkit-tap-highlight-color:transparent;
+  transition:filter .18s ease,box-shadow .18s ease,transform .18s ease!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task){
+  display:grid!important;
+  grid-template-columns:clamp(49px,15.5vw,70px) minmax(0,1fr)!important;
+  column-gap:10px!important;
+  align-content:center!important;
+  align-items:center!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > span:not(.v30-hub-icon){
+  display:flex!important;flex-direction:column!important;
+  justify-content:center!important;align-items:flex-start!important;
+  min-width:0!important;position:relative!important;z-index:2!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > span b,
+body.tf37-home #tfPairV117 > #tf503020Hub > span b{
+  display:block!important;
+  font-size:clamp(14px,3.5vw,18px)!important;
+  line-height:1.10!important;
+  letter-spacing:-.025em!important;
+  font-weight:920!important;
+  color:#fff!important;
+  margin:0 0 5px!important;
+  text-shadow:0 1px 4px rgba(0,0,0,.45)!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > span small,
+body.tf37-home #tfPairV117 > #tf503020Hub > span small{
+  display:block!important;min-width:0!important;
+  color:#b5c3d7!important;
+  font-size:clamp(10px,2.8vw,12px)!important;
+  line-height:1.22!important;
+  font-weight:480!important;letter-spacing:0!important;
+  white-space:normal!important;overflow-wrap:normal!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.30)!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > .v30-hub-icon,
+body.tf37-home #tfPairV117 > #tf503020Hub > .v30-hub-icon,
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-icon{
+  width:clamp(52px,14.6vw,70px)!important;
+  height:clamp(52px,14.6vw,70px)!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  justify-self:center!important;
+  display:grid!important;place-items:center!important;
+  position:relative!important;z-index:2!important;
+  flex:none!important;
+  border-radius:18px!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  background-size:94% 94%!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > .v30-hub-icon svg,
+body.tf37-home #tfPairV117 > #tf503020Hub > .v30-hub-icon svg,
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-icon svg,
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-icon i{
+  opacity:0!important;
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > i,
+body.tf37-home #tfPairV117 > #tf503020Hub > i{
+  position:absolute!important;
+  right:11px!important;bottom:10px!important;
+  width:16px!important;height:16px!important;
+  font-size:15px!important;
+  opacity:.92!important;color:#d7f8ff!important;
+  z-index:4!important;
+  pointer-events:none!important;
+}
+/* DORADO / RECOMPENSAS — marco, brillo oblicuo, regalo y corona */
+body.tf37-home #v27MainHub > .v27-hub-button.habit{
+  background:
+    radial-gradient(ellipse 90% 110% at -11% 14%,rgba(255,179,52,.30),transparent 60%),
+    radial-gradient(ellipse 76% 50% at 106% 112%,rgba(255,171,50,.22),transparent 73%),
+    linear-gradient(133deg,#553018 0%,#2c211d 40%,#111827 100%)!important;
+  border:1.4px solid rgba(255,190,66,.95)!important;
+  box-shadow:0 0 0 1px rgba(255,171,37,.11),0 0 17px rgba(255,172,41,.41),inset 0 1px 0 rgba(255,225,122,.50),inset 0 -18px 34px rgba(255,146,29,.07)!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.habit:before{
+  content:"♛"!important;
+  position:absolute!important;right:11px!important;top:4px!important;
+  font-size:22px!important;font-weight:900!important;
+  color:#ffbd47!important;text-shadow:0 0 11px rgba(255,178,35,.9)!important;
+  z-index:3!important;pointer-events:none!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.habit:after{
+  content:""!important;
+  position:absolute!important;
+  width:130px!important;height:115px!important;
+  right:-35px!important;bottom:-82px!important;
+  border-radius:60% 0 0 0!important;
+  border-top:1.4px solid rgba(255,208,106,.70)!important;
+  background:linear-gradient(151deg,rgba(238,159,47,.23),transparent 57%)!important;
+  box-shadow:0 -7px 25px rgba(246,169,53,.15)!important;
+  transform:rotate(-25deg)!important;z-index:0!important;
+  pointer-events:none!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.habit > .v30-hub-icon{
+  background-color:rgba(95,54,27,.52)!important;
+  background-image:url('./assets/taskflow-hub-rewards-v71.svg')!important;
+  border:1.1px solid rgba(255,201,102,.65)!important;
+  box-shadow:inset 0 0 18px rgba(252,185,50,.15),0 0 15px rgba(255,167,39,.35)!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.habit > span b{color:#fff6eb!important}
+/* CIAN / TIENDA — fachada luminosa y etiqueta en la esquina */
+body.tf37-home #v27MainHub > .v27-hub-button.task{
+  background:
+    radial-gradient(ellipse 110% 85% at 12% -25%,rgba(9,237,255,.23),transparent 61%),
+    radial-gradient(ellipse 100% 75% at 104% 118%,rgba(15,157,218,.27),transparent 67%),
+    linear-gradient(138deg,#073c4c,#04223a 53%,#051b36 100%)!important;
+  border:1.4px solid rgba(16,222,247,.88)!important;
+  box-shadow:0 0 0 1px rgba(16,227,255,.13),0 0 17px rgba(0,232,255,.38),inset 0 1px 0 rgba(111,255,255,.42),inset 0 -21px 30px rgba(5,131,188,.18)!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.task:before{
+  content:"◇"!important;
+  position:absolute!important;top:5px!important;right:13px!important;
+  color:#25e8ff!important;font-size:22px!important;font-weight:500!important;
+  text-shadow:0 0 10px rgba(5,226,255,.9)!important;
+  transform:rotate(42deg)!important;z-index:3!important;pointer-events:none!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.task:after{
+  content:""!important;
+  position:absolute!important;bottom:-47px!important;right:-33px!important;
+  width:175px!important;height:90px!important;
+  border-top:1px solid rgba(24,235,255,.60)!important;
+  border-radius:100% 0 0 0!important;
+  background:linear-gradient(160deg,rgba(5,204,247,.24),transparent 64%)!important;
+  transform:rotate(-18deg)!important;z-index:0!important;pointer-events:none!important;
+}
+body.tf37-home #v27MainHub > .v27-hub-button.task > .v30-hub-icon{
+  background-color:rgba(4,97,119,.42)!important;
+  background-image:url('./assets/taskflow-hub-shop-v71.svg')!important;
+  border:1.1px solid rgba(83,238,255,.48)!important;
+  box-shadow:0 0 18px rgba(13,228,246,.32),inset 0 0 19px rgba(21,191,231,.18)!important;
+}
+/* SEGUNDA FILA: 50/30/20 y Mentalista, sin modificar su configuración. */
+body.tf37-home #v27MainHub > #tfPairV117:not(.tf49-empty):not(.tf119-empty){
+  gap:10px!important;
+  margin:0!important;padding:0!important;
+  align-content:stretch!important;
+}
+body.tf37-home #tfPairV117 > #tf503020Hub{
+  display:grid!important;
+  grid-template-columns:clamp(49px,15.5vw,70px) minmax(0,1fr)!important;
+  column-gap:10px!important;
+  align-items:center!important;align-content:center!important;
+  background:
+    radial-gradient(ellipse 90% 110% at -9% 5%,rgba(0,255,199,.28),transparent 58%),
+    radial-gradient(ellipse 77% 80% at 98% 107%,rgba(0,222,181,.14),transparent 75%),
+    linear-gradient(139deg,#024c49 0%,#022c35 45%,#041c29 100%)!important;
+  border:1.4px solid rgba(10,250,187,.84)!important;
+  box-shadow:0 0 0 1px rgba(7,250,194,.13),0 0 18px rgba(0,246,170,.41),inset 0 1px 0 rgba(118,255,218,.52),inset 0 -14px 28px rgba(0,160,129,.10)!important;
+}
+body.tf37-home #tfPairV117 > #tf503020Hub:before{
+  content:""!important;
+  position:absolute!important;inset:auto -21px -50px auto!important;
+  width:145px!important;height:100px!important;
+  border-top:1px solid rgba(40,255,192,.55)!important;border-radius:80% 0 0 0!important;
+  background:radial-gradient(ellipse 80% 100% at 100% 100%,rgba(8,233,179,.20),transparent 73%)!important;
+  transform:rotate(-23deg)!important;z-index:0!important;pointer-events:none!important;
+}
+body.tf37-home #tfPairV117 > #tf503020Hub:after{
+  content:""!important;
+  position:absolute!important;right:11px!important;bottom:6px!important;
+  width:76px!important;height:40px!important;
+  background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(4,240,190,.29) 9px 15px,transparent 15px 20px)!important;
+  clip-path:polygon(0 83%,20% 61%,38% 70%,56% 37%,75% 43%,100% 5%,100% 100%,0 100%)!important;
+  opacity:.68!important;z-index:0!important;pointer-events:none!important;
+}
+body.tf37-home #tfPairV117 > #tf503020Hub > .v30-hub-icon{
+  background-color:rgba(4,94,83,.45)!important;
+  background-image:url('./assets/taskflow-hub-budget-v71.svg')!important;
+  border:1.1px solid rgba(57,255,200,.62)!important;
+  box-shadow:0 0 16px rgba(15,255,173,.46),inset 0 0 17px rgba(9,205,171,.20)!important;
+}
+body.tf37-home #tfPairV117 > #tf503020Hub > span:not(.v30-hub-icon){
+  position:relative!important;z-index:2!important;
+  min-width:0!important;display:flex!important;flex-direction:column!important;
+}
+/* VIOLETA / MENTALISTA — protocolo visible, ojo, contador dinámico. */
+body.tf37-home #tfPairV117 > #tfMentalistPairV117{
+  display:grid!important;
+  grid-template-columns:clamp(49px,15.5vw,70px) minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  column-gap:10px!important;
+  row-gap:0!important;
+  align-items:center!important;
+  padding:12px 10px!important;
+  background:
+    radial-gradient(ellipse 100% 105% at -10% 16%,rgba(185,62,255,.40),transparent 62%),
+    radial-gradient(ellipse 85% 95% at 106% 28%,rgba(140,19,255,.28),transparent 65%),
+    linear-gradient(139deg,#301054 0%,#1a113a 52%,#150e31 100%)!important;
+  border:1.5px solid rgba(209,89,255,.95)!important;
+  box-shadow:0 0 0 1px rgba(165,67,252,.19),0 0 18px rgba(188,56,255,.49),inset 0 1px 0 rgba(236,153,255,.54),inset 0 -12px 26px rgba(155,45,246,.17)!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117:before{
+  content:"›"!important;
+  position:absolute!important;right:9px!important;bottom:8px!important;
+  font-size:28px!important;line-height:1!important;font-weight:300!important;
+  color:#fbdeff!important;text-shadow:0 0 7px rgba(224,110,255,.8)!important;
+  z-index:4!important;pointer-events:none!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117:after{
+  content:""!important;
+  position:absolute!important;
+  right:-28px!important;top:-15px!important;
+  width:145px!important;height:150px!important;
+  border-radius:52%!important;
+  background:
+    repeating-conic-gradient(from -27deg at 66% 47%,transparent 0deg 19deg,rgba(185,63,255,.13) 21deg 26deg,transparent 29deg 61deg),
+    radial-gradient(ellipse,rgba(184,35,249,.22),transparent 72%)!important;
+  filter:blur(2px)!important;opacity:.82!important;
+  z-index:0!important;pointer-events:none!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-icon{
+  grid-column:1!important;grid-row:1/3!important;
+  align-self:center!important;
+  background-color:rgba(74,14,118,.39)!important;
+  background-image:url('./assets/taskflow-hub-mentalist-v71.svg')!important;
+  border:1.2px solid rgba(225,118,255,.68)!important;
+  box-shadow:0 0 19px rgba(205,66,255,.55),inset 0 0 19px rgba(162,41,235,.23)!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy{
+  grid-column:2!important;grid-row:1!important;
+  justify-self:stretch!important;align-self:end!important;
+  width:100%!important;min-width:0!important;
+  display:flex!important;flex-direction:column!important;
+  position:relative!important;z-index:2!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy .kicker{
+  display:block!important;
+  font-size:clamp(9px,2.45vw,12px)!important;
+  font-weight:900!important;line-height:1.0!important;
+  letter-spacing:.18em!important;color:#38eeff!important;
+  text-shadow:0 0 7px rgba(0,224,255,.42)!important;
+  margin-bottom:5px!important;
+  white-space:normal!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy strong{
+  display:block!important;font-weight:950!important;
+  font-size:clamp(15px,3.65vw,19px)!important;
+  line-height:1.12!important;
+  color:#fff!important;letter-spacing:-.025em!important;
+  text-shadow:0 1px 6px rgba(0,0,0,.42)!important;
+}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy small{display:none!important}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-bar{display:none!important}
+body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-progress{
+  grid-column:2!important;grid-row:2!important;
+  justify-self:start!important;align-self:start!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-width:clamp(56px,13vw,78px)!important;
+  min-height:24px!important;
+  margin:5px 0 0!important;padding:2px 12px!important;
+  border:1px solid rgba(226,140,255,.48)!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,rgba(86,27,128,.77),rgba(127,49,170,.49))!important;
+  box-shadow:inset 0 1px 6px rgba(209,120,255,.12),0 0 11px rgba(198,49,248,.26)!important;
+  color:#f1d2ff!important;
+  font-size:clamp(11px,3vw,15px)!important;
+  line-height:1!important;font-weight:850!important;
+  font-variant-numeric:tabular-nums!important;
+  text-shadow:0 0 5px rgba(210,118,255,.42)!important;
+  position:relative!important;z-index:2!important;
+}
+/* Interacción: solo un pequeño realce; no sustituye el comportamiento de los botones. */
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task):hover,
+ body.tf37-home #tfPairV117 > #tf503020Hub:hover,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117:hover{
+  filter:brightness(1.08) saturate(1.10)!important;
+ }
+}
+body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task):active,
+body.tf37-home #tfPairV117 > #tf503020Hub:active,
+body.tf37-home #tfPairV117 > #tfMentalistPairV117:active{
+ transform:scale(.985)!important;
+}
+@media(max-width:380px){
+ body.tf37-home #v27MainHub .v27-hub-button.habit,
+ body.tf37-home #v27MainHub .v27-hub-button.task,
+ body.tf37-home #tfPairV117 > #tf503020Hub,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117{
+  min-height:106px!important;padding:10px 8px!important;
+ }
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task),
+ body.tf37-home #tfPairV117 > #tf503020Hub,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117{
+  grid-template-columns:46px minmax(0,1fr)!important;column-gap:7px!important;
+ }
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > .v30-hub-icon,
+ body.tf37-home #tfPairV117 > #tf503020Hub > .v30-hub-icon,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-icon{
+  width:45px!important;height:49px!important;border-radius:14px!important;
+ }
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > span b,
+ body.tf37-home #tfPairV117 > #tf503020Hub > span b,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy strong{font-size:13.5px!important}
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task) > span small,
+ body.tf37-home #tfPairV117 > #tf503020Hub > span small{font-size:9.6px!important}
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117 .v94-mentalist-copy .kicker{font-size:8.4px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body.tf37-home #v27MainHub .v27-hub-button:is(.habit,.task),
+ body.tf37-home #tfPairV117 > #tf503020Hub,
+ body.tf37-home #tfPairV117 > #tfMentalistPairV117{transition:none!important}
+}
