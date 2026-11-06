@@ -71,5 +71,12 @@ jobs:
           assert.ok(live.includes('img.naturalWidth===WIDTH*2')&&live.includes('v.videoWidth===WIDTH*2'),'Anuncios HD 2x no admitidos');
           assert.ok(!live.includes("let stamp=Number(get('tf_audio_reset_device_t34'))"),'Reinicio diario confundido con reinicio manual');
           assert.ok(live.includes('taskflow-v58-stability.js'),'Protección diaria no cargada');
-          console.log('OK: núcleo, cargador, ADS HD, rutinas, PayPal preparado y',assets.length,'archivos offline.');
+          assert.ok(root.includes('Math.min(6,parts.length)')&&root.includes('AbortController'),'Cargador T57 sin límite de concurrencia');
+          assert.ok(root.includes("p==='t57/runtime-06.txt'"),'Falta versión de autenticación segura');
+          const liveAuth=read('t57/runtime-06.txt');
+          assert.ok(liveAuth.includes('st.idToken=null;st.expiresAt=0;')&&!liveAuth.includes('idToken:st.idToken,expiresAt:st.expiresAt'),'El token temporal no debe persistirse');
+          const liveHead=read('t57/runtime-00.txt');
+          assert.ok(liveHead.includes("object-src 'none'")&&liveHead.includes('no-referrer'),'Falta protección básica en T57');
+          assert.ok(sw.includes('async function previousRuntimeResource')&&sw.includes('const key=url.href;'),'No se conserva respaldo de fragmentos offline');
+          console.log('OK: núcleo, carga T57, autenticación, protección, ADS HD, rutinas, PayPal preparado y',assets.length,'archivos offline.');
           NODE
