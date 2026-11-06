@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.2.2
+/* TaskFlow ADS Bridge v2.2.3
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -94,11 +94,84 @@ function pick(placement,slot){
  try{localStorage.setItem(lastKey(placement,slot),ad.id)}catch(_){}
  return ad
 }
-function bannerNode(ad){
- if(!ad)return null;
- const img=document.createElement('img');img.src=ad.src;img.alt='';img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';img.draggable=false;img.style.imageRendering='auto';img.style.objectFit='contain';try{img.fetchPriority='high'}catch(_){}
+/* Nunca insertar un <img> sin verificar que el archivo se haya cargado realmente.
+   Si la URL caducó, la carga falló o el archivo tiene medidas incorrectas,
+   intentar otros creativos aprobados. No alterar el anuncio de ingreso o interacción. */
+const bannerFailures=new Map(),bannerStatus=new Map(),bannerBusy=new Set();
+const BANNER_TURN_MS=30000,IMAGE_TIMEOUT_MS=10000,BANNER_RETRY_MS=60000;
+function bannerCandidates(slot){
+ const list=catalog.filter(a=>a.placement==='banner'&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
+ if(!list.length)return [];
+ const shown=bannerStatus.get(slot),last=shown&&shown.id||'';
+ const unseen=list.filter(a=>a.id!==last),seen=list.filter(a=>a.id===last);
+ const shuffle=items=>items.map(a=>({a,r:Math.random()})).sort((a,b)=>a.r-b.r).map(o=>o.a);
+ return shuffle(unseen).concat(shuffle(seen));
+}
+function validBannerPixels(img){
+ const w=img.naturalWidth,h=img.naturalHeight;
+ return (w===1200&&h===180)||(w===2400&&h===360);
+}
+function testedBanner(ad){
+ return new Promise(resolve=>{
+  if(!ad||!ad.src){resolve(null);return}
+  const img=new Image();let finished=false;
+  const timeout=setTimeout(()=>done(null),IMAGE_TIMEOUT_MS);
+  function done(result){
+   if(finished)return;
+   finished=true;clearTimeout(timeout);img.onload=null;img.onerror=null;
+   if(!result)bannerFailures.set(ad.src,Date.now()+BANNER_RETRY_MS);
+   else bannerFailures.delete(ad.src);
+   resolve(result);
+  }
+  img.alt='';img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
+  img.draggable=false;img.style.objectFit='contain';img.style.imageRendering='auto';
+  try{img.fetchPriority='high'}catch(_){}
+  img.onload=()=>done(validBannerPixels(img)?img:null);
+  img.onerror=()=>done(null);
+  img.src=ad.src;
+  if(img.complete)queueMicrotask(()=>{if(!finished&&img.complete)done(validBannerPixels(img)?img:null)});
+ });
+}
+function bannerNode(ad,img){
+ if(!img)return null;
  if(!ad.destination)return img;
- const a=document.createElement('a');a.href=ad.destination;a.target='_blank';a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';a.appendChild(img);return a
+ const a=document.createElement('a');a.href=ad.destination;a.target='_blank';
+ a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';
+ a.appendChild(img);return a;
+}
+async function displayBanner(slot){
+ if(bannerBusy.has(slot)||!config.enabled)return;
+ const element=document.getElementById(slot);
+ if(!element)return;
+ const candidates=bannerCandidates(slot);
+ const displayed=bannerStatus.get(slot);
+ const live=element.querySelector('img');
+ const current=displayed&&catalog.some(a=>a.placement==='banner'&&a.id===displayed.id&&a.src===displayed.src);
+ if(current&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
+ bannerBusy.add(slot);
+ try{
+  for(const ad of candidates){
+   // Se conserva el anuncio anterior durante la validación, evitando destellos vacíos.
+   const img=await testedBanner(ad);
+   if(!config.enabled||(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()))return;
+   if(!img)continue;
+   if(!document.getElementById(slot))return;
+   if(!catalog.some(x=>x.placement==='banner'&&x.id===ad.id&&x.src===ad.src))continue;
+   if(window.TaskFlowAdsV50.render(slot,bannerNode(ad,img))){
+    bannerStatus.set(slot,{id:ad.id,src:ad.src,at:Date.now()});
+    try{localStorage.setItem(lastKey('banner',slot),ad.id)}catch(_){}
+    return;
+   }
+  }
+  // No mostrar nunca el icono roto del navegador.
+  const currentAd=bannerStatus.get(slot);
+  const stillEligible=currentAd&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
+  if(!stillEligible||!live||!live.complete||!validBannerPixels(live)){
+   bannerStatus.delete(slot);
+   window.TaskFlowAdsV50.render(slot,null);
+  }
+ }catch(e){console.warn('TaskFlow ADS: no fue posible mostrar banner',slot,e)}
+ finally{bannerBusy.delete(slot)}
 }
 function runtimeReady(){
  return !!(window.TaskFlowAdsV50&&window.TaskFlowAdsV50.render&&window.TaskFlowEntryAdV56&&window.TaskFlowEntryAdV56.setCreative&&window.TaskFlowInteractionAdV57&&window.TaskFlowInteractionAdV57.setCreative)
@@ -106,11 +179,11 @@ function runtimeReady(){
 function apply(){
  if(!config.enabled||!runtimeReady())return false;
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()){
-  BANNER_SLOTS.forEach(slot=>{try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
+  BANNER_SLOTS.forEach(slot=>{bannerStatus.delete(slot);try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
   return false;
  }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
- BANNER_SLOTS.forEach(slot=>{const ad=pick('banner',slot);try{window.TaskFlowAdsV50.render(slot,bannerNode(ad))}catch(e){console.warn('TaskFlow ADS banner:',e)}});
+ BANNER_SLOTS.forEach(slot=>{void displayBanner(slot)});
  const entry=pick('entry','entry');
  let entryReady=false;
  try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
@@ -172,7 +245,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.2.2',
+ version:'2.2.3',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
