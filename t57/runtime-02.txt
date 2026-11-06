@@ -281,7 +281,7 @@ const RAW='https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+SHA+'/';
 const CDN='https://cdn.jsdelivr.net/gh/'+OWNER+'/'+REPO+'@'+SHA+'/';
 const ENTRY='taskflow-loader-v102.html';
 const STARTED=performance.now();
-const MIN_BOOT_MS=0;
+const MIN_BOOT_MS=10000;
 const CSS_FILES=[
   'taskflow-503020.css', 'taskflow-profile-v108.css',
   'taskflow-v130103-color-filters.css', 'taskflow-v130108-reference-ui.css',
@@ -305,16 +305,16 @@ const JS_FILES=[
 ];
 const $=id=>document.getElementById(id);
 const boot=$('boot'),message=$('msg'),detail=$('detail'),retry=$('retry');
-// La ilustración permanece visible mientras se prepara TaskFlow, sin espera artificial.
+// La pantalla ilustrada avanza hasta 100 % durante los 10 segundos mínimos de carga.
 const progress=$('tfLiveProgress'),progressFill=$('tfProgressFill'),progressLabel=$('tfProgressLabel');
 function advanceLoadingProgress(now){
   if(!document.contains(boot)||boot.classList.contains('error'))return;
   const elapsed=Math.max(0,now-STARTED);
-  const value=Math.min(95,Math.floor(95*(1-Math.exp(-elapsed/5200))));
+  const value=Math.min(100,Math.floor((elapsed/MIN_BOOT_MS)*100));
   if(progressFill)progressFill.style.transform='scaleX('+(value/100)+')';
   if(progressLabel)progressLabel.textContent=value+'%';
   if(progress)progress.setAttribute('aria-valuenow',String(value));
-  requestAnimationFrame(advanceLoadingProgress);
+  if(value<100)requestAnimationFrame(advanceLoadingProgress);
 }
 requestAnimationFrame(advanceLoadingProgress);
 let fetching=false;
