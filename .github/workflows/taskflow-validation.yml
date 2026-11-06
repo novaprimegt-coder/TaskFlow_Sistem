@@ -50,7 +50,7 @@ jobs:
           assert.equal(core.split('function v30OpenStore(){').length-1,1,'Tienda debe tener una definición');
           assert.ok(core.includes('function setupQuickActionButtons(){'),'Faltan acciones rápidas');
           assert.ok(loader.includes('tfShopHistorySafeV130126'),'Falta saneamiento no destructivo del historial');
-          assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.3.0'"),'Falta módulo vigente y puente ADS actualizado');
+          assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.4.0'"),'Falta módulo vigente y puente ADS actualizado');
           assert.ok(bridge.includes('function testedBanner(ad)')&&bridge.includes('async function displayBanner(slot)')&&bridge.includes('function validBannerPixels(img)'),'No se comprueba la carga real de banners');
           assert.ok(root.includes('t57/runtime-24.txt')&&root.includes('TF_T57'),'Falta el arranque vigente T57');
           assert.ok(!root.includes('Función de tienda inesperada; se conserva el paquete original'),'Error de arranque antiguo reintroducido');
