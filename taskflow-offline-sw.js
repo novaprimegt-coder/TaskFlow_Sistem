@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t64-ready-hd-20261106';
-const RUNTIME_CACHE='taskflow-offline-runtime-t64-ready-hd-20261106';
+const SHELL_CACHE='taskflow-offline-shell-t65-atomic-runtime-version-20261106';
+const RUNTIME_CACHE='taskflow-offline-runtime-t65-atomic-runtime-version-20261106';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -182,7 +182,8 @@ async function previousRuntimeResource(url){
  for(const name of previous){
    try{
      const old=await caches.open(name);
-     const saved=await old.match(url.origin+url.pathname,{ignoreSearch:true});
+     // El nombre y su versión deben coincidir: nunca combinar fragmentos incompatibles.
+    const saved=await old.match(url.href);
      if(saved)return saved;
    }catch(_){}
  }
