@@ -5,7 +5,7 @@
 if(window.TaskFlowNoAds)return;
 const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).href;
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
-let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null;
+let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,statusPromise=null;
 function safeBase(value){
  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return '';return u.href.replace(/\/$/,'')}catch(_){return ''}
 }
@@ -72,12 +72,21 @@ async function request(method,path){
  return data;
 }
 async function verifyStatus(){
- try{
-  await (ready||Promise.resolve());
-  if(!enabled)return false;
-  const data=await request('GET','/status');
-  setActive(data.active===true);return active;
- }catch(_){setActive(false);return false}
+ if(statusPromise)return statusPromise;
+ statusPromise=(async()=>{
+  try{
+   if(!enabled){await (ready||Promise.resolve());if(!enabled)return false}
+   const data=await request('GET','/status');
+   setActive(data.active===true);return active;
+  }catch(_){setActive(false);return false}
+ })();
+ try{return await statusPromise}finally{statusPromise=null}
+}
+async function waitForStatus(timeoutMs){
+ await (ready||Promise.resolve());
+ if(!enabled)return false;
+ const wait=Math.min(4000,Math.max(0,Number(timeoutMs)||2000));
+ return Promise.race([verifyStatus(),new Promise(resolve=>setTimeout(()=>resolve(false),wait))]);
 }
 function displayPeriod(){
  if(!plan)return '';
@@ -151,6 +160,6 @@ async function initialize(){
 ready=(document.readyState==='loading'
  ?new Promise(resolve=>document.addEventListener('DOMContentLoaded',()=>resolve(initialize()),{once:true}))
  :initialize());
-window.TaskFlowNoAds=Object.freeze({isActive:()=>active,refresh:verifyStatus,showCheckout,
+window.TaskFlowNoAds=Object.freeze({isActive:()=>active,refresh:verifyStatus,waitForStatus,showCheckout,
  ready:()=>ready});
 })();
