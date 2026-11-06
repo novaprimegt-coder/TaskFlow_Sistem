@@ -32,7 +32,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=61-ads-180-sec-media':p==='t57/runtime-19.txt'?'?v=60-ads-duration-180':'?v=57-ads21-paypal6-dailyfix1';
+   const version=/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=62-objective-cta-entry-interaction':p==='t57/runtime-19.txt'?'?v=62-objective-cta-bridge':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
