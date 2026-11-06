@@ -7,17 +7,17 @@
 <title>TaskFlow</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#030814;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-#tfBoot{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 34%,rgba(26,235,238,.12),transparent 30%),linear-gradient(160deg,#020713,#07142a 58%,#050817);z-index:2147483647}
+#tfBoot{position:fixed;inset:0;display:none;place-items:center;padding:24px;background:radial-gradient(circle at 50% 34%,rgba(26,235,238,.12),transparent 30%),linear-gradient(160deg,#020713,#07142a 58%,#050817);z-index:2147483647}
 .tfCard{width:min(430px,100%);padding:30px 24px;border-radius:28px;border:1px solid rgba(29,231,244,.42);background:rgba(7,15,34,.94);box-shadow:0 28px 90px rgba(0,0,0,.55),0 0 42px rgba(32,221,240,.12);text-align:center}
 .tfName{font-size:42px;font-weight:950;letter-spacing:-.04em;color:#28edf2}.tfMsg{margin-top:10px;color:#c9d6ed;font-size:13px}
 .tfBar{height:9px;margin-top:22px;border-radius:999px;background:#0a1730;overflow:hidden}.tfBar i{display:block;height:100%;width:100%;transform-origin:left;animation:tfLoad 8s linear infinite;background:linear-gradient(90deg,#22edf2,#6c5cff,#a32dff)}
 .tfErr{display:none;margin-top:14px;color:#ff9aa8;font-size:12px;line-height:1.45}.tfRetry{display:none;margin:15px auto 0;border:1px solid #26dce7;border-radius:12px;padding:10px 17px;background:#0d2636;color:#8ffaff;font-weight:850}
-#tfBoot.error .tfErr,#tfBoot.error .tfRetry{display:block}
+#tfBoot.error{display:grid}#tfBoot.error .tfErr,#tfBoot.error .tfRetry{display:block}
 @keyframes tfLoad{0%{transform:scaleX(.08)}50%{transform:scaleX(.68)}100%{transform:scaleX(1)}}
 </style>
 </head>
 <body>
-<div id="tfBoot"><div class="tfCard"><div class="tfName">TaskFlow</div><div class="tfMsg">Cargando TaskFlow…</div><div class="tfBar" aria-hidden="true"><i></i></div><div class="tfErr" id="tfErr">No fue posible iniciar TaskFlow.</div><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
+<div id="tfBoot"><div class="tfCard"><div class="tfName">TaskFlow</div><div class="tfErr" id="tfErr">No fue posible iniciar TaskFlow.</div><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 <script>
 (async function(){
 'use strict';
