@@ -1,0 +1,13 @@
+{
+  "name": "taskflow-paypal-noads-functions",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.4.0"
+  }
+}
