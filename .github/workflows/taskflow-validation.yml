@@ -50,6 +50,7 @@ jobs:
           assert.equal(core.split('function v30OpenStore(){').length-1,1,'Tienda debe tener una definición');
           assert.ok(core.includes('function setupQuickActionButtons(){'),'Faltan acciones rápidas');
           assert.ok(loader.includes('tfShopHistorySafeV130126'),'Falta saneamiento no destructivo del historial');
+          assert.ok(!loader.includes('Preparando el sistema')&&loader.includes('.boot.error'),'El cargador visual antiguo sigue disponible o falta recuperación');
           assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.4.1'"),'Falta módulo vigente y puente ADS actualizado');
           assert.ok(bridge.includes('function testedBanner(ad)')&&bridge.includes('async function displayBanner(slot)')&&bridge.includes('function validBannerPixels(img)'),'No se comprueba la carga real de banners');
           assert.ok(root.includes('t57/runtime-24.txt')&&root.includes('TF_T57'),'Falta el arranque vigente T57');
@@ -85,6 +86,7 @@ jobs:
           const liveHead=read('t57/runtime-00.txt');
           assert.ok(liveHead.includes("object-src 'none'")&&liveHead.includes('no-referrer'),'Falta protección básica en T57');
           assert.ok(sw.includes('async function previousRuntimeResource')&&sw.includes('const key=url.href;'),'No se conserva respaldo de fragmentos offline');
+          assert.ok(sw.includes('old.match(url.href)')&&!sw.includes('old.match(url.origin+url.pathname,{ignoreSearch:true})'),'Recuperación offline mezcla revisiones de fragmentos');
           assert.ok(sw.includes('async function freshStaticResource')&&sw.includes("cache:'no-cache'"),'Los JS/CSS deben actualizarse con respaldo offline');
           console.log('OK: núcleo, carga T57, autenticación, protección, ADS HD, rutinas, PayPal preparado y',assets.length,'archivos offline.');
           NODE
