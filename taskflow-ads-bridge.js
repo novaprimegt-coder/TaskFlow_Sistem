@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.1.1
+/* TaskFlow ADS Bridge v2.1.2
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -16,7 +16,7 @@ let slotObserver=null,slotUpdateQueued=false;
 let geoPending=null,lastGeoGrid='',lastGeoAt=0;
 const GEO_GRID_CACHE='tf_ads_geo_gt_grid_v1';
 const GEO_API='https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_guatemala/FeatureServer/0/query';
-let context={country:localeCountry(),region:'',city:''};
+let context={country:'',region:'',city:''};
 
 function validHTTPS(value){
  if(typeof value!=='string'||!value.trim())return '';
@@ -24,8 +24,18 @@ function validHTTPS(value){
 }
 function normText(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es')}
 function countryCode(v){const c=normText(v);return c==='guatemala'||c==='gt'?'GT':c.toUpperCase()}
-function localeCountry(){
- try{const lang=String(navigator.language||'');const m=lang.match(/[-_]([A-Za-z]{2})$/);return m?m[1].toUpperCase():''}catch(_){return ''}
+// Los idiomas (p. ej., es-US) no prueban dónde está el usuario.
+// Polígono simplificado de Guatemala (GeoJSON público; johan/world.geo.json, GTM).
+const GT_BOUNDARY=[[-90.095555,13.735338],[-90.608624,13.909771],[-91.23241,13.927832],[-91.689747,14.126218],[-92.22775,14.538829],[-92.20323,14.830103],[-92.087216,15.064585],[-92.229249,15.251447],[-91.74796,16.066565],[-90.464473,16.069562],[-90.438867,16.41011],[-90.600847,16.470778],[-90.711822,16.687483],[-91.08167,16.918477],[-91.453921,17.252177],[-91.002269,17.254658],[-91.00152,17.817595],[-90.067934,17.819326],[-89.14308,17.808319],[-89.150806,17.015577],[-89.229122,15.886938],[-88.930613,15.887273],[-88.604586,15.70638],[-88.518364,15.855389],[-88.225023,15.727722],[-88.68068,15.346247],[-89.154811,15.066419],[-89.22522,14.874286],[-89.145535,14.678019],[-89.353326,14.424133],[-89.587343,14.362586],[-89.534219,14.244816],[-89.721934,14.134228],[-90.064678,13.88197],[-90.095555,13.735338]];
+function verifiedCountryFromLocation(position){
+ const lat=Number(position&&position.latitude),lng=Number(position&&position.longitude);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng)||!lat||!lng)return '';
+ let inside=false;
+ for(let i=0,j=GT_BOUNDARY.length-1;i<GT_BOUNDARY.length;j=i++){
+  const a=GT_BOUNDARY[i],b=GT_BOUNDARY[j];
+  if((a[1]>lat)!==(b[1]>lat) && lng<(b[0]-a[0])*(lat-a[1])/(b[1]-a[1])+a[0])inside=!inside;
+ }
+ return inside?'GT':'';
 }
 function decode(v){
  if(!v||typeof v!=='object')return null;
@@ -51,7 +61,7 @@ function dateEligible(c){
 }
 function targetEligible(c){
  const cc=countryCode(c.country),xc=countryCode(context.country);
- if(cc&&cc!=='ALL'&&xc&&cc!==xc)return false;
+ if(cc&&cc!=='ALL'&&(!xc||cc!==xc))return false;
  if(c.region){if(!context.region||normText(c.region)!==normText(context.region))return false}
  if(c.city){if(!context.city||normText(c.city)!==normText(context.city))return false}
  return true
@@ -160,7 +170,7 @@ function schedule(){
  const ms=Math.max(60000,Number(config.refreshMs)||60000);refreshTimer=setInterval(()=>{void refresh()},ms)
 }
 const API={
- version:'2.1.1',
+ version:'2.1.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -171,7 +181,7 @@ const API={
  },
  setContext(next){
    if(!next||typeof next!=='object')return false;
-   context={country:countryCode(next.country||context.country||''),region:String(next.region??context.region??''),city:String(next.city??context.city??'')};
+   context={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??'')};
    rebuildCatalog();return true
  },
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
@@ -192,8 +202,14 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now(
 async function resolveAuthorizedRegion(position){
  const lat=Number(position&&position.latitude),lng=Number(position&&position.longitude);
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<13.7||lat>18||lng< -92.3||lng> -88)return false;
+ // Solo se usa la posición que TaskFlow ya recibió con consentimiento.
+ if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
  const qlat=Number(lat.toFixed(3)),qlng=Number(lng.toFixed(3));
  const grid=qlat+','+qlng;
+ const country=verifiedCountryFromLocation({latitude:lat,longitude:lng});
+ if(grid!==lastGeoGrid||country!==context.country){
+  API.setContext({country,region:'',city:''});
+ }
  if(geoPending&&lastGeoGrid===grid)return geoPending;
  if(Date.now()-lastGeoAt<15*60*1000&&lastGeoGrid===grid&&context.region&&context.city)return true;
  lastGeoGrid=grid;
