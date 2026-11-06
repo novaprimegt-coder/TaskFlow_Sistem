@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.2.1
+/* TaskFlow ADS Bridge v2.2.2
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -96,7 +96,7 @@ function pick(placement,slot){
 }
 function bannerNode(ad){
  if(!ad)return null;
- const img=document.createElement('img');img.src=ad.src;img.alt='';img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';img.draggable=false;
+ const img=document.createElement('img');img.src=ad.src;img.alt='';img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';img.draggable=false;img.style.imageRendering='auto';img.style.objectFit='contain';try{img.fetchPriority='high'}catch(_){}
  if(!ad.destination)return img;
  const a=document.createElement('a');a.href=ad.destination;a.target='_blank';a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';a.appendChild(img);return a
 }
@@ -172,7 +172,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.2.1',
+ version:'2.2.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
