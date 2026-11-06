@@ -337,7 +337,7 @@ async function fetchText(url){
 }
 async function getLoader(){
   let last;
-  for(const url of [CDN+ENTRY,RAW+ENTRY]){
+  for(const url of [PAGES+ENTRY,CDN+ENTRY,RAW+ENTRY]){
     try{
       const src=await fetchText(url);
       if(!src.includes('tfShopHistorySafeV130126') || !src.includes('window.__tfCoreInitialized=true;'))throw new Error('El cargador no corresponde a V130.14.3');
