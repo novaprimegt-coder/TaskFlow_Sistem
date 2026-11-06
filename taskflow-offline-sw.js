@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t59-performance-auth-20261106';
-const RUNTIME_CACHE='taskflow-offline-runtime-t59-performance-auth-20261106';
+const SHELL_CACHE='taskflow-offline-shell-t62-fresh-static-20261106';
+const RUNTIME_CACHE='taskflow-offline-runtime-t62-fresh-static-20261106';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';
@@ -127,6 +127,24 @@ async function adsBridgeNetworkFirst(request,url){
  finally{clearTimeout(timeout)}
  return await cache.match(key,{ignoreSearch:true})||Response.error();
 }
+/* Los JS/CSS cambian con frecuencia. No servir indefinidamente una copia
+   obsoleta si hay Internet. Conservar caché para el uso sin conexión. */
+async function freshStaticResource(request,url,event){
+ const cache=await caches.open(SHELL_CACHE);
+ const key=url.origin+url.pathname;
+ const saved=await cache.match(key,{ignoreSearch:true});
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),saved?3200:9000);
+ try{
+  const fresh=await fetch(request,{cache:'no-cache',signal:controller.signal});
+  if(fresh&&fresh.ok&&fresh.type!=='opaque'){
+   try{event.waitUntil(cache.put(key,fresh.clone()).catch(()=>{}))}catch(_){}
+   return fresh;
+  }
+ }catch(_){}
+ finally{clearTimeout(timeout)}
+ return saved||Response.error();
+}
 async function cachedResource(request,cacheName,url){
  const cache=await caches.open(cacheName);
  const key=url.origin===self.location.origin?url.origin+url.pathname:url.href;
@@ -211,7 +229,8 @@ self.addEventListener('fetch',event=>{
      if(url.pathname===new URL('taskflow-loader-v102.html',base).pathname){
        event.respondWith(coreLoaderNetworkFirst(request,url));return;
      }
-     event.respondWith(cachedResource(request,SHELL_CACHE,url));return;
+     if(/\.(?:js|css)$/i.test(url.pathname))event.respondWith(freshStaticResource(request,url,event));
+     else event.respondWith(cachedResource(request,SHELL_CACHE,url));return;
    }
    if(mediaKeys.has(url.pathname)){
      event.respondWith(cachedResource(request,MEDIA_CACHE,url));return;
