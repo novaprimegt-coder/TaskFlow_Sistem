@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.4.0
+/* TaskFlow ADS Bridge v2.4.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -84,7 +84,7 @@ function normalizeCampaign(c){
    if(placement==='banner'&&!((width===1200&&height===180)||(width===2400&&height===360)))return null;
    if((placement==='entry'||placement==='interaction')&&!((width===1080&&height===1920)||(width===2160&&height===3840)))return null;
    if(type==='video'&&(!Number.isFinite(duration)||duration<9.95||duration>180.05))return null;
-   return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
+   return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
 }
 function lastKey(placement,slot){return 'taskflow_ads_last_v2_'+placement+'_'+String(slot||'default')}
@@ -92,7 +92,13 @@ function pick(placement,slot){
  const list=catalog.filter(a=>a.placement===placement);if(!list.length)return null;
  let last='';try{last=localStorage.getItem(lastKey(placement,slot))||''}catch(_){}
  const pool=list.length>1?list.filter(a=>a.id!==last):list;
- const idx=Math.floor(Math.random()*pool.length),ad=pool[idx]||pool[0];
+ const idx=Math.floor(Math.random()*pool.length),lead=pool[idx]||pool[0];
+ // Se conserva la selección de campaña, pero se prioriza su creativo HD si existe.
+ const siblings=pool.filter(a=>a.campaignId===lead.campaignId);
+ const hdWidth=placement==='banner'?2400:2160;
+ const hd=siblings.filter(a=>a.mediaWidth===hdWidth);
+ const options=hd.length?hd:siblings;
+ const ad=options[Math.floor(Math.random()*options.length)]||lead;
  try{localStorage.setItem(lastKey(placement,slot),ad.id)}catch(_){}
  return ad
 }
@@ -101,13 +107,41 @@ function pick(placement,slot){
    intentar otros creativos aprobados. No alterar el anuncio de ingreso o interacción. */
 const bannerFailures=new Map(),bannerStatus=new Map(),bannerBusy=new Set();
 const BANNER_TURN_MS=30000,IMAGE_TIMEOUT_MS=10000,BANNER_RETRY_MS=60000;
+const bannerNearViewport=new Set();
+let bannerViewportObserver=null;
+// No decodificar simultáneamente creativos fuera de pantalla (GIF grandes).
+function queueBanner(slot){
+ const element=document.getElementById(slot);if(!element)return;
+ if(typeof IntersectionObserver!=='function'){void displayBanner(slot);return}
+ if(!bannerViewportObserver){
+  bannerViewportObserver=new IntersectionObserver(entries=>{
+   for(const entry of entries){
+    const id=entry.target&&entry.target.id;
+    if(!BANNER_SLOTS.includes(id))continue;
+    if(entry.isIntersecting){bannerNearViewport.add(id);void displayBanner(id)}
+    else bannerNearViewport.delete(id);
+   }
+  },{root:null,rootMargin:'260px 0px',threshold:0});
+ }
+ bannerViewportObserver.observe(element);
+ if(bannerNearViewport.has(slot))void displayBanner(slot);
+}
 function bannerCandidates(slot){
  const list=catalog.filter(a=>a.placement==='banner'&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
  if(!list.length)return [];
  const shown=bannerStatus.get(slot),last=shown&&shown.id||'';
  const unseen=list.filter(a=>a.id!==last),seen=list.filter(a=>a.id===last);
  const shuffle=items=>items.map(a=>({a,r:Math.random()})).sort((a,b)=>a.r-b.r).map(o=>o.a);
- return shuffle(unseen).concat(shuffle(seen));
+ // Aleatorizar campañas y ofrecer primero la variante HD de cada una,
+ // sin excluir a anunciantes con creativos estándar.
+ const pool=shuffle(unseen).concat(shuffle(seen)),seenCampaigns=new Set(),ordered=[];
+ for(const ad of pool){
+  const key=ad.campaignId;
+  if(seenCampaigns.has(key))continue;
+  seenCampaigns.add(key);
+  ordered.push(...pool.filter(a=>a.campaignId===key).sort((a,b)=>(b.mediaWidth||0)-(a.mediaWidth||0)));
+ }
+ return ordered;
 }
 function validBannerPixels(img){
  const w=img.naturalWidth,h=img.naturalHeight;
@@ -148,7 +182,7 @@ function bannerNode(ad,img){
  return a;
 }
 async function displayBanner(slot){
- if(bannerBusy.has(slot)||!config.enabled)return;
+ if(bannerBusy.has(slot)||!config.enabled||(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()))return;
  const element=document.getElementById(slot);
  if(!element)return;
  const candidates=bannerCandidates(slot);
@@ -191,7 +225,7 @@ function apply(){
   return false;
  }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
- BANNER_SLOTS.forEach(slot=>{void displayBanner(slot)});
+ BANNER_SLOTS.forEach(slot=>{queueBanner(slot)});
  const entry=pick('entry','entry');
  let entryReady=false;
  try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
@@ -253,7 +287,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.4.0',
+ version:'2.4.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
