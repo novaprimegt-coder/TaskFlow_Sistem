@@ -21,6 +21,8 @@ function style(){
  #${MODAL_ID} .tf-paypal-close{float:right;border:1px solid #4d7891;background:#10223b;color:#fff;padding:9px 13px;border-radius:12px}
  #${MODAL_ID} .tf-paypal-status{font-size:13px;margin:16px 0;color:#d7e3ed}
  #${MODAL_ID} #tfPayPalButtons{min-height:0;margin-top:18px}
+ #${MODAL_ID} #tfPayPalCancel{display:block;margin:16px auto 0;padding:11px 15px;color:#ffe0d4;background:#241b32;border:1px solid #aa6673;border-radius:12px;font-weight:700}
+ #${MODAL_ID} #tfPayPalCancel[hidden]{display:none!important}
  `;
  document.head.appendChild(s);
 }
@@ -120,6 +122,19 @@ function paypalSdk(){
   document.head.appendChild(script);
  });return sdkPromise;
 }
+async function waitForFirstPayment(root,target){
+ for(let i=0;i<15;i++){
+  await new Promise(resolve=>setTimeout(resolve,3000));
+  if(await verifyStatus()){
+   target.replaceChildren();
+   statusText('Pago confirmado. Tu suscripción mensual sin anuncios está activa.');
+   root.querySelector('#tfPayPalCancel').hidden=false;
+   return true;
+  }
+ }
+ statusText('El pago continúa pendiente de confirmación. No inicies otro cobro; consulta tu estado más tarde.');
+ return false;
+}
 async function showCheckout(){
  if(busy)return false;
  try{await (ready||Promise.resolve());if(!enabled)return false;
@@ -164,7 +179,8 @@ async function showCheckout(){
       statusText('Pago verificado. Tu suscripción mensual sin anuncios está activa.');
       root.querySelector('#tfPayPalCancel').hidden=false;
      }else{
-      statusText('Suscripción aprobada; estamos esperando la confirmación del primer cobro. No se activará hasta verificarlo.');
+      statusText('Suscripción aprobada; esperando confirmación del primer cobro. No se activará hasta verificarlo.');
+      void waitForFirstPayment(root,target);
      }
     }catch(_){statusText('La suscripción necesita confirmación. Comprueba el estado antes de volver a pagar.');}
     finally{busy=false}
