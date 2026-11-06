@@ -29,7 +29,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-24.txt'?'?v=58-hd-daily-paypal-guard':p==='t57/runtime-19.txt'?'?v=58-banner-image-check-223':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=58-hd-daily-paypal-guard':p==='t57/runtime-19.txt'?'?v=58-banner-image-check-223':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
@@ -55,7 +55,7 @@ try{
  }
  await Promise.all(Array.from({length:Math.min(6,parts.length)},()=>worker()));
  const html=texts.join('');
- if(!html.toLowerCase().includes('<!doctype html>')||!html.includes('TF_T57'))throw new Error('INVALID');
+ if(!html.toLowerCase().includes('<!doctype html>')||!html.includes('TF_T57')||!/<\/html>\s*$/i.test(html))throw new Error('INVALID');
  document.open();document.write(html);document.close();
 }catch(_){boot.classList.add('error')}
 })();
