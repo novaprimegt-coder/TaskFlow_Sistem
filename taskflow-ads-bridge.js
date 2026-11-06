@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.4.1
+/* TaskFlow ADS Bridge v2.4.2
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -173,12 +173,17 @@ function bannerNode(ad,img){
  if(!ad.destination)return img;
  const a=document.createElement('a');a.href=ad.destination;a.target='_blank';
  a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';
- a.setAttribute('aria-label',ad.ctaLabel||'Abrir anuncio');a.title=ad.ctaLabel||'Abrir anuncio';
- a.style.position='relative';a.style.display='block';
+ a.setAttribute('aria-label',ad.ctaLabel||'Abrir anuncio');
+ a.title=ad.ctaLabel||'Abrir anuncio';
+ a.dataset.tfAdCta=ad.ctaLabel||'Conocer más';
+ a.className='tf-ads-cta-link';
+ // No agregar un segundo hijo: TaskFlowAdsV50 exige A > IMG exclusivamente.
  a.appendChild(img);
- const action=document.createElement('span');action.textContent=ad.ctaLabel||'Conocer más';
- Object.assign(action.style,{position:'absolute',right:'5px',bottom:'5px',maxWidth:'66%',padding:'4px 7px',borderRadius:'5px',background:'rgba(7,20,39,.88)',border:'1px solid rgba(255,255,255,.15)',color:'#fff',fontSize:'10px',fontWeight:'700',lineHeight:'1.2',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',pointerEvents:'none'});
- a.appendChild(action);
+ if(!document.getElementById('tfAdsBannerCtaStyles')){
+  const style=document.createElement('style');style.id='tfAdsBannerCtaStyles';
+  style.textContent='.tf50-ad-slot>.tf-ads-cta-link{position:relative!important}.tf50-ad-slot>.tf-ads-cta-link:after{content:attr(data-tf-ad-cta);position:absolute;right:5px;bottom:5px;z-index:4;max-width:60%;padding:4px 7px;border-radius:5px;background:rgba(7,20,39,.9);color:white;font:700 10px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}';
+  document.head.appendChild(style);
+ }
  return a;
 }
 async function displayBanner(slot){
@@ -287,7 +292,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.4.1',
+ version:'2.4.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
