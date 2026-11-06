@@ -287,7 +287,8 @@ const CSS_FILES=[
   'taskflow-v130103-color-filters.css', 'taskflow-v130108-reference-ui.css',
   'taskflow-v130110-header-mobile.css', 'taskflow-v130111-policy-reference.css',
   'taskflow-v130112-policy-compact.css','taskflow-v130114-profile-reference.css',
-  'taskflow-v130120-settings-rewards.css'
+  'taskflow-v130120-settings-rewards.css',
+  'taskflow-hub-cards-v71.css'
 ];
 const JS_FILES=[
   'taskflow-503020.js', 'taskflow-503020-inputformat.js',
