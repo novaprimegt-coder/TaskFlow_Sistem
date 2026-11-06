@@ -68,6 +68,78 @@ function targetEligible(c){
  if(c.city&&context.city&&normText(c.city)!==normText(context.city))return false;
  return true
 }
+
+// Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
+// Los contadores NO representan personas únicas, compras ni conversiones externas.
+const ANALYTICS_URL='https://taskflow-ads-media.vercel.app/api/analytics';
+let analyticsSession='',analyticsTrackingBound=false;
+const activeVerticalAds={entry:null,interaction:null};
+const impressionSeen=new Map();
+function analyticsSessionId(){
+ if(analyticsSession)return analyticsSession;
+ try{analyticsSession=sessionStorage.getItem('tfads_analytics_session_v1')||''}catch(_){}
+ if(!/^[a-f0-9-]{24,80}$/i.test(analyticsSession)){
+  try{analyticsSession=crypto.randomUUID()}catch(_){analyticsSession=''}
+  if(analyticsSession)try{sessionStorage.setItem('tfads_analytics_session_v1',analyticsSession)}catch(_){}
+ }
+ return analyticsSession;
+}
+function recordAdEvent(type,ad,slot){
+ if(!ad||!['impression','click'].includes(type)||!catalog.some(x=>x.id===ad.id&&x.campaignId===ad.campaignId&&x.src===ad.src))return;
+ const sessionId=analyticsSessionId();if(!sessionId)return;
+ const payload={event:type,campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId};
+ try{fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{})}catch(_){}
+}
+function visibleRect(el){
+ if(!el||document.hidden)return false;
+ const rect=el.getBoundingClientRect();
+ return rect.width>5&&rect.height>5&&rect.bottom>0&&rect.top<innerHeight&&rect.right>0&&rect.left<innerWidth;
+}
+function recordVisibleAd(ad,slot,element){
+ if(!visibleRect(element))return;
+ const now=Date.now(),key=slot+':'+ad.campaignId+':'+ad.id;
+ if(now-(impressionSeen.get(key)||0)<30000)return;
+ impressionSeen.set(key,now);
+ if(impressionSeen.size>400)impressionSeen.delete(impressionSeen.keys().next().value);
+ recordAdEvent('impression',ad,slot);
+}
+function bindAnalyticsTracking(){
+ if(analyticsTrackingBound)return;analyticsTrackingBound=true;
+ document.addEventListener('taskflow:ads-media-visible',e=>{
+  const slot=e.detail?.placement;
+  if(!['entry','interaction'].includes(slot))return;
+  const root=document.getElementById(slot==='entry'?'tf56EntryStage':'tf57TouchStage');
+  const ad=activeVerticalAds[slot];
+  if(ad&&root&&root.querySelector('img,video'))recordVisibleAd(ad,slot,root);
+ });
+ document.addEventListener('click',e=>{
+  const target=e.target?.closest?.('a');
+  if(!target||!target.href)return;
+  const banner=target.closest('.tf50-ad-slot');
+  if(banner){
+   const status=bannerStatus.get(banner.id),ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
+   if(ad&&target.href===ad.destination)recordAdEvent('click',ad,banner.id);
+   return;
+  }
+  const entry=target.closest('#tf56EntryAdV56');
+  const interaction=target.closest('#tf57TouchAdV57');
+  const placement=entry?'entry':interaction?'interaction':'';
+  const ad=activeVerticalAds[placement];
+  if(ad&&target.href===ad.destination)recordAdEvent('click',ad,placement);
+ },true);
+ const checkBannerImpressions=()=>{
+  for(const slot of BANNER_SLOTS){
+   const status=bannerStatus.get(slot),el=document.getElementById(slot);
+   const ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
+   if(ad&&el&&el.querySelector('img')?.complete)recordVisibleAd(ad,slot,el);
+  }
+ };
+ window.addEventListener('scroll',checkBannerImpressions,{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkBannerImpressions()});
+ window.addEventListener('resize',checkBannerImpressions,{passive:true});
+ setInterval(()=>{if(!document.hidden)checkBannerImpressions()},12000);
+}
+
 const OBJECTIVE_CTA=Object.freeze({awareness:'Conocer la marca',traffic:'Visitar sitio web',engagement:'Participar',leads:'Solicitar información',sales:'Comprar ahora',app:'Descargar aplicación'});
 function ctaForObjective(c){return OBJECTIVE_CTA[c?.objective]||OBJECTIVE_CTA.awareness}
 function normalizeCampaign(c){
@@ -206,6 +278,7 @@ async function displayBanner(slot){
    if(!catalog.some(x=>x.placement==='banner'&&x.id===ad.id&&x.src===ad.src))continue;
    if(window.TaskFlowAdsV50.render(slot,bannerNode(ad,img))){
     bannerStatus.set(slot,{id:ad.id,src:ad.src,at:Date.now()});
+    recordVisibleAd(ad,slot,element);
     try{localStorage.setItem(lastKey('banner',slot),ad.id)}catch(_){}
     return;
    }
@@ -224,6 +297,7 @@ function runtimeReady(){
  return !!(window.TaskFlowAdsV50&&window.TaskFlowAdsV50.render&&window.TaskFlowEntryAdV56&&window.TaskFlowEntryAdV56.setCreative&&window.TaskFlowInteractionAdV57&&window.TaskFlowInteractionAdV57.setCreative)
 }
 function apply(){
+ bindAnalyticsTracking();
  if(!config.enabled||!runtimeReady())return false;
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()){
   BANNER_SLOTS.forEach(slot=>{bannerStatus.delete(slot);try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
@@ -231,12 +305,12 @@ function apply(){
  }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
  BANNER_SLOTS.forEach(slot=>{queueBanner(slot)});
- const entry=pick('entry','entry');
+ const entry=pick('entry','entry');activeVerticalAds.entry=entry;
  let entryReady=false;
  try{entryReady=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
  // Notifica solo al cargarse un creativo aprobado; evita consumir el ingreso con un espacio vacío.
  if(entryReady){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
- const interaction=pick('interaction','interaction');
+ const interaction=pick('interaction','interaction');activeVerticalAds.interaction=interaction;
  try{window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)}catch(e){console.warn('TaskFlow ADS interacción:',e)}
  return true
 }
@@ -292,7 +366,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.4.2',
+ version:'2.5.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
