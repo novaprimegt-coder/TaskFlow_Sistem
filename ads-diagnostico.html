@@ -88,7 +88,7 @@ function validity(c,ad,ctx){
    ? ((w===1200&&h===180)||(w===2400&&h===360))
    : ((w===1080&&h===1920)||(w===2160&&h===3840));
  if(!validSize)return"Dimensiones incompatibles (se admiten tamaños estándar o HD)";
- if(ad.type==="video"&&Math.abs(Number(ad.duration)-10)>.09)return"Duración del video incompatible";
+ if(ad.type==="video"&&(!Number.isFinite(Number(ad.duration))||Number(ad.duration)<9.95||Number(ad.duration)>180.05))return"El video debe durar entre 10 y 180 segundos";
  return"ok";
 }
 async function scan(){
