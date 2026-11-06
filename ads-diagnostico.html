@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#071426"><title>Diagnóstico de publicidad · TaskFlow</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;color:#edf5ff;background:radial-gradient(circle at 80% 0,rgba(21,111,220,.23),transparent 40%),#071426}.main{max-width:800px;margin:auto;padding:25px 16px 50px}.header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}h1{font-size:clamp(25px,5vw,34px);letter-spacing:-.04em;margin:18px 0 7px}p{line-height:1.6;color:#aabdd2}a{color:#74c9ff;text-decoration:none}.muted{color:#8c9eb1;font-size:13px}.panel{padding:19px;border:1px solid #28405c;border-radius:16px;background:#101f33;margin:18px 0}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{border:1px solid #2b4159;background:#162a42;border-radius:11px;padding:13px}.metric strong{display:block;font-size:23px;color:#fff}.metric span{font-size:12px;color:#b2c2d7}button{cursor:pointer;border:0;background:#1688ef;border-radius:11px;color:#fff;padding:13px 18px;font-weight:750;font-size:14px}button:disabled{opacity:.6}.line{padding:11px 0;border-bottom:1px solid #2a4059;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.line:last-child{border-bottom:0}.line span{font-size:13px;color:#c4d4e8}.line strong{font-size:13px}.bad{color:#ffaaa9!important}.good{color:#83e4b3!important}.warn{color:#ffd688!important}.report{white-space:pre-line;font-size:13px;line-height:1.7;color:#dceafb}.preview{display:grid;gap:12px}.sample{border-radius:9px;background:#0a172b;border:1px solid #304761;padding:12px}.sample img{width:100%;height:auto;max-height:130px;object-fit:contain;border-radius:7px;display:block}.sample small{display:block;margin-bottom:8px;color:#c1d2e8}.status{margin:15px 0;font-size:13px;color:#b9d1e7}.foot{font-size:12px;color:#8199b1;margin-top:24px}@media(max-width:410px){.metrics{grid-template-columns:1fr 1fr}.panel{padding:15px}}
+</style></head><body><div class="main"><div class="header"><strong>TF · Diagnóstico ADS</strong><a href="./">Volver a TaskFlow</a></div><h1>Comprobación de entrega publicitaria</h1><p>Comprueba si Firebase está enviando a TaskFlow anuncios públicos aprobados. No necesitas iniciar sesión y no se consultan datos privados.</p><button id="retry" type="button">Comprobar de nuevo</button><div id="status" class="status" role="status">Preparando comprobación…</div>
+<section class="panel"><div class="metrics"><div class="metric"><strong id="http">—</strong><span>Respuesta Firebase</span></div><div class="metric"><strong id="documents">—</strong><span>Campañas públicas</span></div><div class="metric"><strong id="valid">—</strong><span>Anuncios utilizables en este dispositivo</span></div><div class="metric"><strong id="invalid">—</strong><span>Descartados por validación</span></div></div></section>
+<section class="panel"><h2>Resultado de la comprobación</h2><div id="report" class="report">Esperando respuesta…</div></section>
+<section class="panel"><h2>Formatos disponibles</h2><div id="placements" class="report">—</div></section>
+<section id="samplesSection" class="panel" hidden><h2>Prueba de carga del creativo</h2><div id="samples" class="preview"></div></section>
+<p class="foot">El resultado refleja lo que recibe este navegador desde el catálogo público; no cambia campañas, permisos, ubicaciones ni credenciales. Si no aparece publicidad en TaskFlow, comparte una captura de esta pantalla.</p>
+</div><script>
+(function(){
+"use strict";
+const BASE="https://firestore.googleapis.com/v1/projects/taskflow-b0ece/databases/(default)/documents/adsPublicCampaigns";
+const $=id=>document.getElementById(id),escapeText=v=>String(v??"");
+function decode(v){
+ if(!v||typeof v!=="object")return null;
+ for(const k of ["stringValue","integerValue","doubleValue","booleanValue","timestampValue"])if(k in v)return k==="integerValue"||k==="doubleValue"?Number(v[k]):v[k];
+ if("nullValue" in v)return null;
+ if(v.arrayValue)return(v.arrayValue.values||[]).map(decode);
+ if(v.mapValue){const o={};Object.entries(v.mapValue.fields||{}).forEach(([k,x])=>o[k]=decode(x));return o}
+ return null;
+}
+function data(doc){const o={};for(const [k,v]of Object.entries(doc.fields||{}))o[k]=decode(v);return o}
+function norm(x){return String(x||"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+function safeUrl(x){try{const u=new URL(String(x));return u.protocol==="https:"&&!u.username&&!u.password}catch(_){return false}}
+function localeCountry(){const m=String(navigator.language||"").match(/[-_]([A-Za-z]{2})$/);return m?m[1].toUpperCase():""}
+function context(){let region="",city="";try{const c=JSON.parse(localStorage.getItem("tf_ads_geo_gt_grid_v1")||"null");if(c&&Date.now()-Number(c.at)<43200000){region=c.region||"";city=c.city||""}}catch(_){}return{country:localeCountry(),region,city}}
+function validity(c,ad,ctx){
+ if(c.status!=="active")return"Inactiva";
+ if(c.approvalStatus!=="approved")return"Sin aprobar";
+ const today=new Date();today.setHours(0,0,0,0);
+ if(c.start){const d=new Date(c.start+"T00:00:00");if(Number.isFinite(d.getTime())&&today<d)return"Fecha de inicio futura"}
+ if(c.end){const d=new Date(c.end+"T23:59:59");if(Number.isFinite(d.getTime())&&today>d)return"Campaña vencida"}
+ const cc=norm(c.country)==="guatemala"?"GT":String(c.country||"").toUpperCase();
+ if(cc&&cc!=="ALL"&&ctx.country&&cc!==ctx.country)return"País no coincide con idioma del dispositivo";
+ if(c.region&&(!ctx.region||norm(c.region)!==norm(ctx.region)))return"Región no disponible o distinta";
+ if(c.city&&(!ctx.city||norm(c.city)!==norm(ctx.city)))return"Municipio no disponible o distinto";
+ if(!["banner","entry","interaction"].includes(c.placement))return"Formato de campaña desconocido";
+ if(!ad||!safeUrl(ad.src))return"Sin enlace HTTPS válido del creativo";
+ if(!["image","gif","video"].includes(String(ad.type||"image")))return"Tipo de archivo no válido";
+ if(c.placement==="banner"&&ad.type==="video")return"Video no válido para Banner";
+ const w=c.placement==="banner"?1200:1080,h=c.placement==="banner"?180:1920;
+ if(Number(ad.width)!==w||Number(ad.height)!==h)return"Dimensiones incompatibles";
+ if(ad.type==="video"&&Math.abs(Number(ad.duration)-10)>.09)return"Duración del video incompatible";
+ return"ok";
+}
+async function scan(){
+ const button=$("retry");button.disabled=true;$("status").textContent="Consultando Firebase…";$("report").textContent="Comprobando catálogo…";$("samplesSection").hidden=true;$("samples").replaceChildren();
+ const ctr={banner:0,entry:0,interaction:0},reasons={},samples=[];let pages=0,records=[],next="";
+ try{
+  do{
+   const u=new URL(BASE);u.searchParams.set("pageSize","100");if(next)u.searchParams.set("pageToken",next);
+   const ctrl=new AbortController(),tm=setTimeout(()=>ctrl.abort(),15000);
+   let resp,body;
+   try{resp=await fetch(u.href,{cache:"no-store",credentials:"omit",signal:ctrl.signal});$("http").textContent=String(resp.status);body=await resp.json().catch(()=>({}));}
+   finally{clearTimeout(tm)}
+   if(!resp.ok)throw new Error("HTTP "+resp.status+": "+(body.error?.message||"Firebase rechazó la consulta"));
+   records.push(...(body.documents||[]));next=body.nextPageToken||"";pages++;
+  }while(next&&pages<5);
+  const ctx=context();let valid=0,invalid=0;
+  for(const doc of records){
+   const c=data(doc);
+   if(!Array.isArray(c.ads)||!c.ads.length){reasons["Campaña sin anuncios"]=1+(reasons["Campaña sin anuncios"]||0);invalid++;continue}
+   for(const ad of c.ads.slice(0,12)){
+    const reason=validity(c,ad,ctx);
+    if(reason!=="ok"){invalid++;reasons[reason]=1+(reasons[reason]||0);continue}
+    valid++;ctr[c.placement]++;if(samples.length<3&&c.placement==="banner"&&safeUrl(ad.src))samples.push(ad.src);
+   }
+  }
+  $("documents").textContent=String(records.length);$("valid").textContent=String(valid);$("invalid").textContent=String(invalid);
+  $("placements").textContent="Banner: "+ctr.banner+"\nIngreso: "+ctr.entry+"\nInteracción: "+ctr.interaction;
+  const lines=[];
+  if(records.length===0)lines.push("Firebase respondió correctamente, pero el catálogo público está vacío. Aprobar una campaña no basta: debe estar activa, con un creativo válido, y existir su documento en adsPublicCampaigns.");
+  else if(valid===0)lines.push("Hay campañas publicadas, pero ningún creativo supera todos los filtros de TaskFlow en este dispositivo.");
+  else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles. Si no aparecen en TaskFlow, revisa la carga de la app, el estado «Sin anuncios» y los archivos multimedia.");
+  Object.entries(reasons).sort((a,b)=>b[1]-a[1]).forEach(([reason,count])=>lines.push("• "+reason+": "+count));
+  if(ctx.region||ctx.city)lines.push("Ubicación local registrada: "+[ctx.region,ctx.city].filter(Boolean).join(", ")+".");
+  else if(records.some(d=>{const c=data(d);return!!(c.region||c.city)}))lines.push("Advertencia: no hay región o municipio autorizado disponible para verificar campañas segmentadas.");
+  $("report").textContent=lines.join("\n");$("status").textContent="Comprobación completada.";
+  if(samples.length){$("samplesSection").hidden=false;for(const [i,src]of samples.entries()){let card=document.createElement("div"),label=document.createElement("small"),image=new Image();card.className="sample";label.textContent="Banner "+(i+1)+" · Comprobando archivo…";image.onload=()=>{label.textContent="Banner "+(i+1)+" · Imagen accesible"};image.onerror=()=>{label.textContent="Banner "+(i+1)+" · El archivo no se pudo descargar"};image.src=src;image.alt="Vista de prueba";card.append(label,image);$("samples").appendChild(card)}}
+ }catch(e){
+  $("status").textContent="La comprobación no pudo completarse.";
+  $("report").textContent="Error: "+escapeText(e.message)+"\n"+(String(e.message).includes("403")?"Firestore está denegando la lectura pública. Verifica que se hayan publicado las reglas del catálogo.":String(e.message).includes("404")?"No se encontró el recurso. Revisa el proyecto o la colección.":"Revisa la conexión y vuelve a comprobar.");
+  $("documents").textContent="—";$("valid").textContent="—";$("invalid").textContent="—";$("placements").textContent="Sin datos.";
+ }finally{button.disabled=false}
+}
+$("retry").addEventListener("click",scan);void scan();
+})();
+</script></body></html>
