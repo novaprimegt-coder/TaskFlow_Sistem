@@ -1,0 +1,168 @@
+/* TaskFlow V72: corrección de cuatro tarjetas según capturas Android.
+   Ajuste exclusivamente visual: ninguna etiqueta, contador o evento se reemplaza. */
+body.tf37-home #v27MainHub>.v27-hub-button.habit,
+body.tf37-home #v27MainHub>.v27-hub-button.task,
+body.tf37-home #tfPairV117>#tf503020Hub,
+body.tf37-home #tfPairV117>#tfMentalistPairV117{
+ min-height:109px!important;height:auto!important;
+ padding:10px 9px!important;
+ border-radius:17px!important;
+ overflow:hidden!important;
+ -webkit-font-smoothing:antialiased;
+}
+body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task),
+body.tf37-home #tfPairV117>#tf503020Hub,
+body.tf37-home #tfPairV117>#tfMentalistPairV117{
+ grid-template-columns:clamp(39px,11.6vw,50px) minmax(0,1fr)!important;
+ column-gap:7px!important;
+ align-items:center!important;
+ justify-content:stretch!important;
+}
+body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>.v30-hub-icon,
+body.tf37-home #tfPairV117>#tf503020Hub>.v30-hub-icon,
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-icon{
+ width:clamp(40px,11.6vw,50px)!important;
+ height:clamp(42px,11.9vw,52px)!important;
+ min-width:0!important;
+ max-width:100%!important;
+ border-radius:13px!important;
+ background-size:96% 96%!important;
+ box-sizing:border-box!important;
+}
+body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>span:not(.v30-hub-icon),
+body.tf37-home #tfPairV117>#tf503020Hub>span:not(.v30-hub-icon){
+ min-width:0!important;
+ max-width:100%!important;
+ width:100%!important;
+ flex:none!important;
+ margin:0!important;padding:0!important;
+ overflow:visible!important;
+}
+body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>span b,
+body.tf37-home #tfPairV117>#tf503020Hub>span b{
+ display:block!important;
+ font-size:clamp(11.4px,3.08vw,14.2px)!important;
+ font-weight:850!important;
+ line-height:1.14!important;
+ letter-spacing:-.033em!important;
+ white-space:normal!important;
+ text-wrap:balance;
+ overflow-wrap:normal!important;
+ word-break:normal!important;
+ hyphens:none!important;
+ margin:0 0 5px!important;
+ text-align:left!important;
+}
+body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>span small,
+body.tf37-home #tfPairV117>#tf503020Hub>span small{
+ display:block!important;
+ font-size:clamp(9.4px,2.46vw,11.1px)!important;
+ line-height:1.25!important;
+ font-weight:470!important;
+ letter-spacing:-.015em!important;
+ white-space:normal!important;
+ overflow-wrap:break-word!important;
+ word-break:normal!important;
+ margin:0!important;
+ max-width:100%!important;
+ text-align:left!important;
+}
+/* El encabezado de recompensas no puede quedar tapado por la corona decorativa. */
+body.tf37-home #v27MainHub>.v27-hub-button.habit:before{
+ content:""!important;display:none!important;
+}
+body.tf37-home #v27MainHub>.v27-hub-button.habit>span b{
+ color:#fff9ec!important;
+}
+/* No flechas en ninguna de las cuatro tarjetas, incluidos iconos generados. */
+body.tf37-home #v27MainHub>.v27-hub-button.habit>i,
+body.tf37-home #v27MainHub>.v27-hub-button.task>i,
+body.tf37-home #tfPairV117>#tf503020Hub>i,
+body.tf37-home #tfPairV117>#tfMentalistPairV117>i,
+body.tf37-home #tfPairV117>#tfMentalistPairV117>[class*="arrow"],
+body.tf37-home #tfPairV117>#tfMentalistPairV117>[class*="chevron"],
+body.tf37-home #tfPairV117>#tfMentalistPairV117>svg[class*="chevron"]{
+ display:none!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117:before{
+ content:none!important;
+ display:none!important;
+}
+/* 50/30/20: la banda decorativa no debe confundirse con un control. */
+body.tf37-home #tfPairV117>#tf503020Hub:after{
+ opacity:.22!important;
+ right:-9px!important;
+}
+/* Mentalista: conservar el progreso real sin texto gigante ni flecha. */
+body.tf37-home #tfPairV117>#tfMentalistPairV117{
+ grid-template-columns:clamp(39px,11.6vw,50px) minmax(0,1fr)!important;
+ grid-template-rows:auto auto!important;
+ row-gap:2px!important;
+ padding:10px 8px!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-icon{
+ grid-column:1!important;
+ grid-row:1/3!important;
+ justify-self:center!important;
+ align-self:center!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-copy{
+ grid-column:2!important;grid-row:1!important;
+ align-self:end!important;
+ width:100%!important;
+ min-width:0!important;
+ margin:0!important;
+ padding:0!important;
+ line-height:1.15!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-copy .kicker{
+ font-size:clamp(8px,2.2vw,10px)!important;
+ line-height:1.08!important;
+ letter-spacing:.12em!important;
+ font-weight:900!important;
+ margin:0 0 4px!important;
+ white-space:normal!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-copy strong{
+ font-size:clamp(12.6px,3.3vw,15.7px)!important;
+ font-weight:890!important;
+ line-height:1.11!important;
+ letter-spacing:-.025em!important;
+ margin:0!important;
+ white-space:normal!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-progress{
+ grid-column:2!important;grid-row:2!important;
+ justify-self:start!important;align-self:start!important;
+ min-width:54px!important;
+ min-height:23px!important;
+ height:auto!important;
+ padding:3px 11px!important;
+ margin:4px 0 0!important;
+ border-radius:999px!important;
+ line-height:1.08!important;
+ font-size:clamp(11px,2.85vw,13.5px)!important;
+}
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-progress:before,
+body.tf37-home #tfPairV117>#tfMentalistPairV117 .v94-mentalist-progress:after{
+ content:none!important;display:none!important;
+}
+/* Mayor espacio real para texto en pantallas reducidas. */
+@media(max-width:375px){
+ body.tf37-home #v27MainHub>.v27-hub-button.habit,
+ body.tf37-home #v27MainHub>.v27-hub-button.task,
+ body.tf37-home #tfPairV117>#tf503020Hub,
+ body.tf37-home #tfPairV117>#tfMentalistPairV117{
+  padding:9px 7px!important;
+ }
+ body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task),
+ body.tf37-home #tfPairV117>#tf503020Hub,
+ body.tf37-home #tfPairV117>#tfMentalistPairV117{
+  grid-template-columns:39px minmax(0,1fr)!important;
+  column-gap:6px!important;
+ }
+ body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>span b,
+ body.tf37-home #tfPairV117>#tf503020Hub>span b{font-size:11.35px!important}
+ body.tf37-home #v27MainHub>.v27-hub-button:is(.habit,.task)>span small,
+ body.tf37-home #tfPairV117>#tf503020Hub>span small{font-size:9.3px!important}
+}
