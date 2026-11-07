@@ -25,7 +25,7 @@ function pulse(event){
  const wave=document.createElement('span');
  wave.className='tfSplashWave';
  wave.style.left=p.x+'px';wave.style.top=p.y+'px';
- host.appendChild(wave);
+ host.parentElement.appendChild(wave);
  wave.addEventListener('animationend',()=>wave.remove(),{once:true});
  setTimeout(()=>wave.remove(),1100);
  root.classList.add('tf-slats-touched');
@@ -44,7 +44,7 @@ window.TaskFlowMicroSlats.stop=function(){
  root.removeEventListener('touchstart',pulse);
  clearTimeout(pulseTimer);
  root.classList.remove('tf-slats-touched');
- host.querySelectorAll('.tfSplashWave').forEach(node=>node.remove());
+ host.parentElement.querySelectorAll('.tfSplashWave').forEach(node=>node.remove());
 };
 try{
  const reduced=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
