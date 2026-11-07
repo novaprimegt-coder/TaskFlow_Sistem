@@ -1,4 +1,4 @@
 {
-  "enabled": false,
-  "apiBase": ""
+  "enabled": "auto",
+  "apiBase": "https://us-central1-taskflow-b0ece.cloudfunctions.net/taskflowNoAds"
 }
