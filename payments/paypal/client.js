@@ -6,13 +6,31 @@ if(window.TaskFlowNoAds)return;
 const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).href;
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
 let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,statusPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
+let noAdsExpiryTimer=0,lastServerVerification=0;
 function safeBase(value){
  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return '';return u.href.replace(/\/$/,'')}catch(_){return ''}
 }
 function style(){
  if(document.getElementById(CSS_ID))return;
  const s=document.createElement('style');s.id=CSS_ID;
- s.textContent=`body.tf-paypal-noads .tf50-ad-slot{display:none!important}
+ s.textContent=`/* Los tres banners, sus etiquetas y las ventanas publicitarias desaparecen
+   mientras el servidor comprueba o confirma el acceso sin anuncios. */
+html.tf-paypal-noads body .tf50-ad-slot,
+html.tf-paypal-noads body [data-ad-slot],
+html.tf-paypal-noads-checking body .tf50-ad-slot,
+html.tf-paypal-noads-checking body [data-ad-slot],
+body.tf-paypal-noads .tf50-ad-slot,
+html.tf-paypal-noads #tfAdBannerTimer,
+html.tf-paypal-noads #tfAdBannerHabitsTasks,
+html.tf-paypal-noads #tfAdBannerFooter,
+html.tf-paypal-noads-checking #tfAdBannerTimer,
+html.tf-paypal-noads-checking #tfAdBannerHabitsTasks,
+html.tf-paypal-noads-checking #tfAdBannerFooter{display:none!important;visibility:hidden!important;max-height:0!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;overflow:hidden!important}
+html.tf-paypal-noads #tfEntryAdV56,
+html.tf-paypal-noads #tfInteractionAdV57,
+html.tf-paypal-noads-checking #tfEntryAdV56,
+html.tf-paypal-noads-checking #tfInteractionAdV57{display:none!important;visibility:hidden!important}
+
  #${MODAL_ID}{position:fixed;inset:0;z-index:2147483647;background:rgba(1,6,18,.95);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
  #${MODAL_ID}[hidden]{display:none!important}
  #${MODAL_ID} .tf-paypal-panel{width:min(100%,470px);max-height:90dvh;overflow:auto;background:#07152b;color:#fff;border:1px solid #30d8df;border-radius:24px;padding:24px;box-shadow:0 24px 85px #0009;font-family:system-ui,sans-serif}
@@ -59,11 +77,48 @@ function panel(){
  document.body.appendChild(r);return r;
 }
 function statusText(msg,tone='info'){const e=document.getElementById('tfPayPalStatus');if(e){e.textContent=msg||'';e.dataset.tone=tone}}
+function closeActiveAdWindows(){
+ // Do not leave an interstitial active behind the paid interface.
+ for(const [api,id] of [[window.TaskFlowEntryAdV56,'tf56EntryContinue'],[window.TaskFlowInteractionAdV57,'tf57TouchClose']]){
+  try{
+   if(api&&api.isRunning&&api.isRunning()){
+    const button=document.getElementById(id);
+    if(button)button.disabled=false;
+    if(api.close)api.close();
+   }
+   if(api&&api.setCreative)api.setCreative(null);
+  }catch(_){}
+ }
+}
 function setActive(next){
- active=next===true;
- if(active)pendingApproval=false;
+ // A payment plan being ACTIVE is not enough: only this user's server-issued
+ // entitlement, with an unexpired paidUntil, suppresses advertisements.
+ const end=Number(subscriptionStatus&&subscriptionStatus.paidUntil)||0;
+ const verified=next===true&&subscriptionStatus?.active===true&&end>Date.now();
+ const changed=active!==verified;
+ active=verified;
+ if(noAdsExpiryTimer){clearTimeout(noAdsExpiryTimer);noAdsExpiryTimer=0}
+ if(active){
+  pendingApproval=false;
+  style(); // The style MUST load at startup, not only when checkout opens.
+ }
+ if(document.documentElement)document.documentElement.classList.toggle('tf-paypal-noads',active);
  if(document.body)document.body.classList.toggle('tf-paypal-noads',active);
- try{document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active}}))}catch(_){}
+ if(active){
+  closeActiveAdWindows();
+  // Restore all ads automatically when the verified period ends, including
+  // after cancelling renewal (which preserves the remaining paid/trial days).
+  noAdsExpiryTimer=setTimeout(()=>{
+   noAdsExpiryTimer=0;
+   if(!subscriptionStatus||Number(subscriptionStatus.paidUntil)<=Date.now()){
+    setActive(false);
+    if(enabled)void verifyStatus();
+   }else setActive(true);
+  },Math.max(50,Math.min(2147483647,end-Date.now()+30)));
+ }
+ if(changed){
+  try{document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active,paidUntil:active?end:null}}))}catch(_){}
+ }
 }
 async function config(){
  if(settings!==null&&enabled)return settings;
@@ -110,15 +165,31 @@ async function request(method,path,payload){
 }
 async function verifyStatus(){
  if(statusPromise)return statusPromise;
+ // Hide ad surfaces while awaiting the server (the answer is never invented).
+ style();
+ document.documentElement?.classList.add('tf-paypal-noads-checking');
  statusPromise=(async()=>{
   try{
    if(!enabled){await (ready||Promise.resolve());if(!enabled)return false}
    const data=await request('GET','/status');
    subscriptionStatus=data;
-   setActive(data.active===true);return active;
-  }catch(_){setActive(false);return false}
+   lastServerVerification=Date.now();
+   setActive(data.active===true);
+   return active;
+  }catch(error){
+   // Preserve a freshly verified entitlement briefly on network failure,
+   // never beyond expiry or after an authentication failure.
+   const stillConfirmed=active&&error?.status!==401&&error?.status!==403&&
+     Date.now()-lastServerVerification<120000&&
+     Number(subscriptionStatus?.paidUntil)>Date.now();
+   if(!stillConfirmed)setActive(false);
+   return stillConfirmed;
+  }
  })();
- try{return await statusPromise}finally{statusPromise=null}
+ try{return await statusPromise}finally{
+  statusPromise=null;
+  document.documentElement?.classList.remove('tf-paypal-noads-checking');
+ }
 }
 async function waitForStatus(timeoutMs){
  await (ready||Promise.resolve());
@@ -323,11 +394,31 @@ function onClick(event){
  void showCheckout();
 }
 async function initialize(){
+ style();
+ document.documentElement?.classList.add('tf-paypal-noads-checking');
  document.addEventListener('click',onClick,true);
  window.addEventListener('focus',()=>{if(enabled)void verifyStatus()},{passive:true});
- document.addEventListener('taskflow:account-state-updated',()=>{if(enabled)void verifyStatus()});
- try{await config()}catch(_){return false}
- if(!enabled)return false;
+ window.addEventListener('pageshow',()=>{if(enabled)void verifyStatus()},{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&enabled)void verifyStatus()});
+ document.addEventListener('taskflow:account-state-updated',()=>{
+  // Logging out must revoke the old account's local display state immediately.
+  if(!window.TaskFlowFirebase?.getUser?.()){
+   subscriptionStatus=null;
+   lastServerVerification=0;
+   setActive(false);
+  }
+  if(enabled)void verifyStatus();
+ });
+ // Revalidate across devices and after renewal, cancellation, or expiration.
+ setInterval(()=>{if(enabled&&!document.hidden)void verifyStatus()},60000);
+ try{await config()}catch(_){
+  document.documentElement?.classList.remove('tf-paypal-noads-checking');
+  return false;
+ }
+ if(!enabled){
+  document.documentElement?.classList.remove('tf-paypal-noads-checking');
+  return false;
+ }
  void verifyStatus();
  return true;
 }
