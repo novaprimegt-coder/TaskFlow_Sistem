@@ -29,6 +29,7 @@ function style(){
  #${MODAL_ID} #tfPayPalCancel{display:block;margin:16px auto 0;padding:11px 15px;color:#ffe0d4;background:#241b32;border:1px solid #aa6673;border-radius:12px;font-weight:700}
  #${MODAL_ID} #tfPayPalCancel[hidden]{display:none!important}
  `;
+ s.textContent += "\n#tfPayPalNoAdsModal{display:grid;place-items:center;background:rgba(2,7,17,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:14px max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));overscroll-behavior:contain}\n#tfPayPalNoAdsModal .tf-paypal-panel{position:relative;isolation:isolate;width:min(100%,425px);max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;padding:23px 21px 20px;border:1px solid rgba(83,192,228,.32);border-radius:25px;background:radial-gradient(ellipse 88% 50% at 110% -9%,rgba(11,188,215,.14),transparent),linear-gradient(160deg,#0b1b31,#081327 62%,#071222);box-shadow:0 26px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.075)}\n#tfPayPalNoAdsModal .tf-paypal-panel::before{content:\"\";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#34d9e2 45%,#529de5,transparent);opacity:.8;pointer-events:none}\n#tfPayPalNoAdsModal .tf-paypal-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}\n#tfPayPalNoAdsModal .tf-paypal-heading{min-width:0;flex:1}\n#tfPayPalNoAdsModal .tf-paypal-eyebrow{display:flex;align-items:center;gap:7px;color:#71dae5;font-weight:800;font-size:10px;letter-spacing:.14em;text-transform:uppercase}\n#tfPayPalNoAdsModal .tf-paypal-eyebrow::before{content:\"\";width:7px;height:7px;border-radius:50%;background:#4bdfe8;box-shadow:0 0 12px #4bdfe866}\n#tfPayPalNoAdsModal h2{font-size:clamp(22px,5.4vw,26px);line-height:1.13;letter-spacing:-.035em;margin:8px 0 0;font-weight:800;color:#f5fbff}\n#tfPayPalNoAdsModal .tf-paypal-close{float:none;display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;padding:0;border:1px solid rgba(123,164,191,.28);border-radius:12px;background:rgba(161,192,225,.07);color:#caddec;font-size:27px;line-height:1;cursor:pointer}\n#tfPayPalNoAdsModal .tf-paypal-subtitle{color:#a4b7cb;font-size:13px;line-height:1.45;margin:0 0 17px}\n#tfPayPalNoAdsModal .tf-paypal-pricing{padding:17px 18px 15px;border:1px solid rgba(68,148,197,.33);border-radius:17px;background:linear-gradient(125deg,rgba(20,65,100,.44),rgba(8,31,56,.55))}\n#tfPayPalNoAdsModal .tf-paypal-price-line{display:flex;align-items:baseline;gap:8px}\n#tfPayPalNoAdsModal .tf-paypal-price{font-size:38px;line-height:1;font-weight:800;letter-spacing:-.06em;color:#fff;font-variant-numeric:tabular-nums}\n#tfPayPalNoAdsModal .tf-paypal-period{font-size:15px;font-weight:600;color:#a7bdce}\n#tfPayPalNoAdsModal #tfPayPalPlan{font-size:12px;line-height:1.45;margin:9px 0 0;color:#a9bdcf}\n#tfPayPalNoAdsModal .tf-paypal-benefits{display:grid;gap:12px;padding:0;margin:18px 0 0;list-style:none}\n#tfPayPalNoAdsModal .tf-paypal-benefits li{display:flex;align-items:center;gap:10px;color:#dce8f4;font-size:13px;line-height:1.4;font-weight:550}\n#tfPayPalNoAdsModal .tf-paypal-benefits li::before{content:\"✓\";display:grid;place-items:center;width:23px;height:23px;flex:0 0 23px;border:1px solid rgba(69,215,209,.28);border-radius:8px;background:rgba(32,184,189,.12);color:#5de7e4;font-size:14px;font-weight:800}\n#tfPayPalNoAdsModal .tf-paypal-buy{display:flex;justify-content:center;align-items:center;gap:9px;min-height:53px;margin:21px 0 0;border-radius:15px;border:1px solid rgba(110,235,240,.6);background:linear-gradient(110deg,#0bbbc7 0%,#0696ca 51%,#1577c8 100%);box-shadow:0 11px 25px rgba(8,130,196,.2),inset 0 1px 0 #ffffff32;font:800 15px/1.3 system-ui,sans-serif;letter-spacing:-.02em;transition:filter .16s,transform .16s;cursor:pointer}\n#tfPayPalNoAdsModal .tf-paypal-buy:hover{filter:brightness(1.09)}\n#tfPayPalNoAdsModal .tf-paypal-buy:active{transform:scale(.985)}\n#tfPayPalNoAdsModal .tf-paypal-buy[hidden]{display:none!important}\n#tfPayPalNoAdsModal .tf-paypal-buy:disabled{opacity:.62;cursor:wait}\n#tfPayPalNoAdsModal .tf-paypal-status{display:none;margin:13px 0 0;padding:11px 12px;border:1px solid rgba(95,149,190,.22);border-radius:12px;background:rgba(4,21,41,.62);color:#b7cbdc;font-size:12px;line-height:1.47}\n#tfPayPalNoAdsModal .tf-paypal-status:not(:empty){display:block}\n#tfPayPalNoAdsModal .tf-paypal-status[data-tone=error]{color:#e5c6a5;border-color:rgba(227,169,110,.25);background:rgba(92,59,34,.18)}\n#tfPayPalNoAdsModal #tfPayPalButtons{margin-top:12px;min-height:0}\n#tfPayPalNoAdsModal #tfPayPalCancel{width:100%;margin:15px 0 0;padding:11px 12px;border-radius:12px;font-size:13px}\n#tfPayPalNoAdsModal .tf-paypal-foot{display:flex;justify-content:center;align-items:center;gap:6px;font-size:11px;line-height:1.4;margin:15px 0 0;color:#8ca3b8;text-align:center}\n#tfPayPalNoAdsModal button:focus-visible{outline:2px solid #7deafa;outline-offset:3px}\n@media(max-width:360px){#tfPayPalNoAdsModal .tf-paypal-panel{padding:19px 17px}#tfPayPalNoAdsModal .tf-paypal-price{font-size:34px}#tfPayPalNoAdsModal h2{font-size:22px}}\n@media(prefers-reduced-motion:reduce){#tfPayPalNoAdsModal .tf-paypal-buy{transition:none}}";
  document.head.appendChild(s);
 }
 function panel(){
@@ -36,7 +37,7 @@ function panel(){
  r=document.createElement('div');r.id=MODAL_ID;r.hidden=true;
  r.setAttribute('role','dialog');r.setAttribute('aria-modal','true');
  r.setAttribute('aria-label','Eliminar anuncios con PayPal');
- r.innerHTML='<section class="tf-paypal-panel"><button type="button" class="tf-paypal-close" aria-label="Cerrar">Cerrar</button><h2>TaskFlow sin anuncios</h2><p id="tfPayPalPlan"></p><p class="tf-paypal-info">Sin banners, anuncios de entrada ni anuncios por interacción. Pago recurrente; puedes cancelar la renovación cuando quieras y conservar el período pagado.</p><button id="tfPayPalBuy" class="tf-paypal-buy" type="button">Comprar ahora · US$6.00/mes</button><div id="tfPayPalStatus" class="tf-paypal-status" role="status" aria-live="polite"></div><div id="tfPayPalButtons"></div><button id="tfPayPalCancel" type="button" hidden>Cancelar renovación automática</button></section>';
+ r.innerHTML="<section class=\"tf-paypal-panel\" aria-labelledby=\"tfPayPalTitle\"><div class=\"tf-paypal-header\"><div class=\"tf-paypal-heading\"><div class=\"tf-paypal-eyebrow\">Eliminar publicidad</div><h2 id=\"tfPayPalTitle\">TaskFlow sin anuncios</h2></div><button type=\"button\" class=\"tf-paypal-close\" aria-label=\"Cerrar ventana\">×</button></div><p class=\"tf-paypal-subtitle\">Una experiencia más limpia, sin interrupciones publicitarias.</p><div class=\"tf-paypal-pricing\"><div class=\"tf-paypal-price-line\"><strong class=\"tf-paypal-price\">US$6.00</strong><span class=\"tf-paypal-period\">/ mes</span></div><p id=\"tfPayPalPlan\">Renovación automática · Cancela cuando quieras</p></div><ul class=\"tf-paypal-benefits\"><li>Sin banners publicitarios</li><li>Sin anuncios al iniciar TaskFlow</li><li>Sin anuncios por interacción</li></ul><button id=\"tfPayPalBuy\" class=\"tf-paypal-buy\" type=\"button\">Comprar ahora · US$6.00/mes</button><div id=\"tfPayPalStatus\" class=\"tf-paypal-status\" role=\"status\" aria-live=\"polite\"></div><div id=\"tfPayPalButtons\"></div><button id=\"tfPayPalCancel\" type=\"button\" hidden>Cancelar renovación automática</button><p class=\"tf-paypal-foot\">Pago seguro mediante PayPal · Suscripción mensual</p></section>";
  r.querySelector('.tf-paypal-close').addEventListener('click',()=>{if(!busy)r.hidden=true});
  r.querySelector('#tfPayPalBuy').addEventListener('click',()=>{void beginPurchase()});
  const cancel=r.querySelector('#tfPayPalCancel');
@@ -54,7 +55,7 @@ function panel(){
  r.addEventListener('click',e=>{if(e.target===r&&!busy)r.hidden=true});
  document.body.appendChild(r);return r;
 }
-function statusText(msg){const e=document.getElementById('tfPayPalStatus');if(e)e.textContent=msg}
+function statusText(msg,tone='info'){const e=document.getElementById('tfPayPalStatus');if(e){e.textContent=msg||'';e.dataset.tone=tone}}
 function setActive(next){
  active=next===true;
  if(active)pendingApproval=false;
@@ -157,13 +158,13 @@ async function showCheckout(){
  const root=panel(),target=root.querySelector('#tfPayPalButtons');
  const buy=root.querySelector('#tfPayPalBuy'),cancel=root.querySelector('#tfPayPalCancel');
  root.hidden=false;target.replaceChildren();buy.hidden=false;buy.disabled=false;cancel.hidden=true;
- root.querySelector('#tfPayPalPlan').textContent='US$6.00 mensuales · Renovación automática.';
+ root.querySelector('#tfPayPalPlan').textContent='Renovación automática · Cancela cuando quieras';
  statusText('Consulta las condiciones y pulsa «Comprar ahora» para continuar con PayPal.');
  try{
   await (ready||Promise.resolve());
   if(!enabled){try{await config()}catch(_){/* No ofrecer un cargo sin servidor Live verificado. */}}
   if(!enabled){
-   statusText('La opción de compra está visible, pero PayPal Live aún no está habilitado para procesar suscripciones. No se ha realizado ningún cargo.');
+   statusText('Los pagos aún no están habilitados. No se ha realizado ningún cargo.');
    return false;
   }
   try{await authToken()}catch(_){
@@ -258,12 +259,12 @@ async function beginPurchase(){
   statusText(code==='LOGIN_REQUIRED'?'Inicia sesión en TaskFlow para comprar la suscripción.':
    code==='PAYMENT_PENDING'?'Hay una suscripción pendiente. Comprueba su estado antes de iniciar otro pago.':
    code==='PUBLIC_CONFIG_UNAVAILABLE'?'No se pudo cargar la configuración de pago de TaskFlow. Vuelve a intentarlo. No se ha realizado ningún cargo.':
-   code==='PAYPAL_BACKEND_UNAVAILABLE'?'El servidor de suscripciones de Firebase no está disponible. Debe desplegarse y activarse PayPal Live para procesar compras reales. No se ha realizado ningún cargo.':
+   code==='PAYPAL_BACKEND_UNAVAILABLE'?'El pago no está disponible: falta activar el servidor de suscripciones.':
    code==='PAYPAL_LIVE_NOT_READY'||code==='PAYPAL_BACKEND_INVALID_RESPONSE'||code==='INVALID_SUBSCRIPTION_PLAN'||code==='NO_CHECKOUT'||code==='NO_CONFIGURATION'?
-   'El servidor todavía no ha habilitado el plan PayPal Live de US$6.00 al mes. No se ha realizado ningún cargo.':
+   'El plan de US$6.00/mes todavía no está habilitado para compras.':
    code==='PAYPAL_SDK_UNAVAILABLE'||code==='PAYPAL_NOT_ELIGIBLE'?
    'PayPal no pudo mostrar el formulario de pago en este navegador. Comprueba que PayPal esté disponible e inténtalo de nuevo. No se ha realizado ningún cargo.':
-   'No se pudo verificar la cuenta o iniciar el pago con el servidor. No se ha realizado ningún cargo.');
+   'No se pudo verificar la cuenta o iniciar el pago con el servidor. No se ha realizado ningún cargo.','error');
   return false;
  }finally{buy.disabled=false}
 }
