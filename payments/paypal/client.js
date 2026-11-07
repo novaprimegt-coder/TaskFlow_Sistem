@@ -1,4 +1,4 @@
-/* TaskFlow PayPal - checkout client (disabled until server and price are configured).
+/* TaskFlow PayPal - checkout client (automatically ready ONLY after server verifies Live plan and price).
    Only server-confirmed entitlements disable ads. No card data is handled here. */
 (function(){
 'use strict';
@@ -56,16 +56,22 @@ function setActive(next){
  try{document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active}}))}catch(_){}
 }
 async function config(){
- if(settings!==null)return settings;
+ if(settings!==null&&enabled)return settings;
  const r=await fetch(CFG_URL,{cache:'no-store',credentials:'omit'});
  if(!r.ok)throw new Error('NO_CONFIGURATION');
  const c=await r.json();const base=safeBase(c.apiBase);
- settings={enabled:c.enabled===true&&!!base,apiBase:base};
+ settings={enabled:(c.enabled===true||c.enabled==='auto')&&!!base,apiBase:base};
  if(!settings.enabled)return settings;
- const response=await fetch(base+'/config',{cache:'no-store',credentials:'omit'});
+ // La URL pública no es una autorización de cobro. Solo el servidor PayPal Live
+ // con un plan mensual y webhook verificados puede habilitar el checkout.
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),5500);
+ let response;
+ try{response=await fetch(base+'/config',{cache:'no-store',credentials:'omit',signal:controller.signal})}
+ finally{clearTimeout(timer)}
  if(!response.ok)throw new Error('NO_CHECKOUT');
  const data=await response.json();
- if(!data.enabled||!data.clientId||!/^[A-Za-z0-9_-]+$/.test(data.clientId))throw new Error('NO_CHECKOUT');
+ if(!data.enabled||data.environment!=='live'||!data.clientId||!/^[A-Za-z0-9_-]+$/.test(data.clientId))throw new Error('NO_CHECKOUT');
  plan={clientId:data.clientId,planId:data.planId,price:data.price,currency:data.currency,recurring:data.recurring,frequency:data.frequency};
  if(!plan.planId||!plan.recurring||plan.frequency!=='MONTH'||plan.price!=='6.00'||plan.currency!=='USD')throw new Error('INVALID_SUBSCRIPTION_PLAN');
  enabled=true;return settings;
@@ -139,11 +145,12 @@ async function showCheckout(){
  if(busy)return false;
  try{
   await (ready||Promise.resolve());
+  if(!enabled){try{await config()}catch(_){/* Sigue pendiente el backend verificado. */}}
   if(!enabled){
    const root=panel();root.hidden=false;root.querySelector('#tfPayPalButtons').replaceChildren();
    root.querySelector('#tfPayPalCancel').hidden=true;
    root.querySelector('#tfPayPalPlan').textContent='US$6.00 mensuales · Suscripción con renovación automática.';
-   statusText('La suscripción PayPal todavía no está habilitada. No se ha realizado ningún cargo.');
+   statusText('La conexión PayPal Live está preparada, pero el servidor de suscripciones aún no ha verificado el plan mensual y las notificaciones de pago. No se ha realizado ningún cargo.');
    return false;
   }
   const root=panel(),target=root.querySelector('#tfPayPalButtons');
