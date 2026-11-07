@@ -105,10 +105,12 @@ function validatedPlan(p) {
   const charge = trial?.pricing_scheme?.fixed_price;
   const free = !charge || (Number(charge.value) === 0 &&
     (!charge.currency_code || charge.currency_code === CURRENCY));
+  const sevenDays = (trial.frequency?.interval_unit === "DAY" &&
+    Number(trial.frequency?.interval_count) === 7) ||
+    (trial.frequency?.interval_unit === "WEEK" &&
+    Number(trial.frequency?.interval_count) === 1);
   const validTrial = trial && Number(trial.sequence) === 1 &&
-    trial.frequency?.interval_unit === "DAY" &&
-    Number(trial.frequency?.interval_count) === 7 &&
-    Number(trial.total_cycles) === 1 && free;
+    sevenDays && Number(trial.total_cycles) === 1 && free;
   return validTrial ? { ok: true, trialDays: 7 } : { ok: false, trialDays: 0 };
 }
 async function planReady() {
