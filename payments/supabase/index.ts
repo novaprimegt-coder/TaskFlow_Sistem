@@ -378,6 +378,23 @@ async function webhook(req) {
   if (verify.verification_status !== "SUCCESS") throw fail("INVALID_SIGNATURE", 401);
   const type = String(event.event_type || "");
   const resource = event.resource || {};
+  if (type === "BILLING.SUBSCRIPTION.ACTIVATED") {
+    const id = String(resource.id || "");
+    if (!/^I-[A-Za-z0-9-]{8,64}$/.test(id)) return { ignored: true };
+    const row = await one("taskflow_paypal_subscriptions", "paypal_id", id);
+    // PayPal can deliver the webhook before the browser confirms ownership;
+    // retry later rather than granting entitlement to an unlinked subscription.
+    if (!row) throw fail("SUBSCRIPTION_PENDING");
+    const sub = await getSubscription(id);
+    if (sub.status !== "ACTIVE") return { pending: true };
+    await planReady();
+    if (planValidCache.trialDays === 7 && row.plan_id === PLAN_ID) {
+      const trial = await recordTrial(row.uid, sub);
+      return { ok: true, trial };
+    }
+    const credited = await recordPaid(row.uid, sub);
+    return { ok: true, credited };
+  }
   if (type === "PAYMENT.SALE.COMPLETED") {
     const sale = String(resource.id || "");
     const subId = String(resource.billing_agreement_id || "");
