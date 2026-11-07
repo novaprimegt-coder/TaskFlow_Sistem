@@ -2,7 +2,7 @@
 
 ## Estado
 
-**Código preparado, NO desplegado, NO cobra dinero real.** Rama de trabajo: `feature/paypal-noads`. No fusionar con `main` hasta desplegar, probar y aprobar la configuración de PayPal y Firebase.
+**Frontend y backend preparados en `main`, pero el servicio de cobro NO está desplegado ni habilitado para producción.** No se ha verificado ningún cargo real. `public-config.json` permanece desactivado y no debe activarse hasta completar la conexión comercial, despliegue y pruebas.
 
 **Precio autorizado: US$6.00 al mes**, renovación automática. No es un enlace de pago único, no es un período fijo de 30 días, no incluye prueba gratuita ni cuota de instalación. El cargo es mensual hasta que el titular cancele. PayPal puede ofrecer tarjeta de crédito/débito sin cuenta PayPal, sujeto a elegibilidad de la región y cuenta comercial.
 
@@ -70,8 +70,12 @@ Confirmar que las reglas de Firestore **deniegan por completo todas las escritur
 ## Estado actual verificable
 
 - Precio y periodicidad en código: **6.00 USD / MONTH**.
-- Frontend: **integrado solo en rama de desarrollo**.
+- Frontend: **integrado en `main`**, pero checkout desactivado mediante configuración pública.
 - Backend: **código de integración preparado, no desplegado ni probado con PayPal Live**.
 - PayPal: **no se ha creado un plan real ni se ha ejecutado ningún cargo desde esta conversación**.
 - Configuración pública: **desactivada** para evitar ventas incorrectas.
-- La versión en `main` permanece separada mientras falten estas comprobaciones.
+- La rama `main` conserva la interfaz del checkout desactivado y las verificaciones de derecho de acceso. El cobro real permanece pendiente de configuración y despliegue de la función.
+
+## Nota de seguridad de activación
+
+El correo electrónico comunicado por el titular no autoriza transferencias ni confirma las credenciales REST de su cuenta PayPal. El administrador debe vincular y verificar su propia cuenta **PayPal Business** en el panel PayPal Developer, crear y comprobar el plan recurrente Live de US$6/mes, registrar el webhook Live, desplegar Firebase Functions y completar las pruebas de renovación/cancelación/reembolso. No colocar Client Secret ni Webhook ID en este repositorio ni en una conversación. El beneficio sin anuncios se concede únicamente por datos autenticados del servidor; ni una redirección a PayPal ni un `onApprove` sin cobro confirmado son suficientes.
