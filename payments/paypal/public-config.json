@@ -1,4 +1,4 @@
 {
   "enabled": "auto",
-  "apiBase": "https://us-central1-taskflow-b0ece.cloudfunctions.net/taskflowNoAds"
+  "apiBase": "https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-noads"
 }
