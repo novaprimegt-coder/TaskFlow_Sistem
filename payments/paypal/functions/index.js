@@ -18,6 +18,8 @@ const ID_PATTERN=/^I-[A-Za-z0-9-]{8,64}$/;
 const PAYPAL_ID=/^[A-Za-z0-9-]{5,100}$/;
 let cachedPlanAt=0,cachedPlanValid=false;
 function configured(){return ['sandbox','live'].includes(ENV)&&/^P-[A-Za-z0-9-]{8,64}$/.test(PLAN)&&!!clientId.value()&&!!clientSecret.value()}
+// La página pública nunca debe habilitar cobros con credenciales de Sandbox.
+function liveCheckoutReady(){return ENV==='live'&&configured()&&!!webhookId.value()}
 function cors(req,res){
   res.set('Vary','Origin');res.set('Cache-Control','no-store');
   res.set('X-Content-Type-Options','nosniff');
@@ -131,6 +133,16 @@ async function assignPayment(uid,sub,source,saleId){
   });
   return true;
 }
+// Vincular la suscripción verificada al UID incluso si aún no llegó el primer cobro.
+ // Así un webhook tardío puede encontrar a su titular sin depender de un intent caducado.
+async function linkPendingSubscription(uid,sub){
+ const linked=subscriptionRef(sub.id);
+ await db.runTransaction(async tx=>{
+  const snap=await tx.get(linked);
+  if(snap.exists&&snap.data().uid!==uid)throw new Error('SUBSCRIPTION_ALREADY_LINKED');
+  tx.set(linked,{uid,planId:PLAN,environment:ENV,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+ });
+}
 async function accountStatus(uid){
   const snap=await entRef(uid).get();
   return publicStatus(snap.exists?snap.data():null);
@@ -152,6 +164,7 @@ async function confirmSubscription(uid,req,res){
   if(!await verifyPlan())return json(res,503,{error:'PLAN_NOT_READY'});
   const sub=await paypalSubscription(id);
   if(sub.custom_id!==nonce)return json(res,403,{error:'SUBSCRIPTION_NOT_OWNED'});
+  await linkPendingSubscription(uid,sub);
   if(sub.status==='APPROVAL_PENDING'||sub.status==='APPROVED')return json(res,202,{paid:false,pending:true});
   if(sub.status!=='ACTIVE')return json(res,409,{error:'SUBSCRIPTION_NOT_ACTIVE'});
   const linked=await subscriptionRef(id).get();
@@ -243,10 +256,10 @@ exports.taskflowNoAds=onRequest({region:'us-central1',timeoutSeconds:45,memory:'
     const route=req.path.replace(/\/$/,'')||'/';
     if(req.method==='POST'&&route==='/paypal/webhook')return await handleWebhook(req,res);
     if(req.method==='GET'&&route==='/config'){
-      if(!configured())return json(res,200,{enabled:false});
+      if(!liveCheckoutReady())return json(res,200,{enabled:false,environment:ENV});
       const enabled=await verifyPlan().catch(()=>false);
-      return json(res,200,enabled?{enabled:true,clientId:clientId.value(),
-        planId:PLAN,price:PRICE,currency:CURRENCY,frequency:'MONTH',recurring:true}:{enabled:false});
+      return json(res,200,enabled?{enabled:true,environment:'live',clientId:clientId.value(),
+        planId:PLAN,price:PRICE,currency:CURRENCY,frequency:'MONTH',recurring:true}:{enabled:false,environment:'live'});
     }
     const uid=await requireUser(req);
     if(req.method==='GET'&&route==='/status')return json(res,200,await accountStatus(uid));
