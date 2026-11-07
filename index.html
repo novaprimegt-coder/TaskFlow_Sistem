@@ -99,7 +99,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=71-hub-cards-20261106':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=73-paypal-live-client-20261106':p==='t57/runtime-19.txt'?'?v=72-hub-touch-payment-253-20261106':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=71-hub-cards-20261106':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=74-noads-buy-20261106':p==='t57/runtime-19.txt'?'?v=72-hub-touch-payment-253-20261106':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
