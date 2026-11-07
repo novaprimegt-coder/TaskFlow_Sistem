@@ -465,7 +465,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("TaskFlow subscription server:", e?.message || "UNEXPECTED");
     return respond(req, e?.status || 503, {
-      error: e?.status === 401 ? "AUTH_REQUIRED" : e?.message?.startsWith("INVALID") ? e.message : "PAYMENT_UNAVAILABLE"
+      error: e?.status === 401 ? "AUTH_REQUIRED" :
+        e?.message === "TRIAL_ALREADY_USED" ? "TRIAL_ALREADY_USED" :
+        e?.message?.startsWith("INVALID") ? e.message : "PAYMENT_UNAVAILABLE"
     });
   }
 });
