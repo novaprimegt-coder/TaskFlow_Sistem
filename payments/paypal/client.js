@@ -20,7 +20,12 @@ function style(){
  #${MODAL_ID} p{font-size:14px;line-height:1.45;color:#d2e0ee;margin:10px 0}
  #${MODAL_ID} .tf-paypal-close{float:right;border:1px solid #4d7891;background:#10223b;color:#fff;padding:9px 13px;border-radius:12px}
  #${MODAL_ID} .tf-paypal-status{font-size:13px;margin:16px 0;color:#d7e3ed}
- #${MODAL_ID} #tfPayPalButtons{min-height:0;margin-top:18px}
+ #${MODAL_ID} .tf-paypal-buy{display:block;width:100%;min-height:52px;margin:20px 0 8px;padding:12px 18px;border:1px solid #5dfaff;border-radius:14px;background:linear-gradient(110deg,#0ed5df,#0876ce);color:#fff;font:800 16px system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 26px rgba(9,179,218,.23)}
+ #${MODAL_ID} .tf-paypal-buy:focus-visible{outline:3px solid #fff;outline-offset:3px}
+ #${MODAL_ID} .tf-paypal-buy:disabled{opacity:.55;cursor:wait}
+ #${MODAL_ID} .tf-paypal-buy[hidden]{display:none!important}
+ #${MODAL_ID} .tf-paypal-info{color:#bbcadf;font-size:13px;line-height:1.5}
+ #${MODAL_ID} #tfPayPalButtons{min-height:0;margin-top:14px}
  #${MODAL_ID} #tfPayPalCancel{display:block;margin:16px auto 0;padding:11px 15px;color:#ffe0d4;background:#241b32;border:1px solid #aa6673;border-radius:12px;font-weight:700}
  #${MODAL_ID} #tfPayPalCancel[hidden]{display:none!important}
  `;
@@ -31,8 +36,9 @@ function panel(){
  r=document.createElement('div');r.id=MODAL_ID;r.hidden=true;
  r.setAttribute('role','dialog');r.setAttribute('aria-modal','true');
  r.setAttribute('aria-label','Eliminar anuncios con PayPal');
- r.innerHTML='<section class="tf-paypal-panel"><button type="button" class="tf-paypal-close" aria-label="Cerrar">Cerrar</button><h2>TaskFlow sin anuncios</h2><p id="tfPayPalPlan"></p><div id="tfPayPalStatus" class="tf-paypal-status" role="status"></div><div id="tfPayPalButtons"></div><button id="tfPayPalCancel" type="button" hidden>Cancelar renovación automática</button></section>';
+ r.innerHTML='<section class="tf-paypal-panel"><button type="button" class="tf-paypal-close" aria-label="Cerrar">Cerrar</button><h2>TaskFlow sin anuncios</h2><p id="tfPayPalPlan"></p><p class="tf-paypal-info">Sin banners, anuncios de entrada ni anuncios por interacción. Pago recurrente; puedes cancelar la renovación cuando quieras y conservar el período pagado.</p><button id="tfPayPalBuy" class="tf-paypal-buy" type="button">Comprar ahora · US$6.00/mes</button><div id="tfPayPalStatus" class="tf-paypal-status" role="status" aria-live="polite"></div><div id="tfPayPalButtons"></div><button id="tfPayPalCancel" type="button" hidden>Cancelar renovación automática</button></section>';
  r.querySelector('.tf-paypal-close').addEventListener('click',()=>{if(!busy)r.hidden=true});
+ r.querySelector('#tfPayPalBuy').addEventListener('click',()=>{void beginPurchase()});
  const cancel=r.querySelector('#tfPayPalCancel');
  cancel.addEventListener('click',async()=>{
   if(busy||!subscriptionStatus||subscriptionStatus.renewalStatus==='CANCELLED')return;
@@ -142,35 +148,63 @@ async function waitForFirstPayment(root,target){
  return false;
 }
 async function showCheckout(){
- if(busy)return false;
+ const root=panel(),target=root.querySelector('#tfPayPalButtons');
+ const buy=root.querySelector('#tfPayPalBuy'),cancel=root.querySelector('#tfPayPalCancel');
+ root.hidden=false;target.replaceChildren();buy.hidden=false;buy.disabled=false;cancel.hidden=true;
+ root.querySelector('#tfPayPalPlan').textContent='US$6.00 mensuales · Renovación automática.';
+ statusText('Consulta las condiciones y pulsa «Comprar ahora» para continuar con PayPal.');
  try{
   await (ready||Promise.resolve());
-  if(!enabled){try{await config()}catch(_){/* Sigue pendiente el backend verificado. */}}
+  if(!enabled){try{await config()}catch(_){/* No ofrecer un cargo sin servidor Live verificado. */}}
   if(!enabled){
-   const root=panel();root.hidden=false;root.querySelector('#tfPayPalButtons').replaceChildren();
-   root.querySelector('#tfPayPalCancel').hidden=true;
-   root.querySelector('#tfPayPalPlan').textContent='US$6.00 mensuales · Suscripción con renovación automática.';
-   statusText('La conexión PayPal Live está preparada, pero el servidor de suscripciones aún no ha verificado el plan mensual y las notificaciones de pago. No se ha realizado ningún cargo.');
+   statusText('La opción de compra está visible, pero PayPal Live aún no está habilitado para procesar suscripciones. No se ha realizado ningún cargo.');
    return false;
   }
-  const root=panel(),target=root.querySelector('#tfPayPalButtons');
-  root.hidden=false;target.replaceChildren();
-  root.querySelector('#tfPayPalCancel').hidden=true;
-  root.querySelector('#tfPayPalPlan').textContent=displayPeriod();
-  statusText('Verificando la cuenta y el estado de los anuncios…');
+  try{await authToken()}catch(_){
+   statusText('Inicia sesión en TaskFlow antes de comprar. El pago se procesará de forma segura en PayPal.');
+   return false;
+  }
+  if(await verifyStatus()){
+   buy.hidden=true;
+   statusText(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED'
+    ?'Ya tienes un período pagado sin anuncios. Su renovación automática está cancelada.'
+    :'Tu suscripción sin anuncios está activa. No se realizará otro cobro.');
+   cancel.hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
+   return true;
+  }
+  if(pendingApproval){
+   buy.hidden=true;
+   statusText('Hay una suscripción pendiente de confirmación. No inicies otro pago.');
+   return false;
+  }
+  statusText('Pulsa «Comprar ahora» para elegir PayPal o tarjeta, si está disponible.');
+  return true;
+ }catch(_){
+  statusText('No se pudo verificar el estado de PayPal. Puedes volver a intentarlo; no se ha realizado ningún cargo.');
+  return false;
+ }
+}
+async function beginPurchase(){
+ const root=panel(),target=root.querySelector('#tfPayPalButtons');
+ const buy=root.querySelector('#tfPayPalBuy');
+ if(busy||buy.disabled)return false;
+ buy.disabled=true;
+ statusText('Conectando con PayPal para verificar el plan mensual…');
+ try{
+  await (ready||Promise.resolve());
+  if(!enabled)await config();
+  if(!enabled)throw new Error('NO_CHECKOUT');
   await authToken();
   if(await verifyStatus()){
-   statusText(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED'
-    ?'Tu período pagado continúa activo. La renovación automática está cancelada.'
-    :'Tu suscripción está activa. No verás publicidad.');
-   const cancel=root.querySelector('#tfPayPalCancel');
-   cancel.hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
-   return true
+   buy.hidden=true;
+   statusText('Tu suscripción ya está activa. No se realizará otro cobro.');
+   root.querySelector('#tfPayPalCancel').hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
+   return true;
   }
-  if(pendingApproval){statusText('La suscripción anterior está pendiente de confirmación. No inicies otro cobro.');return false}
-  statusText('US$6.00 al mes. Elige PayPal o, cuando esté disponible, tarjeta de débito o crédito.');
+  if(pendingApproval)throw new Error('PAYMENT_PENDING');
   const pp=await paypalSdk();
   if(!pp||!pp.Buttons)throw new Error('PAYPAL_SDK_UNAVAILABLE');
+  target.replaceChildren();
   const buttons=pp.Buttons({
    style:{layout:'vertical',shape:'rect',label:'pay'},
    createSubscription:async (_data,actions)=>{
@@ -204,13 +238,19 @@ async function showCheckout(){
    onError:()=>statusText('PayPal no pudo completar la operación.')
   });
   if(buttons.isEligible&& !buttons.isEligible())throw new Error('PAYPAL_NOT_ELIGIBLE');
-  await buttons.render(target);return true;
+  await buttons.render(target);
+  buy.hidden=true;
+  statusText('Completa la autorización en PayPal. TaskFlow activará el beneficio solo cuando confirme el cobro.');
+  return true;
  }catch(error){
-  const root=panel();root.hidden=false;
-  statusText(error.message==='LOGIN_REQUIRED'?'Inicia sesión en TaskFlow para continuar.':
-   'La suscripción todavía no está disponible. No hemos iniciado ningún cargo.');
+  const code=String(error&&error.message||'');
+  statusText(code==='LOGIN_REQUIRED'?'Inicia sesión en TaskFlow para comprar la suscripción.':
+   code==='PAYMENT_PENDING'?'Hay una suscripción pendiente. Comprueba su estado antes de iniciar otro pago.':
+   code==='NO_CHECKOUT'||code==='NO_CONFIGURATION'||code==='INVALID_SUBSCRIPTION_PLAN'?
+   'PayPal Live todavía no está habilitado para cobrar suscripciones. No se ha realizado ningún cargo.':
+   'No fue posible abrir el pago seguro. Comprueba tu conexión e inténtalo de nuevo. No se ha realizado ningún cargo.');
   return false;
- }
+ }finally{buy.disabled=false}
 }
 function onClick(event){
  const button=event.target&&event.target.closest&&event.target.closest('#btnNoAds,#qaNoAds,a[href="http://action_noads"],a[href="#tfNoAds"]');
@@ -220,11 +260,11 @@ function onClick(event){
 }
 async function initialize(){
  document.addEventListener('click',onClick,true);
+ window.addEventListener('focus',()=>{if(enabled)void verifyStatus()},{passive:true});
+ document.addEventListener('taskflow:account-state-updated',()=>{if(enabled)void verifyStatus()});
  try{await config()}catch(_){return false}
  if(!enabled)return false;
  void verifyStatus();
- window.addEventListener('focus',()=>void verifyStatus(),{passive:true});
- document.addEventListener('taskflow:account-state-updated',()=>void verifyStatus());
  return true;
 }
 ready=(document.readyState==='loading'
