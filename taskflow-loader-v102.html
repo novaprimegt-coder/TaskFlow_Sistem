@@ -36,7 +36,11 @@ body{min-height:100dvh}
 #tfSplash{background:radial-gradient(ellipse 95% 64% at 52% 45%,#082044 0%,#030b1e 58%,#020612 100%)}
 .tfSplashArt{isolation:isolate;box-shadow:0 0 38px rgba(17,165,239,.13)}
 .tfSplashArt>img{position:relative;z-index:0}
-#tfSplashSlats{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:.58;mix-blend-mode:screen;-webkit-mask-image:radial-gradient(ellipse 55% 43% at 50% 55%,transparent 15%,rgba(0,0,0,.23) 62%,#000 100%);mask-image:radial-gradient(ellipse 55% 43% at 50% 55%,transparent 15%,rgba(0,0,0,.23) 62%,#000 100%)}
+#tfSplashSlats{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:.17;mix-blend-mode:screen;transition:opacity .3s ease;-webkit-mask-image:radial-gradient(ellipse 76% 73% at 50% 54%,transparent 34%,rgba(0,0,0,.18) 75%,#000 100%);mask-image:radial-gradient(ellipse 76% 73% at 50% 54%,transparent 34%,rgba(0,0,0,.18) 75%,#000 100%)}
+#tfSplash.tf-slats-touched #tfSplashSlats{opacity:.48}
+.tfSplashWave{position:absolute;z-index:2;left:50%;top:50%;width:22px;height:22px;box-sizing:border-box;border:2px solid rgba(120,246,255,.93);border-radius:50%;pointer-events:none;box-shadow:0 0 16px 3px rgba(13,225,249,.74),inset 0 0 10px rgba(167,73,255,.82);background:radial-gradient(circle,rgba(8,232,248,.26),rgba(120,59,255,.12) 40%,transparent 67%);transform:translate(-50%,-50%) scale(.1);animation:tfSplashRipple .93s ease-out forwards}
+@keyframes tfSplashRipple{0%{opacity:.92;transform:translate(-50%,-50%) scale(.35)}38%{opacity:.9}100%{opacity:0;transform:translate(-50%,-50%) scale(10)}}
+@media(prefers-reduced-motion:reduce){.tfSplashWave{animation:none;display:none!important}}
 #tfSplashSlats canvas{display:block;width:100%;height:100%;pointer-events:none}
 .tfSplashArt::before{content:"";position:absolute;z-index:2;inset:0;pointer-events:none;box-shadow:inset 0 0 34px rgba(8,173,235,.17),inset 0 0 60px rgba(125,52,234,.08)}
 .tfSplashMeter{z-index:3;border:1px solid rgba(27,200,243,.26);box-shadow:0 0 19px rgba(10,126,226,.19),inset 0 0 12px rgba(4,18,45,.85)}
@@ -55,7 +59,7 @@ body{min-height:100dvh}
   </div>
 </div>
 <div class="boot" id="boot" role="alert" aria-live="assertive"><div class="card"><p class="msg" id="msg">No fue posible iniciar TaskFlow.</p><div class="detail" id="detail"></div><button class="retry" id="retry" type="button">Reintentar</button></div></div>
-<script src="./taskflow-microslats.js?v=1-tide-adapt" defer></script>
+<script src="./taskflow-microslats.js?v=2-touch-ripple" defer></script>
 <script>
 (()=>{
   'use strict';
