@@ -63,8 +63,10 @@ function setActive(next){
 }
 async function config(){
  if(settings!==null&&enabled)return settings;
- const r=await fetch(CFG_URL,{cache:'no-store',credentials:'omit'});
- if(!r.ok)throw new Error('NO_CONFIGURATION');
+ let r;
+ try{r=await fetch(CFG_URL,{cache:'no-store',credentials:'omit'})}
+ catch(_){throw new Error('PUBLIC_CONFIG_UNAVAILABLE')}
+ if(!r.ok)throw new Error('PUBLIC_CONFIG_UNAVAILABLE');
  const c=await r.json();const base=safeBase(c.apiBase);
  settings={enabled:(c.enabled===true||c.enabled==='auto')&&!!base,apiBase:base};
  if(!settings.enabled)return settings;
@@ -74,10 +76,13 @@ async function config(){
  const timer=setTimeout(()=>controller.abort(),5500);
  let response;
  try{response=await fetch(base+'/config',{cache:'no-store',credentials:'omit',signal:controller.signal})}
+ catch(_){throw new Error('PAYPAL_BACKEND_UNAVAILABLE')}
  finally{clearTimeout(timer)}
- if(!response.ok)throw new Error('NO_CHECKOUT');
- const data=await response.json();
- if(!data.enabled||data.environment!=='live'||!data.clientId||!/^[A-Za-z0-9_-]+$/.test(data.clientId))throw new Error('NO_CHECKOUT');
+ if(!response.ok)throw new Error('PAYPAL_BACKEND_UNAVAILABLE');
+ let data;
+ try{data=await response.json()}catch(_){throw new Error('PAYPAL_BACKEND_INVALID_RESPONSE')}
+ if(!data||data.enabled!==true||data.environment!=='live')throw new Error('PAYPAL_LIVE_NOT_READY');
+ if(!data.clientId||!/^[A-Za-z0-9_-]+$/.test(data.clientId))throw new Error('PAYPAL_LIVE_NOT_READY');
  plan={clientId:data.clientId,planId:data.planId,price:data.price,currency:data.currency,recurring:data.recurring,frequency:data.frequency};
  if(!plan.planId||!plan.recurring||plan.frequency!=='MONTH'||plan.price!=='6.00'||plan.currency!=='USD')throw new Error('INVALID_SUBSCRIPTION_PLAN');
  enabled=true;return settings;
@@ -129,10 +134,11 @@ function paypalSdk(){
   const qs=new URLSearchParams({'client-id':plan.clientId,currency:plan.currency,
    vault:'true',intent:'subscription',components:'buttons'});
   script.src='https://www.paypal.com/sdk/js?'+qs.toString();
-  script.async=true;script.onload=()=>window.paypal?resolve(window.paypal):reject(new Error('PAYPAL_SDK_UNAVAILABLE'));
+  script.async=true;
+  script.onload=()=>window.paypal?resolve(window.paypal):reject(new Error('PAYPAL_SDK_UNAVAILABLE'));
   script.onerror=()=>reject(new Error('PAYPAL_SDK_UNAVAILABLE'));
   document.head.appendChild(script);
- });return sdkPromise;
+ }).catch(error=>{sdkPromise=null;throw error});return sdkPromise;
 }
 async function waitForFirstPayment(root,target){
  for(let i=0;i<15;i++){
@@ -195,7 +201,12 @@ async function beginPurchase(){
   if(!enabled)await config();
   if(!enabled)throw new Error('NO_CHECKOUT');
   await authToken();
-  if(await verifyStatus()){
+  // En una compra, exigir respuesta del servidor: un fallo de red no significa que
+  // la cuenta esté libre de suscripción, y no debe arriesgarse un cobro duplicado.
+  const current=await request('GET','/status');
+  subscriptionStatus=current;
+  setActive(current.active===true);
+  if(current.active===true){
    buy.hidden=true;
    statusText('Tu suscripción ya está activa. No se realizará otro cobro.');
    root.querySelector('#tfPayPalCancel').hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
@@ -246,9 +257,13 @@ async function beginPurchase(){
   const code=String(error&&error.message||'');
   statusText(code==='LOGIN_REQUIRED'?'Inicia sesión en TaskFlow para comprar la suscripción.':
    code==='PAYMENT_PENDING'?'Hay una suscripción pendiente. Comprueba su estado antes de iniciar otro pago.':
-   code==='NO_CHECKOUT'||code==='NO_CONFIGURATION'||code==='INVALID_SUBSCRIPTION_PLAN'?
-   'PayPal Live todavía no está habilitado para cobrar suscripciones. No se ha realizado ningún cargo.':
-   'No fue posible abrir el pago seguro. Comprueba tu conexión e inténtalo de nuevo. No se ha realizado ningún cargo.');
+   code==='PUBLIC_CONFIG_UNAVAILABLE'?'No se pudo cargar la configuración de pago de TaskFlow. Vuelve a intentarlo. No se ha realizado ningún cargo.':
+   code==='PAYPAL_BACKEND_UNAVAILABLE'?'El servidor de suscripciones de Firebase no está disponible. Debe desplegarse y activarse PayPal Live para procesar compras reales. No se ha realizado ningún cargo.':
+   code==='PAYPAL_LIVE_NOT_READY'||code==='PAYPAL_BACKEND_INVALID_RESPONSE'||code==='INVALID_SUBSCRIPTION_PLAN'||code==='NO_CHECKOUT'||code==='NO_CONFIGURATION'?
+   'El servidor todavía no ha habilitado el plan PayPal Live de US$6.00 al mes. No se ha realizado ningún cargo.':
+   code==='PAYPAL_SDK_UNAVAILABLE'||code==='PAYPAL_NOT_ELIGIBLE'?
+   'PayPal no pudo mostrar el formulario de pago en este navegador. Comprueba que PayPal esté disponible e inténtalo de nuevo. No se ha realizado ningún cargo.':
+   'No se pudo verificar la cuenta o iniciar el pago con el servidor. No se ha realizado ningún cargo.');
   return false;
  }finally{buy.disabled=false}
 }
