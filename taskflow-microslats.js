@@ -8,6 +8,44 @@ window.TaskFlowMicroSlats={stop:function(){if(active){active.stop();active=null}
 const root=document.getElementById('tfSplash');
 const host=document.getElementById('tfSplashSlats');
 if(!root||!host||root.hidden)return;
+/* Respuesta táctil nativa incluso cuando Android no permite WebGL2. */
+let lastPulse=-1000,pulseTimer=0;
+function touchPoint(event){
+ const p=event.changedTouches&&event.changedTouches[0]||event.touches&&event.touches[0]||event;
+ const rect=host.getBoundingClientRect();
+ if(!rect.width||!rect.height||!Number.isFinite(p.clientX)||!Number.isFinite(p.clientY))return null;
+ return {x:Math.max(0,Math.min(rect.width,p.clientX-rect.left)),y:Math.max(0,Math.min(rect.height,p.clientY-rect.top)),rect};
+}
+function pulse(event){
+ const now=performance.now();
+ if(now-lastPulse<85)return;
+ const p=touchPoint(event);
+ if(!p)return;
+ lastPulse=now;
+ const wave=document.createElement('span');
+ wave.className='tfSplashWave';
+ wave.style.left=p.x+'px';wave.style.top=p.y+'px';
+ host.appendChild(wave);
+ wave.addEventListener('animationend',()=>wave.remove(),{once:true});
+ setTimeout(()=>wave.remove(),1100);
+ root.classList.add('tf-slats-touched');
+ clearTimeout(pulseTimer);
+ pulseTimer=setTimeout(()=>root.classList.remove('tf-slats-touched'),850);
+}
+const touchAllowed=!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+if(touchAllowed){
+ root.addEventListener('pointerdown',pulse,{passive:true});
+ root.addEventListener('touchstart',pulse,{passive:true});
+}
+const previousStop=window.TaskFlowMicroSlats.stop;
+window.TaskFlowMicroSlats.stop=function(){
+ previousStop();
+ root.removeEventListener('pointerdown',pulse);
+ root.removeEventListener('touchstart',pulse);
+ clearTimeout(pulseTimer);
+ root.classList.remove('tf-slats-touched');
+ host.querySelectorAll('.tfSplashWave').forEach(node=>node.remove());
+};
 try{
  const reduced=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
  const saveData=!!(navigator.connection&&navigator.connection.saveData);
@@ -54,7 +92,8 @@ try{
   'height+=HEIGHT[i]*(cos(phase)+steep*cos(2.0*phase));total+=HEIGHT[i]*(1.0+steep);',
   '}',
   'float dist=length(vec2((center.x/uSize.x-uTouch.x)*uSize.x/uSize.y,center.y/uSize.y-uTouch.y));',
-  'float disturbance=sin(dist*35.0-uTouch.z*9.0)*exp(-dist*11.0)*uTouch.w*0.52;',
+  'float disturbance=sin(dist*30.0-uTouch.z*8.0)*exp(-dist*9.0)*uTouch.w*0.65;',
+  'float ring=exp(-pow((dist-uTouch.z*0.23)/0.048,2.0))*uTouch.w;',
   'height+=disturbance*total;',
   'float level=clamp(0.5+0.5*height/(total*0.85),0.0,1.0);',
   'float crest=smoothstep(0.6,1.0,level);float glint=crest*crest*uGlint;',
@@ -63,10 +102,10 @@ try{
   'float front=uIntro*1.35;',
   'float reveal=1.0-smoothstep(front-0.35,front,v);',
   'float sweep=exp(-pow((v-front+0.22)/0.07,2.0))*(1.0-uIntro);',
-  'light=max((light+sweep*0.8)*reveal,0.045*reveal);',
+  'light=max((light+sweep*0.8)*reveal,0.045*reveal)+ring*0.7;',
   'float span=mix(1.0-uStretch,1.0,level);',
   'span=clamp(span,0.08,1.0)*mix(0.1,1.0,reveal);',
-  'float tint=clamp(glint*1.4+sweep+abs(disturbance)*0.45,0.0,1.0);',
+  'float tint=clamp(glint*1.4+sweep+abs(disturbance)*0.45+ring*1.2,0.0,1.0);',
   'float lean=clamp(disturbance*0.6,-1.0,1.0)*reveal;',
   'fragColor=vec4(clamp(light,0.0,1.0),span,tint,0.5+0.5*lean);',
   '}'
@@ -161,6 +200,8 @@ try{
   document.removeEventListener('visibilitychange',visibility);
   root.removeEventListener('pointerdown',onPointerDown);
   root.removeEventListener('pointermove',onPointerMove);
+  root.removeEventListener('touchstart',onPointerDown);
+  root.removeEventListener('touchmove',onPointerMove);
   canvas.removeEventListener('webglcontextlost',onContextLost);
   try{if(fb)gl.deleteFramebuffer(fb);if(texture)gl.deleteTexture(texture);if(fieldProgram)gl.deleteProgram(fieldProgram);if(slatProgram)gl.deleteProgram(slatProgram);if(vao)gl.deleteVertexArray(vao)}catch(_){}
   canvas.remove();
@@ -168,14 +209,15 @@ try{
  function onContextLost(event){event.preventDefault();dispose()}
  function visibility(){if(!document.hidden&&!stopped&&!root.hidden&&!frameId)frameId=requestAnimationFrame(frame)}
  function onPointerDown(event){
-  const r=host.getBoundingClientRect();if(!r.width||!r.height)return;
-  touch.x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));
-  touch.y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));
+  const p=touchPoint(event);
+  if(!p)return;
+  touch.x=p.x/p.rect.width;
+  touch.y=p.y/p.rect.height;
   touch.strength=1;lastTouch=performance.now();
  }
  function onPointerMove(event){
-  if(event.buttons===0)return;
-  onPointerDown(event);touch.strength=0.45;
+  if(event.type==='pointermove'&&event.buttons===0)return;
+  onPointerDown(event);touch.strength=0.7;
  }
  const uniforms=setup();
  function frame(now){
@@ -230,6 +272,8 @@ try{
  active={stop};
  root.addEventListener('pointerdown',onPointerDown,{passive:true});
  root.addEventListener('pointermove',onPointerMove,{passive:true});
+ root.addEventListener('touchstart',onPointerDown,{passive:true});
+ root.addEventListener('touchmove',onPointerMove,{passive:true});
  document.addEventListener('visibilitychange',visibility,{passive:true});
  canvas.addEventListener('webglcontextlost',onContextLost,{passive:false});
  if(typeof ResizeObserver==='function'){observer=new ResizeObserver(()=>{viewW=0});observer.observe(host)}
