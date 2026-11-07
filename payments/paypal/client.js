@@ -159,7 +159,7 @@ function paypalSdk(){
   document.head.appendChild(script);
  }).catch(error=>{sdkPromise=null;throw error});return sdkPromise;
 }
-async function waitForFirstPayment(root,target){
+async function waitForFirstPayment(root,target,subscriptionId=''){
  for(let i=0;i<15;i++){
   await new Promise(resolve=>setTimeout(resolve,3000));
   if(await verifyStatus()){
@@ -168,8 +168,22 @@ async function waitForFirstPayment(root,target){
    root.querySelector('#tfPayPalCancel').hidden=false;
    return true;
   }
+  // PayPal may approve before changing the subscription status to ACTIVE.
+  // Recheck the *same* PayPal subscription; never create another charge.
+  if(subscriptionId&&pendingIntent){
+   try{
+    const result=await request('POST','/confirm',
+      {subscriptionId,intent:pendingIntent});
+    if(result.active&&(result.paid||result.trialActive)){
+     subscriptionStatus=result;setActive(true);target.replaceChildren();
+     statusText(result.trialActive?'Tu prueba gratuita de 7 días ya está activa.':'Pago confirmado. Tu suscripción mensual sin anuncios está activa.');
+     root.querySelector('#tfPayPalCancel').hidden=false;
+     return true;
+    }
+   }catch(_){/* Retry verification only; do not launch another checkout. */}
+  }
  }
- statusText('El pago continúa pendiente de confirmación. No inicies otro cobro; consulta tu estado más tarde.');
+ statusText('La suscripción continúa en verificación. No inicies otra compra.');
  return false;
 }
 async function showCheckout(){
@@ -270,9 +284,12 @@ async function beginPurchase(){
       root.querySelector('#tfPayPalCancel').hidden=false;
      }else{
       statusText('Suscripción aprobada; esperando confirmación del primer cobro. No se activará hasta verificarlo.');
-      void waitForFirstPayment(root,target);
+      void waitForFirstPayment(root,target,data.subscriptionID);
      }
-    }catch(_){statusText('La suscripción necesita confirmación. Comprueba el estado antes de volver a pagar.');}
+    }catch(_){
+     statusText('La suscripción necesita confirmación. Se está comprobando su estado.');
+     void waitForFirstPayment(root,target,data.subscriptionID);
+    }
     finally{busy=false}
    },
    onCancel:()=>{pendingApproval=false;pendingIntent=null;statusText('Pago cancelado. No se ha modificado tu cuenta.')},
