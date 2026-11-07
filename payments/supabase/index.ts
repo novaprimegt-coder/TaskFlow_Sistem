@@ -457,7 +457,7 @@ Deno.serve(async (req) => {
       return respond(req, 200, await intent(uid));
     if (req.method === "POST" && path === "/confirm") {
       const data = await confirm(uid, req);
-      return respond(req, data.paid ? 200 : 202, data);
+      return respond(req, data.active ? 200 : 202, data);
     }
     if (req.method === "POST" && path === "/cancel")
       return respond(req, 200, await cancel(uid));
