@@ -1,0 +1,36 @@
+name: TaskFlow - Verificar suscripciones PayPal Live
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/taskflow-paypal-health.yml'
+permissions:
+  contents: read
+jobs:
+  paypal-live-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar configuracion publica del servidor de pagos
+        env:
+          CONFIG_URL: https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-noads/config
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent --show-error --location --max-time 20 --retry 2 "$CONFIG_URL")"
+          printf '%s' "$response" | node -e '
+            let raw = "";
+            process.stdin.on("data", chunk => raw += chunk);
+            process.stdin.on("end", () => {
+              let value;
+              try { value = JSON.parse(raw); }
+              catch (_) { console.error("FAIL: respuesta no es JSON"); process.exit(1); }
+              console.log("Servidor responde. Live:", value.environment === "live", "| Checkout habilitado:", value.enabled === true);
+              console.log("Plan mensual valido:", value.price === "6.00" && value.currency === "USD" && value.frequency === "MONTH" && value.recurring === true);
+              if (value.enabled !== true || value.environment !== "live" || value.price !== "6.00" ||
+                  value.currency !== "USD" || value.frequency !== "MONTH" || value.recurring !== true) {
+                console.error("FAIL: checkout real PayPal no verificado");
+                process.exit(1);
+              }
+              console.log("OK: configuracion publica de PayPal Live verificada.");
+            });
+          '
