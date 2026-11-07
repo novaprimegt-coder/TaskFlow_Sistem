@@ -53,7 +53,7 @@ jobs:
           assert.ok(!loader.includes('Preparando el sistema')&&loader.includes('.boot.error'),'El cargador visual antiguo sigue disponible o falta recuperación');
           assert.ok(root.includes('const SPLASH_MS=10000')&&root.includes('taskflow-loading-reference.jpg')&&root.includes('await keepSplashExactlyTenSeconds()'),'Falta pantalla colorida oficial de 10 segundos en inicio principal');
           assert.ok(loader.includes('SPLASH_MS=10000')&&loader.includes('await waitForColorSplash()')&&loader.includes('taskflow-loading-reference.jpg'),'Falta pantalla colorida en cargador auxiliar');
-          assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.4.1'"),'Falta módulo vigente y puente ADS actualizado');
+          assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.5.3'"),'Falta módulo vigente y puente ADS actualizado');
           assert.ok(bridge.includes('function testedBanner(ad)')&&bridge.includes('async function displayBanner(slot)')&&bridge.includes('function validBannerPixels(img)'),'No se comprueba la carga real de banners');
           assert.ok(root.includes('t57/runtime-24.txt')&&root.includes('TF_T57'),'Falta el arranque vigente T57');
           assert.ok(!root.includes('Función de tienda inesperada; se conserva el paquete original'),'Error de arranque antiguo reintroducido');
@@ -91,5 +91,14 @@ jobs:
           assert.ok(sw.includes('async function previousRuntimeResource')&&sw.includes('const key=url.href;'),'No se conserva respaldo de fragmentos offline');
           assert.ok(sw.includes('old.match(url.href)')&&!sw.includes('old.match(url.origin+url.pathname,{ignoreSearch:true})'),'Recuperación offline mezcla revisiones de fragmentos');
           assert.ok(sw.includes('async function freshStaticResource')&&sw.includes("cache:'no-cache'"),'Los JS/CSS deben actualizarse con respaldo offline');
-          console.log('OK: núcleo, carga T57, autenticación, protección, ADS HD, rutinas, PayPal preparado y',assets.length,'archivos offline.');
+          const paypalConfig=JSON.parse(read('payments/paypal/public-config.json'));
+          const paypalClient=read('payments/paypal/client.js');
+          const paypalServer=read('payments/paypal/functions/index.js');
+          assert.equal(paypalConfig.enabled,'auto','La conexión comercial utiliza modo de detección segura');
+          assert.equal(new URL(paypalConfig.apiBase).protocol,'https:','El backend de pago debe tener HTTPS');
+          assert.ok(paypalClient.includes("data.environment!=='live'"),'No habilitar pagos Sandbox en producción');
+          assert.ok(paypalServer.includes("function liveCheckoutReady()")&&paypalServer.includes("ENV==='live'"),'El servidor debe restringir producción a PayPal Live');
+          assert.ok(paypalServer.includes("webhookId.value()")&&paypalServer.includes('linkPendingSubscription(uid,sub)'),'Falta validación de webhook o vinculación de pago pendiente');
+          assert.ok(!paypalClient.includes('EG2DrW3o')&&!paypalServer.includes('EG2DrW3o'),'Se filtró una credencial de PayPal');
+          console.log('OK: núcleo, carga T57, autenticación, protección, ADS HD, PayPal Live preparado y',assets.length,'archivos offline.');
           NODE
