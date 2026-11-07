@@ -178,7 +178,7 @@ function normalizeCampaign(c){
  if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c)||!targetEligible(c))return [];
  const placement=['banner','entry','interaction'].includes(c.placement)?c.placement:'';
  if(!placement||!Array.isArray(c.ads))return [];
- return c.ads.slice(0,12).map(a=>{
+ return c.ads.map(a=>{
    if(!a||typeof a!=='object')return null;
    const src=validHTTPS(a.src),destination=a.destination?validHTTPS(a.destination):'';
    const type=String(a.type||'image').toLowerCase();
