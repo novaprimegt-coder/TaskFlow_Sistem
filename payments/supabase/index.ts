@@ -16,7 +16,7 @@ const PLAN_ID = Deno.env.get("TF_PAYPAL_PLAN_ID") || "";
 const WEBHOOK_ID = Deno.env.get("TF_PAYPAL_WEBHOOK_ID") || "";
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Vary": "Origin" };
-let planValidCache = { until: 0, ok: false };
+let planValidCache = { until: 0, ok: false, trialDays: 0 };
 
 function respond(req, status, data) {
   const origin = req.headers.get("Origin") || "";
@@ -84,24 +84,44 @@ async function paypal(path, method = "GET", body) {
   if (!res.ok) throw fail("PAYPAL_API_ERROR");
   return data;
 }
+function validatedPlan(p) {
+  if (p.id !== PLAN_ID || p.status !== "ACTIVE") return { ok: false, trialDays: 0 };
+  const cycles = Array.isArray(p.billing_cycles) ? p.billing_cycles : [];
+  const regular = cycles.filter(v => v.tenure_type === "REGULAR");
+  if (regular.length !== 1) return { ok: false, trialDays: 0 };
+  const monthly = regular[0];
+  const regularValid = monthly.frequency?.interval_unit === "MONTH" &&
+    Number(monthly.frequency?.interval_count) === 1 &&
+    Number(monthly.total_cycles) === 0 &&
+    monthly.pricing_scheme?.fixed_price?.currency_code === CURRENCY &&
+    Number(monthly.pricing_scheme?.fixed_price?.value) === 6 &&
+    Number(p.payment_preferences?.setup_fee?.value || 0) === 0;
+  if (!regularValid) return { ok: false, trialDays: 0 };
+  if (cycles.length === 1 && Number(monthly.sequence) === 1)
+    return { ok: true, trialDays: 0 }; // Keep the existing monthly plan operational.
+  if (cycles.length !== 2 || Number(monthly.sequence) !== 2)
+    return { ok: false, trialDays: 0 };
+  const trial = cycles.find(v => v.tenure_type === "TRIAL");
+  const charge = trial?.pricing_scheme?.fixed_price;
+  const free = !charge || (Number(charge.value) === 0 &&
+    (!charge.currency_code || charge.currency_code === CURRENCY));
+  const validTrial = trial && Number(trial.sequence) === 1 &&
+    trial.frequency?.interval_unit === "DAY" &&
+    Number(trial.frequency?.interval_count) === 7 &&
+    Number(trial.total_cycles) === 1 && free;
+  return validTrial ? { ok: true, trialDays: 7 } : { ok: false, trialDays: 0 };
+}
 async function planReady() {
   if (!credentialsSet()) return false;
   if (planValidCache.until > Date.now()) return planValidCache.ok;
   try {
     const p = await paypal("/v1/billing/plans/" + encodeURIComponent(PLAN_ID));
-    const cycles = p.billing_cycles || [];
-    const regular = cycles.filter(x => x.tenure_type === "REGULAR");
-    const v = regular[0];
-    const ok = p.id === PLAN_ID && p.status === "ACTIVE" && cycles.length === 1 &&
-      regular.length === 1 && v.frequency?.interval_unit === "MONTH" &&
-      Number(v.frequency?.interval_count) === 1 && Number(v.total_cycles) === 0 &&
-      v.pricing_scheme?.fixed_price?.currency_code === CURRENCY &&
-      Number(v.pricing_scheme?.fixed_price?.value) === 6 &&
-      Number(p.payment_preferences?.setup_fee?.value || 0) === 0;
-    planValidCache = { until: Date.now() + 60000, ok };
-    return ok;
+    const checked = validatedPlan(p);
+    planValidCache = { until: Date.now() + (checked.ok ? 60000 : 10000),
+      ok: checked.ok, trialDays: checked.trialDays };
+    return checked.ok;
   } catch (_) {
-    planValidCache = { until: Date.now() + 10000, ok: false };
+    planValidCache = { until: Date.now() + 10000, ok: false, trialDays: 0 };
     return false;
   }
 }
@@ -128,16 +148,41 @@ function showStatus(row) {
     active: paid(row), price: PRICE, currency: CURRENCY, frequency: "MONTH",
     subscriptionId: row?.subscription_id || null,
     paidUntil: row?.paid_until ? Date.parse(row.paid_until) : null,
-    renewalStatus: row?.renewal_status || null
+    renewalStatus: row?.renewal_status || null,
+    trialActive: paid(row) && row?.access_kind === "trial",
+    trialEndsAt: row?.access_kind === "trial" ? Date.parse(row.paid_until) : null
   };
 }
-async function getStatus(uid) {
-  return showStatus(await one("taskflow_paypal_entitlements", "uid", uid));
+async function pastSubscription(uid, exceptId = "") {
+  let query = db().from("taskflow_paypal_subscriptions")
+    .select("paypal_id").eq("uid", uid);
+  if (exceptId) query = query.neq("paypal_id", exceptId);
+  const { data, error } = await query.limit(1);
+  if (error) throw fail("DATABASE_UNAVAILABLE");
+  return !!data?.length;
 }
-async function getSubscription(id) {
+async function trialUsed(uid) {
+  const claim = await one("taskflow_paypal_trial_claims", "uid", uid);
+  return !!claim || await pastSubscription(uid);
+}
+async function trialEligible(uid, subscriptionId = "") {
+  const claim = await one("taskflow_paypal_trial_claims", "uid", uid);
+  return (!claim || claim.subscription_id === subscriptionId) &&
+    !await pastSubscription(uid, subscriptionId);
+}
+async function getStatus(uid) {
+  const status = showStatus(await one("taskflow_paypal_entitlements", "uid", uid));
+  return planValidCache.trialDays === 7 ?
+    { ...status, trialUsed: await trialUsed(uid) } : status;
+}
+async function getSubscription(id, currentPlanOnly = false) {
   if (!/^I-[A-Za-z0-9-]{8,64}$/.test(id)) throw fail("INVALID_SUBSCRIPTION", 400);
   const s = await paypal("/v1/billing/subscriptions/" + encodeURIComponent(id));
-  if (s.id !== id || s.plan_id !== PLAN_ID) throw fail("PLAN_MISMATCH", 409);
+  // Existing subscriptions keep their original plan when a new trial plan is published.
+  const linked = currentPlanOnly ? null :
+    await one("taskflow_paypal_subscriptions", "paypal_id", id);
+  const trustedPlan = currentPlanOnly ? PLAN_ID : linked?.plan_id;
+  if (s.id !== id || s.plan_id !== trustedPlan) throw fail("PLAN_MISMATCH", 409);
   return s;
 }
 async function linkSubscription(uid, sub) {
@@ -194,9 +239,10 @@ async function recordPaid(uid, sub, saleId = "") {
     Date.parse(prior.paid_until || "") || 0 : 0);
   if (until <= Date.now()) return false;
   await write("taskflow_paypal_entitlements", {
-    uid, subscription_id: sub.id, state: "active",
+    uid, subscription_id: sub.id, state: "active", access_kind: "paid",
     renewal_status: sub.status, paid_until: new Date(until).toISOString(),
     last_paid_at: new Date(at).toISOString(),
+    trial_started_at: prior?.trial_started_at || null,
     last_sale_id: saleId || prior?.last_sale_id || null,
     updated_at: new Date().toISOString()
   }, "uid");
@@ -206,9 +252,63 @@ async function recordPaid(uid, sub, saleId = "") {
   }, "paypal_sale_id");
   return true;
 }
+// Free access is granted only to a PayPal ACTIVE subscription under a
+// verified 7-day-zero-price plan. An unapproved intent never grants access.
+function paypalTrialWindow(sub) {
+  if (planValidCache.trialDays !== 7 || sub.status !== "ACTIVE" ||
+      sub.plan_id !== PLAN_ID) return null;
+  const start = Date.parse(sub.start_time || "");
+  const next = Date.parse(sub.billing_info?.next_billing_time || "");
+  const now = Date.now();
+  const day = 86400000;
+  if (!Number.isFinite(start) || !Number.isFinite(next) ||
+      start > now + 5 * 60000 || now < start ||
+      start < now - 7 * day || next <= now ||
+      next < start + 6 * day || next > start + 8 * day)
+    return null;
+  const executions = sub.billing_info?.cycle_executions;
+  if (Array.isArray(executions) && executions.length &&
+      !executions.some(e => e.tenure_type === "TRIAL")) return null;
+  const until = Math.min(start + 7 * day, next);
+  return until > now ? { start, until } : null;
+}
+async function recordTrial(uid, sub) {
+  const window = paypalTrialWindow(sub);
+  if (!window) return false;
+  const linked = await one("taskflow_paypal_subscriptions", "paypal_id", sub.id);
+  if (!linked || linked.uid !== uid || linked.plan_id !== PLAN_ID)
+    throw fail("SUBSCRIPTION_NOT_OWNED", 403);
+  if (!await trialEligible(uid, sub.id)) throw fail("TRIAL_ALREADY_USED", 409);
+  const previous = await one("taskflow_paypal_entitlements", "uid", uid);
+  if (previous && paid(previous) && previous.subscription_id !== sub.id)
+    throw fail("ALREADY_SUBSCRIBED", 409);
+  if (previous?.access_kind === "paid" && previous.subscription_id === sub.id)
+    return false; // Never downgrade a verified paid entitlement to a free trial.
+  const claim = await one("taskflow_paypal_trial_claims", "uid", uid);
+  if (!claim) {
+    const { error } = await db().from("taskflow_paypal_trial_claims").insert({
+      uid, subscription_id: sub.id, claimed_at: new Date(window.start).toISOString()
+    });
+    if (error) {
+      const existing = await one("taskflow_paypal_trial_claims", "uid", uid);
+      if (!existing || existing.subscription_id !== sub.id)
+        throw fail("TRIAL_ALREADY_USED", 409);
+    }
+  }
+  await write("taskflow_paypal_entitlements", {
+    uid, subscription_id: sub.id, state: "active", access_kind: "trial",
+    renewal_status: sub.status, paid_until: new Date(window.until).toISOString(),
+    last_paid_at: null, last_sale_id: null,
+    trial_started_at: new Date(window.start).toISOString(),
+    updated_at: new Date().toISOString()
+  }, "uid");
+  return true;
+}
 async function intent(uid) {
   const existing = await getStatus(uid);
   if (existing.active) throw fail("ALREADY_SUBSCRIBED", 409);
+  if (planValidCache.trialDays === 7 && !await trialEligible(uid))
+    throw fail("TRIAL_ALREADY_USED", 409);
   const id = crypto.randomUUID();
   const { error } = await db().from("taskflow_paypal_intents").insert({
     intent_id: id, uid, plan_id: PLAN_ID,
@@ -233,14 +333,19 @@ async function confirm(uid, req) {
   const pending = await one("taskflow_paypal_intents", "intent_id", nonce);
   if (!pending || pending.uid !== uid || pending.plan_id !== PLAN_ID ||
       Date.parse(pending.expires_at) < Date.now()) throw fail("INTENT_INVALID", 403);
-  const sub = await getSubscription(id);
+  const sub = await getSubscription(id, true);
   if (sub.custom_id !== nonce) throw fail("SUBSCRIPTION_NOT_OWNED", 403);
+  if (planValidCache.trialDays === 7 && !await trialEligible(uid, sub.id))
+    throw fail("TRIAL_ALREADY_USED", 409);
   await linkSubscription(uid, sub);
   if (["APPROVAL_PENDING", "APPROVED"].includes(sub.status))
-    return { paid: false, pending: true };
+    return { paid: false, trialActive: false, pending: true };
   if (sub.status !== "ACTIVE") throw fail("SUBSCRIPTION_NOT_ACTIVE", 409);
-  const credited = await recordPaid(uid, sub);
-  return { paid: credited, ...(await getStatus(uid)), pending: !credited };
+  const trialActivated = planValidCache.trialDays === 7 && await recordTrial(uid, sub);
+  const credited = trialActivated ? false : await recordPaid(uid, sub);
+  const status = await getStatus(uid);
+  return { paid: credited, ...status,
+    pending: !credited && !status.trialActive };
 }
 async function cancel(uid) {
   const ent = await one("taskflow_paypal_entitlements", "uid", uid);
@@ -337,7 +442,7 @@ Deno.serve(async (req) => {
       return respond(req, 200, {
         enabled: true, environment: "live", clientId: CLIENT_ID,
         planId: PLAN_ID, price: PRICE, currency: CURRENCY,
-        frequency: "MONTH", recurring: true
+        frequency: "MONTH", recurring: true, trialDays: planValidCache.trialDays
       });
     }
     if (req.method === "POST" && path === "/paypal/webhook")
