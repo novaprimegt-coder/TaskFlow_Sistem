@@ -332,7 +332,19 @@ function apply(){
  bindAnalyticsTracking();
  if(!config.enabled||!runtimeReady())return false;
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()){
+  // Un beneficio confirmado por el servidor debe retirar todo anuncio visible,
+  // incluso si la suscripción se validó desde otro dispositivo.
   BANNER_SLOTS.forEach(slot=>{bannerStatus.delete(slot);try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
+  for(const [api,buttonId] of [[window.TaskFlowEntryAdV56,'tf56EntryContinue'],[window.TaskFlowInteractionAdV57,'tf57TouchClose']]){
+   try{
+    if(api&&api.isRunning&&api.isRunning()){
+     const button=document.getElementById(buttonId);
+     if(button)button.disabled=false;
+     api.close&&api.close();
+    }
+    api&&api.setCreative&&api.setCreative(null);
+   }catch(error){console.warn('TaskFlow: no se pudo cerrar el anuncio al verificar la suscripción',error)}
+  }
   return false;
  }
  try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
