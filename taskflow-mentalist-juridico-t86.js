@@ -8,50 +8,54 @@ window.__tfMentalistLegalProgressT86=true;
 const STYLE_ID='tfMentalistLegalProgressT86Style';
 const ROOT='#windowContainer.mentalist-modal.open #windowContent.tfMentalistReplicaT9';
 const CSS=`
-${ROOT} .tfm-legal-progress{display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important;box-sizing:border-box!important;margin:0 0 14px!important;padding:15px 16px 16px!important;border:1px solid rgba(19,225,243,.82)!important;border-radius:23px!important;background:radial-gradient(circle at 0% 0%,rgba(26,214,255,.10),transparent 28%),linear-gradient(145deg,#071725 0%,#0a1730 42%,#09122a 100%)!important;box-shadow:inset 0 0 18px rgba(39,235,255,.05),0 0 12px rgba(1,181,255,.08)!important;color:#f5faff!important}
-${ROOT} .tfm-legal-progress .tf21-progress-head{display:grid!important;grid-template-columns:58px minmax(0,1fr) 130px 66px!important;gap:12px!important;align-items:center!important;min-width:0!important;min-height:65px!important}
+${ROOT} .tfm-legal-progress{display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important;box-sizing:border-box!important;margin:0 0 14px!important;padding:15px 16px 16px!important;border:1px solid rgba(19,225,243,.82)!important;border-radius:24px!important;background:radial-gradient(circle at 0% 0%,rgba(26,214,255,.10),transparent 28%),linear-gradient(145deg,#071725 0%,#0a1730 42%,#09122a 100%)!important;box-shadow:inset 0 0 18px rgba(39,235,255,.05),0 0 12px rgba(1,181,255,.08)!important;color:#f5faff!important}
+${ROOT} .tfm-legal-progress .tf21-progress-head{display:grid!important;grid-template-columns:58px minmax(0,1fr) 141px 70px!important;gap:14px!important;align-items:center!important;min-width:0!important;min-height:68px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon{display:grid!important;place-items:center!important;width:50px!important;height:50px!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(14,131,178,.26),rgba(8,33,69,.96))!important;color:#29edf3!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon svg{width:29px!important;height:29px!important;stroke-width:2.1!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-label{min-width:0!important;display:grid!important;gap:4px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-label strong{font-size:18px!important;font-weight:900!important;line-height:1.15!important;color:#fff!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-label small{font-size:13px!important;line-height:1.35!important;color:#d8e0f2!important}
-${ROOT} .tfm-legal-progress .tf21-count-pill{height:61px!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:3px!important;align-items:center!important;justify-content:center!important;padding:5px 10px!important;border-radius:28px!important;border:1px solid rgba(188,100,255,.65)!important;background:linear-gradient(180deg,rgba(79,32,148,.92),rgba(40,18,95,.96))!important;box-shadow:inset 0 0 16px rgba(248,140,255,.08)!important;white-space:nowrap!important}
+${ROOT} .tfm-legal-progress .tf21-count-pill{height:68px!important;min-width:135px!important;display:flex!important;flex-direction:column!important;gap:3px!important;align-items:center!important;justify-content:center!important;padding:5px 10px!important;border-radius:28px!important;border:1px solid rgba(188,100,255,.65)!important;background:linear-gradient(180deg,rgba(79,32,148,.92),rgba(40,18,95,.96))!important;box-shadow:inset 0 0 16px rgba(248,140,255,.08)!important;white-space:nowrap!important}
 ${ROOT} .tfm-legal-progress .tf21-count-pill b{font-size:22px!important;line-height:1!important;font-weight:900!important;color:#c779ff!important;font-variant-numeric:tabular-nums!important}
 ${ROOT} .tfm-legal-progress .tf21-count-pill small{font-size:9px!important;line-height:1.15!important;letter-spacing:.3px!important;color:#d9c4f7!important;font-weight:800!important}
-${ROOT} .tfm-legal-progress .tf21-pct{font-size:38px!important;min-width:0!important;line-height:1!important;font-weight:900!important;text-align:right!important;color:#15f5f5!important;font-variant-numeric:tabular-nums!important}
-${ROOT} .tfm-legal-progress .tf21-bar{height:15px!important;margin:13px 6px 11px!important;border-radius:99px!important;overflow:hidden!important;background:#101b3b!important;border:1px solid rgba(64,100,153,.32)!important;box-shadow:inset 0 2px 6px #0007!important}
+${ROOT} .tfm-legal-progress .tf21-pct{font-size:44px!important;min-width:0!important;line-height:1!important;font-weight:900!important;text-align:right!important;color:#15f5f5!important;font-variant-numeric:tabular-nums!important}
+${ROOT} .tfm-legal-progress .tf21-bar{height:16px!important;margin:13px 8px 11px!important;border-radius:99px!important;overflow:hidden!important;background:#101b3b!important;border:1px solid rgba(64,100,153,.32)!important;box-shadow:inset 0 2px 6px #0007!important}
 ${ROOT} .tfm-legal-progress .tf21-bar>i{display:block!important;width:var(--tfm-legal-pct,0%)!important;height:100%!important;border-radius:inherit!important;background:linear-gradient(90deg,#03e8ee,#1f91fa,#8859f9)!important;box-shadow:0 0 14px #12e9f97a!important;transition:width .24s ease!important}
-${ROOT} .tfm-legal-progress .tf21-steps{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:1px!important;position:relative!important;min-width:0!important;margin:0 4px 13px!important}
+${ROOT} .tfm-legal-progress .tf21-steps{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:2px!important;position:relative!important;min-width:0!important;margin:0 4px 13px!important}
 ${ROOT} .tfm-legal-progress .tf21-steps::before{content:''!important;position:absolute!important;left:3%!important;right:3%!important;top:50%!important;height:2px!important;z-index:0!important;background:#1c3d68!important}
 ${ROOT} .tfm-legal-progress .tf21-step{position:relative!important;z-index:1!important;display:grid!important;place-items:center!important;justify-self:center!important;width:min(29px,100%)!important;aspect-ratio:1!important;border-radius:50%!important;border:1px solid rgba(77,120,209,.53)!important;background:#091936!important;color:#aec8fc!important;box-shadow:inset 0 0 10px rgba(29,84,170,.17)!important;font-size:11px!important;line-height:1!important;font-weight:750!important;font-variant-numeric:tabular-nums!important}
 ${ROOT} .tfm-legal-progress .tf21-step.done{background:linear-gradient(140deg,#00bfc8,#0c56c9)!important;color:#fff!important;border-color:#4ef2f4!important}
 ${ROOT} .tfm-legal-progress .tf21-stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
-${ROOT} .tfm-legal-progress .tf21-stat{min-width:0!important;min-height:100px!important;display:grid!important;grid-template-columns:48px minmax(0,1fr)!important;align-items:center!important;gap:7px!important;padding:10px 8px!important;border-radius:16px!important;border:1px solid rgba(58,97,164,.43)!important;background:linear-gradient(145deg,#0b1530,#091126)!important}
+${ROOT} .tfm-legal-progress .tf21-stat{min-width:0!important;min-height:124px!important;display:grid!important;grid-template-columns:56px minmax(0,1fr)!important;align-items:center!important;gap:12px!important;padding:16px 16px 14px!important;border-radius:20px!important;border:1px solid rgba(58,97,164,.43)!important;background:linear-gradient(145deg,#0b1530,#091126)!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(1){border-color:rgba(245,171,45,.55)!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(2){border-color:rgba(130,70,246,.68)!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(3){border-color:rgba(2,222,252,.5)!important}
-${ROOT} .tfm-legal-progress .tf21-stat-icon{display:grid!important;place-items:center!important;width:45px!important;height:45px!important;border-radius:14px!important;background:rgba(245,151,39,.14)!important;color:#ffbe52!important}
+${ROOT} .tfm-legal-progress .tf21-stat-icon{display:grid!important;place-items:center!important;width:56px!important;height:56px!important;border-radius:16px!important;background:rgba(245,151,39,.14)!important;color:#ffbe52!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(2) .tf21-stat-icon{background:rgba(124,45,239,.2)!important;color:#b177fa!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(3) .tf21-stat-icon{background:rgba(0,193,230,.12)!important;color:#24eefa!important}
-${ROOT} .tfm-legal-progress .tf21-stat-icon svg{width:25px!important;height:25px!important;stroke-width:2!important}
+${ROOT} .tfm-legal-progress .tf21-stat-icon svg{width:31px!important;height:31px!important;stroke-width:2!important}
 ${ROOT} .tfm-legal-progress .tf21-stat-body{display:flex!important;flex-direction:column!important;gap:4px!important;min-width:0!important;text-align:left!important;line-height:1.15!important}
-${ROOT} .tfm-legal-progress .tf21-stat-body b{font-size:21px!important;font-weight:900!important;white-space:nowrap!important;color:#ffc65a!important;font-variant-numeric:tabular-nums!important}
+${ROOT} .tfm-legal-progress .tf21-stat-body b{font-size:23px!important;font-weight:900!important;white-space:nowrap!important;color:#ffc65a!important;font-variant-numeric:tabular-nums!important}
 ${ROOT} .tfm-legal-progress .tf21-stat:nth-child(2) b{color:#b778ff!important}
-${ROOT} .tfm-legal-progress .tf21-stat:nth-child(3) b{font-size:18px!important;color:#23eff4!important}
-${ROOT} .tfm-legal-progress .tf21-stat-body span,${ROOT} .tfm-legal-progress .tf21-stat-body small{font-size:11px!important;line-height:1.22!important;color:#aabbdc!important;overflow-wrap:anywhere!important}
+${ROOT} .tfm-legal-progress .tf21-stat:nth-child(3) b{font-size:20px!important;color:#23eff4!important}
+${ROOT} .tfm-legal-progress .tf21-stat-body span,${ROOT} .tfm-legal-progress .tf21-stat-body small{font-size:12px!important;line-height:1.28!important;color:#aabbdc!important;overflow-wrap:anywhere!important}
 ${ROOT} [data-tfm-old-progress="yes"]{display:none!important}
+${ROOT} .tfm-legal-progress .tf21-progress-head>*{min-width:0!important;box-sizing:border-box!important}
+${ROOT} .tfm-legal-progress .tf21-steps{align-items:center!important}
+${ROOT} .tfm-legal-progress .tf21-stat-body span,${ROOT} .tfm-legal-progress .tf21-stat-body small{white-space:normal!important}
+${ROOT} .tfm-legal-progress .tf21-count-pill{box-sizing:border-box!important;overflow:hidden!important}
 /* El resumen de 12 misiones conserva su boton original de inicio. */
 ${ROOT} .tfm-summary{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:12px 0 0!important}
 ${ROOT} .tfm-summary>.tfm-summary-head,${ROOT} .tfm-summary>.tfm-stats{display:none!important}
 ${ROOT} .tfm-summary>.tfm-start{margin:0!important}
-@media(max-width:520px){
+@media(max-width:600px){
 ${ROOT} .tfm-legal-progress{padding:11px 10px 11px!important;border-radius:16px!important}
-${ROOT} .tfm-legal-progress .tf21-progress-head{grid-template-columns:39px minmax(0,1fr) 64px 44px!important;gap:6px!important;min-height:46px!important}
+${ROOT} .tfm-legal-progress .tf21-progress-head{grid-template-columns:39px minmax(0,1fr) 63px 46px!important;gap:6px!important;min-height:46px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon{width:37px!important;height:37px!important;border-radius:11px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon svg{width:22px!important;height:22px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-label strong{font-size:12px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-label small{font-size:9px!important}
-${ROOT} .tfm-legal-progress .tf21-count-pill{height:43px!important;padding:4px 3px!important;min-width:0!important}
+${ROOT} .tfm-legal-progress .tf21-count-pill{height:43px!important;padding:4px 3px!important;min-width:63px!important}
 ${ROOT} .tfm-legal-progress .tf21-count-pill b{font-size:15px!important}
 ${ROOT} .tfm-legal-progress .tf21-count-pill small{font-size:6px!important}
 ${ROOT} .tfm-legal-progress .tf21-pct{font-size:25px!important}
