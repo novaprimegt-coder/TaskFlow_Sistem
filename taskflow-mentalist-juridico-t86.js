@@ -361,42 +361,58 @@ function createCard(scroll){
 
 /* T89: suprime solo el panel superior duplicado de doce pasos.
    La tarjeta inferior conserva su progreso y el seguimiento original no se altera. */
+/* T93: retirar DEL DOM el contenedor superior, no solo cambiar estilos.
+   Identifica la hilera visual 1..12 ubicada estrictamente antes de la tarjeta nueva.
+   Nunca retira la tarjeta de progreso válida ni las misiones. */
 function hideLegacyTracker(panel,scroll,card){
- // Encontrar el cuadro antiguo en cualquier profundidad del modal.
- // Excluir el cuadro nuevo, la regla y todas las tarjetas de las doce pruebas.
- const excluded='.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-protocol,.tfm-summary,.v85-routine-modal-head';
- const candidates=[...panel.querySelectorAll('div,section,article,nav,ol')].filter(node=>{
-  if(node===card||node===scroll||node.contains(card)||node.closest(excluded)||
-     node.querySelector('.v94-mentalist-step,.v94-mentalist-list,.tfm-legal-progress,.tfm-summary,.v94-mentalist-protocol,.v85-routine-modal-head'))return false;
-  const numbered=[...node.querySelectorAll('*')].filter(e=>
-    e.childElementCount===0&&/^(?:[1-9]|1[0-2])$/.test(String(e.textContent||'').trim()));
-  return numbered.length===12&&numbered.every((e,i)=>Number(e.textContent.trim())===i+1)&&
-    String(node.textContent||'').replace(/(?:1[0-2]|[1-9])|\s/g,'').trim()==='';
- });
- const largest=candidates.filter(node=>!candidates.some(other=>other!==node&&other.contains(node)));
- // Si la escala original aparece como hermano de otro contenedor,
- // recorrer desde la cabecera hasta el contenedor que contiene el progreso nuevo.
- let host=card;
- while(host.parentElement&&host.parentElement!==panel)host=host.parentElement;
- const header=panel.querySelector(':scope > .v85-routine-modal-head');
- if(header&&host.parentElement===panel){
-  let sibling=header.nextElementSibling;
-  while(sibling&&sibling!==host){
-   const next=sibling.nextElementSibling;
-   if(!sibling.matches('script,style')&&!sibling.contains(card)&&
-      !sibling.querySelector('.v94-mentalist-list,.v94-mentalist-protocol,.v94-mentalist-step,button,input,textarea')){
-    sibling.setAttribute('data-tfm-old-progress','yes');
-    sibling.style.setProperty('display','none','important');
-   }
-   sibling=next;
+ const header=panel.querySelector('.v85-routine-modal-head');
+ if(!header||!card||!card.isConnected)return false;
+ const lower=card.getBoundingClientRect(),top=header.getBoundingClientRect();
+ if(!lower.width||!top.width||lower.top<=top.bottom)return false;
+ const safe='.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-protocol,.tfm-summary,.v85-routine-modal-head';
+ const seen=new Map();
+ for(const element of panel.querySelectorAll('*')){
+  if(element.childElementCount!==0||element.closest(safe)||element.closest('[hidden],[data-tfm-old-progress="yes"]'))continue;
+  const value=(element.textContent||'').trim();
+  if(!/^(?:[1-9]|1[0-2])$/.test(value))continue;
+  const bounds=element.getBoundingClientRect();
+  if(bounds.width<6||bounds.height<6||bounds.top<=top.bottom-16||bounds.bottom>=lower.top-4)continue;
+  const number=Number(value);
+  if(!seen.has(number))seen.set(number,[]);
+  seen.get(number).push(element);
+ }
+ if(seen.size!==12)return false;
+ let row=null;
+ for(const first of seen.get(1)){
+  const found=[first],firstBox=first.getBoundingClientRect();
+  let lastCenter=firstBox.left+firstBox.width/2,ok=true;
+  for(let i=2;i<=12;i++){
+   const next=(seen.get(i)||[]).find(element=>{
+    const bounds=element.getBoundingClientRect(),center=bounds.left+bounds.width/2;
+    return center>lastCenter&&Math.abs(bounds.top-firstBox.top)<Math.max(26,firstBox.height);
+   });
+   if(!next){ok=false;break}
+   found.push(next);
+   const bounds=next.getBoundingClientRect();
+   lastCenter=bounds.left+bounds.width/2;
   }
+  if(ok){row=found;break}
  }
- for(const node of largest){
-  node.setAttribute('data-tfm-old-progress','yes');
-  node.style.setProperty('display','none','important');
-  const bar=node.previousElementSibling;
-  if(bar&&bar.matches('[class*="progress-bar"],[class*="progress-track"],[class*="meter"],[class*="timeline-bar"]')&&!bar.querySelector('button,input'))bar.style.setProperty('display','none','important');
+ if(!row)return false;
+ let container=row[0];
+ while(container&&!row.every(element=>container.contains(element)))container=container.parentElement;
+ if(!container||container===panel||container.contains(card)||container.contains(header))return false;
+ let target=container;
+ while(target.parentElement&&target.parentElement!==panel){
+  const parent=target.parentElement;
+  if(parent.contains(card)||parent.contains(header)||parent.matches('.v96-mentalist-scroll'))break;
+  const rect=parent.getBoundingClientRect();
+  if(rect.top<top.bottom-18||rect.bottom>lower.top+10)break;
+  target=parent;
  }
+ if(target.contains(card)||target.contains(header))return false;
+ target.remove();
+ return true;
 }
 function update(){
  const current=state();if(!current)return;
