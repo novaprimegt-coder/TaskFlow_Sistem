@@ -9,6 +9,31 @@ const PROJECT_ID='taskflow-b0ece';
 const COLLECTION='adsPublicCampaigns';
 const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(PROJECT_ID)+'/databases/(default)/documents/'+encodeURIComponent(COLLECTION);
 const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'];
+// The client receives only campaign references, never commercial weighting or budget data.
+const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
+let recommendations=new Map(),recommendationRun=0;
+async function refreshRecommendations(){
+ const ticket=++recommendationRun;
+ if(!config.enabled||!catalog.length)return;
+ const slots=[...BANNER_SLOTS.map(slot=>({placement:'banner',slot})),{placement:'entry',slot:'entry'},{placement:'interaction',slot:'interaction'}];
+ const sessionId=analyticsSessionId();if(!sessionId)return;
+ const next=new Map();
+ await Promise.all(slots.map(async({placement,slot})=>{
+  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),6500);
+  try{
+   const response=await fetch(SELECTION_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:abort.signal,
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({placement,slot,country:context.country,region:context.region,city:context.city,sessionId})});
+   if(!response.ok)return;
+   const data=await response.json();
+   if(typeof data.campaignId==='string'&&catalog.some(a=>a.campaignId===data.campaignId&&a.placement===placement))next.set(slot,data.campaignId);
+  }catch(_){}
+  finally{clearTimeout(timer)}
+ }));
+ if(ticket!==recommendationRun)return;
+ recommendations=next;
+ for(const slot of BANNER_SLOTS)if(bannerNearViewport.has(slot))void displayBanner(slot);
+ applyWhenReady();
+}
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
 let config={enabled:true,adminUrl:null,refreshMs:10000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
@@ -196,7 +221,8 @@ function pick(placement,slot){
  const list=catalog.filter(a=>a.placement===placement);if(!list.length)return null;
  let last='';try{last=localStorage.getItem(lastKey(placement,slot))||''}catch(_){}
  const pool=list.length>1?list.filter(a=>a.id!==last):list;
- const idx=Math.floor(Math.random()*pool.length),lead=pool[idx]||pool[0];
+ const favored=recommendations.get(slot);const recommended=pool.find(a=>a.campaignId===favored);
+ const idx=Math.floor(Math.random()*pool.length),lead=recommended||pool[idx]||pool[0];
  // Se conserva la selección de campaña, pero se prioriza su creativo HD si existe.
  const siblings=pool.filter(a=>a.campaignId===lead.campaignId);
  const hdWidth=placement==='banner'?2400:2160;
@@ -245,6 +271,8 @@ function bannerCandidates(slot){
   seenCampaigns.add(key);
   ordered.push(...pool.filter(a=>a.campaignId===key).sort((a,b)=>(b.mediaWidth||0)-(a.mediaWidth||0)));
  }
+ const favored=recommendations.get(slot);
+ if(favored)ordered.sort((a,b)=>Number(b.campaignId===favored)-Number(a.campaignId===favored));
  return ordered;
 }
 function validBannerPixels(img){
@@ -391,6 +419,7 @@ function applyWhenReady(){
 function rebuildCatalog(){
  catalog=rawCampaigns.flatMap(normalizeCampaign).slice(0,1200);
  applyWhenReady();
+ void refreshRecommendations();
  try{document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated',{detail:{available:catalog.length}}))}catch(_){}
 }
 async function fetchCatalog(){
@@ -419,7 +448,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.5.3',
+ version:'2.5.4',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
