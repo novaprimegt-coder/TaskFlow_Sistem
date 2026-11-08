@@ -8,7 +8,9 @@ window.__tfMentalistLegalProgressT86=true;
 const STYLE_ID='tfMentalistLegalProgressT86Style';
 const ROOT='#windowContainer.mentalist-modal.open #windowContent.tfMentalistReplicaT9';
 const CSS=`
-/* T96: solo la barra y escala duplicadas del resumen. */
+/* T97: eliminar la franja vacía sin alterar la tarjeta nueva de progreso. */
+#windowContainer.window-container.open.mentalist-modal #windowContent.tfMentalistReplicaT9.tf15-mentalista .v96-mentalist-scroll > .tfm-summary,
+${ROOT} .v96-mentalist-scroll > .tfm-summary{display:none!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
 ${ROOT} .tfm-summary .tf17-mental-steps,
 ${ROOT} .tfm-summary > .tfm-meter{display:none!important}
 ${ROOT} .tfm-legal-progress{display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important;box-sizing:border-box!important;margin:0 0 14px!important;padding:15px 16px 16px!important;border:1px solid rgba(19,225,243,.82)!important;border-radius:24px!important;background:radial-gradient(circle at 0% 0%,rgba(26,214,255,.10),transparent 28%),linear-gradient(145deg,#071725 0%,#0a1730 42%,#09122a 100%)!important;box-shadow:inset 0 0 18px rgba(39,235,255,.05),0 0 12px rgba(1,181,255,.08)!important;color:#f5faff!important}
@@ -367,18 +369,28 @@ function createCard(scroll){
    Se retiran los agregados visuales duplicados fuera de la tarjeta
    oficial, sin analizar numeros ni posiciones y sin alterar misiones. */
 /* T96: limpiar la duplicación de T17 sin modificar otras funciones. */
+/* T97: el resumen T9 se queda vacío tras migrar el botón original.
+   Se conserva su estructura para los cálculos, sin ocupar espacio visual. */
 function hideLegacyTracker(panel,scroll,card){
  const summary=scroll.querySelector('.tfm-summary');
  if(!summary)return;
+ const start=summary.querySelector(':scope > .tfm-start');
+ if(start){
+  start.classList.add('tf15-mental-start');
+  scroll.appendChild(start);
+ }
  summary.querySelectorAll('.tf17-mental-steps').forEach(el=>el.remove());
  const oldBar=summary.querySelector(':scope > .tfm-meter');
  if(oldBar)oldBar.remove();
- const start=scroll.querySelector(':scope > .tf15-mental-start');
- if(start){
-  if(summary.nextElementSibling!==start)scroll.insertBefore(summary,start);
- }else if(summary!==scroll.lastElementChild){
-  scroll.appendChild(summary);
- }
+ summary.hidden=true;
+ summary.setAttribute('aria-hidden','true');
+ summary.style.setProperty('display','none','important');
+ summary.style.setProperty('height','0','important');
+ summary.style.setProperty('min-height','0','important');
+ summary.style.setProperty('margin','0','important');
+ summary.style.setProperty('padding','0','important');
+ summary.style.setProperty('border','0','important');
+ summary.style.setProperty('overflow','hidden','important');
 }
 function update(){
  const current=state();if(!current)return;
