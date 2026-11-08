@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.5.3
+/* TaskFlow ADS Bridge v2.6.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -14,7 +14,7 @@ const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskf
 let recommendations=new Map(),recommendationRun=0;
 async function refreshRecommendations(){
  const ticket=++recommendationRun;
- if(!config.enabled||!catalog.length)return;
+ if(!config.enabled||!catalog.length){recommendations=new Map();applyWhenReady();return;}
  const slots=[...BANNER_SLOTS.map(slot=>({placement:'banner',slot})),{placement:'entry',slot:'entry'},{placement:'interaction',slot:'interaction'}];
  const sessionId=analyticsSessionId();if(!sessionId)return;
  const next=new Map();
@@ -218,11 +218,12 @@ function normalizeCampaign(c){
 }
 function lastKey(placement,slot){return 'taskflow_ads_last_v2_'+placement+'_'+String(slot||'default')}
 function pick(placement,slot){
- const list=catalog.filter(a=>a.placement===placement);if(!list.length)return null;
+ const favored=recommendations.get(slot);
+ if(!favored)return null;
+ const list=catalog.filter(a=>a.placement===placement&&a.campaignId===favored);if(!list.length)return null;
  let last='';try{last=localStorage.getItem(lastKey(placement,slot))||''}catch(_){}
  const pool=list.length>1?list.filter(a=>a.id!==last):list;
- const favored=recommendations.get(slot);const recommended=pool.find(a=>a.campaignId===favored);
- const idx=Math.floor(Math.random()*pool.length),lead=recommended||pool[idx]||pool[0];
+ const lead=pool[Math.floor(Math.random()*pool.length)]||pool[0];
  // Se conserva la selección de campaña, pero se prioriza su creativo HD si existe.
  const siblings=pool.filter(a=>a.campaignId===lead.campaignId);
  const hdWidth=placement==='banner'?2400:2160;
@@ -257,7 +258,9 @@ function queueBanner(slot){
  if(bannerNearViewport.has(slot))void displayBanner(slot);
 }
 function bannerCandidates(slot){
- const list=catalog.filter(a=>a.placement==='banner'&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
+ const favored=recommendations.get(slot);
+ if(!favored)return [];
+ const list=catalog.filter(a=>a.placement==='banner'&&a.campaignId===favored&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
  if(!list.length)return [];
  const shown=bannerStatus.get(slot),last=shown&&shown.id||'';
  const unseen=list.filter(a=>a.id!==last),seen=list.filter(a=>a.id===last);
@@ -271,8 +274,7 @@ function bannerCandidates(slot){
   seenCampaigns.add(key);
   ordered.push(...pool.filter(a=>a.campaignId===key).sort((a,b)=>(b.mediaWidth||0)-(a.mediaWidth||0)));
  }
- const favored=recommendations.get(slot);
- if(favored)ordered.sort((a,b)=>Number(b.campaignId===favored)-Number(a.campaignId===favored));
+ // Se usan únicamente creativos de la campaña autorizada por el servicio privado.
  return ordered;
 }
 function validBannerPixels(img){
@@ -326,7 +328,8 @@ async function displayBanner(slot){
  const displayed=bannerStatus.get(slot);
  const live=element.querySelector('img');
  const current=displayed&&catalog.some(a=>a.placement==='banner'&&a.id===displayed.id&&a.src===displayed.src);
- if(current&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
+ const approvedSelection=recommendations.get(slot);
+ if(current&&displayed.campaignId===approvedSelection&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
  bannerBusy.add(slot);
  try{
   for(const ad of candidates){
@@ -337,7 +340,7 @@ async function displayBanner(slot){
    if(!document.getElementById(slot))return;
    if(!catalog.some(x=>x.placement==='banner'&&x.id===ad.id&&x.src===ad.src))continue;
    if(window.TaskFlowAdsV50.render(slot,bannerNode(ad,img))){
-    bannerStatus.set(slot,{id:ad.id,src:ad.src,at:Date.now()});
+    bannerStatus.set(slot,{id:ad.id,campaignId:ad.campaignId,src:ad.src,at:Date.now()});
     recordVisibleAd(ad,slot,element);
     try{localStorage.setItem(lastKey('banner',slot),ad.id)}catch(_){}
     return;
@@ -345,7 +348,7 @@ async function displayBanner(slot){
   }
   // No mostrar nunca el icono roto del navegador.
   const currentAd=bannerStatus.get(slot);
-  const stillEligible=currentAd&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
+  const stillEligible=currentAd&&currentAd.campaignId===recommendations.get(slot)&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
   if(!stillEligible||!live||!live.complete||!validBannerPixels(live)){
    bannerStatus.delete(slot);
    window.TaskFlowAdsV50.render(slot,null);
@@ -438,7 +441,7 @@ async function fetchCatalog(){
 }
 async function refresh(){
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive())return false;
- if(!config.enabled){catalog=[];rawCampaigns=[];applyWhenReady();return false}
+ if(!config.enabled){catalog=[];rawCampaigns=[];recommendations.clear();applyWhenReady();return false}
  if(refreshing)return refreshing;
  refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);return false}).finally(()=>{refreshing=null});
  return refreshing;
@@ -448,7 +451,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.5.5',
+ version:'2.6.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
