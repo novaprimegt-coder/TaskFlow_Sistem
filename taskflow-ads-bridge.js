@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.7.0
+/* TaskFlow ADS Bridge v2.8.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -19,13 +19,15 @@ async function refreshRecommendations(){
  const sessionId=analyticsSessionId();if(!sessionId)return;
  const next=new Map();
  await Promise.all(slots.map(async({placement,slot})=>{
+  const previous=recommendations.get(slot);
+  if(previous&&previous.expiresAt>Date.now()&&catalog.some(a=>a.campaignId===previous.campaignId&&a.id===previous.adId&&a.placement===placement)){next.set(slot,previous);return}
   const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),6500);
   try{
    const response=await fetch(SELECTION_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:abort.signal,
     headers:{'Content-Type':'application/json'},body:JSON.stringify({placement,slot,country:context.country,region:context.region,city:context.city,sessionId})});
    if(!response.ok)return;
    const data=await response.json();
-   if(typeof data.campaignId==='string'&&typeof data.adId==='string'&&catalog.some(a=>a.campaignId===data.campaignId&&a.id===data.adId&&a.placement===placement))next.set(slot,{campaignId:data.campaignId,adId:data.adId});
+   if(typeof data.campaignId==='string'&&typeof data.adId==='string'&&typeof data.selectionToken==='string'&&/^[a-f0-9-]{36}$/i.test(data.selectionToken)&&catalog.some(a=>a.campaignId===data.campaignId&&a.id===data.adId&&a.placement===placement))next.set(slot,{campaignId:data.campaignId,adId:data.adId,selectionToken:data.selectionToken,expiresAt:Date.now()+(placement==='banner'?30000:900000)});
   }catch(_){}
   finally{clearTimeout(timer)}
  }));
@@ -129,23 +131,23 @@ function telemetryDiagnostic(kind,state,error){
 function recordAdEvent(type,ad,slot){
  if(!ad||!['impression','click'].includes(type)||!catalog.some(x=>x.id===ad.id&&x.campaignId===ad.campaignId&&x.src===ad.src))return;
  const sessionId=analyticsSessionId();if(!sessionId)return;
- const payload={event:type,campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId};
+ const selectionToken=ad.selectionToken||(bannerStatus.get(slot)?.selectionToken||'');
+ if(!/^[a-f0-9-]{36}$/i.test(selectionToken))return;
+ const base={campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId,selectionToken};
  telemetryDiagnostic(type,'attempted');
- try{
-  fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-   .then(async response=>{
-    if(response.ok){telemetryDiagnostic(type,'acknowledged');return}
-    let detail='';
-    try{const data=await response.json();detail=String(data?.error||'')}catch(_){}
-    const reason='HTTP '+response.status+(detail?' · '+detail:'');
-    telemetryDiagnostic(type,'failed',reason);
-    console.warn('TaskFlow ADS: evento de '+type+' no confirmado:',reason);
-   })
-   .catch(error=>{
-    telemetryDiagnostic(type,'failed','Conexión no disponible');
-    console.warn('TaskFlow ADS: no se pudo registrar '+type,error?.message||'Sin conexión');
-   });
- }catch(error){telemetryDiagnostic(type,'failed','No se pudo enviar la petición')}
+ // A click must first have a confirmed impression; the server deduplicates both by selection token.
+ const post=async event=>{
+  const response=await fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})});
+  if(!response.ok)throw Error('HTTP '+response.status);
+ };
+ void (async()=>{
+  if(type==='click')await post('impression');
+  await post(type);
+  telemetryDiagnostic(type,'acknowledged');
+ })().catch(error=>{
+  telemetryDiagnostic(type,'failed','No se confirmó la entrega');
+  console.warn('TaskFlow ADS: evento no confirmado',String(error?.message||'Sin conexión'));
+ });
 }
 function visibleRect(el){
  if(!el||document.hidden)return false;
@@ -231,7 +233,7 @@ function pick(placement,slot){
  const options=hd.length?hd:siblings;
  const ad=options[Math.floor(Math.random()*options.length)]||lead;
  try{localStorage.setItem(lastKey(placement,slot),ad.id)}catch(_){}
- return ad
+ return {...ad,selectionToken:favored.selectionToken}
 }
 /* Nunca insertar un <img> sin verificar que el archivo se haya cargado realmente.
    Si la URL caducó, la carga falló o el archivo tiene medidas incorrectas,
@@ -275,7 +277,7 @@ function bannerCandidates(slot){
   ordered.push(...pool.filter(a=>a.campaignId===key).sort((a,b)=>(b.mediaWidth||0)-(a.mediaWidth||0)));
  }
  // Se usan únicamente creativos de la campaña autorizada por el servicio privado.
- return ordered;
+ return ordered.map(a=>({...a,selectionToken:favored.selectionToken}));
 }
 function validBannerPixels(img){
  const w=img.naturalWidth,h=img.naturalHeight;
@@ -340,7 +342,7 @@ async function displayBanner(slot){
    if(!document.getElementById(slot))return;
    if(!catalog.some(x=>x.placement==='banner'&&x.id===ad.id&&x.src===ad.src))continue;
    if(window.TaskFlowAdsV50.render(slot,bannerNode(ad,img))){
-    bannerStatus.set(slot,{id:ad.id,campaignId:ad.campaignId,src:ad.src,at:Date.now()});
+    bannerStatus.set(slot,{id:ad.id,campaignId:ad.campaignId,src:ad.src,selectionToken:ad.selectionToken,at:Date.now()});
     recordVisibleAd(ad,slot,element);
     try{localStorage.setItem(lastKey('banner',slot),ad.id)}catch(_){}
     return;
@@ -452,7 +454,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.7.0',
+ version:'2.8.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
