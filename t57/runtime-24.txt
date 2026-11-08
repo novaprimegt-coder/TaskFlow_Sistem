@@ -342,6 +342,75 @@ run();
 }
 #windowContent.tf21-legal > .v83-legal-list.v97-routine-scroll > .tf21-launch{position:relative!important;order:1!important;flex:0 0 auto!important}
 </style>
+<style id="tfRoutineMarkAlignmentV13079">
+/* V130.7.9: centrar exclusivamente los indicadores de marcado de rutinas.
+   Sin nuevos botones ni modificaciones de eventos, datos o progreso. */
+#windowContainer.window-container.open #windowContent.tf21-legal .v83-legal-step .v83-legal-check,
+#windowContainer.window-container.open #windowContent.tf15-sung .tf15-mission .v32-check,
+#windowContainer.window-container.open.mentalist-modal #windowContent.tfMentalistReplicaT9 .v94-mentalist-step .v94-mentalist-check,
+#windowContainer.window-container.open #windowContent.tf13076-reference-routine :is(.tf13076-check,.tf13067-check){
+  display:grid!important;
+  place-items:center!important;
+  align-items:center!important;
+  justify-items:center!important;
+  align-content:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  box-sizing:border-box!important;
+  padding:0!important;
+  margin:0!important;
+  text-align:center!important;
+  line-height:1!important;
+  position:relative!important;
+  inset:auto!important;
+  transform:none!important;
+  vertical-align:middle!important;
+}
+#windowContainer.window-container.open #windowContent.tf21-legal .v83-legal-step .v83-legal-check::after,
+#windowContainer.window-container.open #windowContent.tf15-sung .tf15-mission .v32-check::after,
+#windowContainer.window-container.open.mentalist-modal #windowContent.tfMentalistReplicaT9 .v94-mentalist-step .v94-mentalist-check::after,
+#windowContainer.window-container.open #windowContent.tf13076-reference-routine :is(.tf13076-check,.tf13067-check)::before{
+  box-sizing:border-box!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  position:static!important;
+  inset:auto!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  flex:0 0 auto!important;
+  text-align:center!important;
+  line-height:1!important;
+}
+#windowContainer.window-container.open .v69-routine-modal .v69-routine-item::after{
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  position:relative!important;
+  inset:auto!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  text-align:center!important;
+  line-height:1!important;
+  box-sizing:border-box!important;
+}
+/* Mantener el pequeño indicador interior alineado al círculo derecho.
+   El control sigue siendo el elemento nativo de cada rutina. */
+#windowContainer.window-container.open #windowContent.tf13076-reference-routine
+:is(.tf13076-check,.tf13067-check):checked::before,
+#windowContainer.window-container.open #windowContent.tf13076-reference-routine
+:is(.tf13076-check.tf13076-done,.tf13067-check.tf13067-done)::before{
+  display:grid!important;
+  place-items:center!important;
+  text-align:center!important;
+  line-height:1!important;
+}
+</style>
 <script id="tf26RuleSeparationScript">
 (function(){
 'use strict';
