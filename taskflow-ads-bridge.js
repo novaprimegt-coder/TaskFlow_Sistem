@@ -448,7 +448,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.5.4',
+ version:'2.5.5',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
