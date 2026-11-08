@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.9.0
+/* TaskFlow ADS Bridge v3.0.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -167,19 +167,52 @@ function recordAdEvent(type,ad,slot){
   console.warn('TaskFlow ADS: evento no confirmado',String(error?.message||'Sin conexión'));
  });
 }
+// Viewable-impression rule for ADS: at least half the ad area visible continuously
+// for one second while the document stays visible. This is not a claim of
+// externally certified viewability, unique reach or human attention.
+const pendingViewChecks=new Map();
 function visibleRect(el){
- if(!el||document.hidden)return false;
- const rect=el.getBoundingClientRect();
- return rect.width>5&&rect.height>5&&rect.bottom>0&&rect.top<innerHeight&&rect.right>0&&rect.left<innerWidth;
+ if(!el||document.hidden||el.isConnected===false)return false;
+ const r=el.getBoundingClientRect();
+ if(!Number.isFinite(r.width)||!Number.isFinite(r.height)||r.width<=5||r.height<=5)return false;
+ const w=Math.max(0,Math.min(r.right,innerWidth)-Math.max(0,r.left));
+ const h=Math.max(0,Math.min(r.bottom,innerHeight)-Math.max(0,r.top));
+ return w*h>=r.width*r.height*.5;
 }
 function recordVisibleAd(ad,slot,element){
- if(!visibleRect(element))return;
- const now=Date.now(),key=slot+':'+ad.campaignId+':'+ad.id;
- if(now-(impressionSeen.get(key)||0)<30000)return;
- impressionSeen.set(key,now);
- if(impressionSeen.size>400)impressionSeen.delete(impressionSeen.keys().next().value);
- recordAdEvent('impression',ad,slot);
+ if(!ad||!visibleRect(element))return;
+ const token=ad.selectionToken||(bannerStatus.get(slot)?.selectionToken||'');
+ if(!/^[a-f0-9-]{36}$/i.test(token))return;
+ const key=slot+':'+ad.campaignId+':'+ad.id+':'+token;
+ if(impressionSeen.has(key)||pendingViewChecks.has(key))return;
+ const obj={handle:0,started:0,last:0};
+ const check=now=>{
+  if(!pendingViewChecks.has(key))return;
+  const displayed=slot==='entry'||slot==='interaction'?activeVerticalAds[slot]:bannerStatus.get(slot);
+  const matching=displayed&&displayed.id===ad.id&&displayed.selectionToken===token;
+  if(!matching||!visibleRect(element)){
+   pendingViewChecks.delete(key);return;
+  }
+  // Discontinuities (background tabs / stalled animations) restart the full second.
+  if(!obj.started||now-obj.last>250)obj.started=now;
+  obj.last=now;
+  if(now-obj.started>=1000){
+   pendingViewChecks.delete(key);
+   impressionSeen.set(key,now);
+   if(impressionSeen.size>500)impressionSeen.delete(impressionSeen.keys().next().value);
+   recordAdEvent('impression',ad,slot);
+   return;
+  }
+  obj.handle=requestAnimationFrame(check);
+ };
+ pendingViewChecks.set(key,obj);
+ obj.handle=requestAnimationFrame(check);
 }
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden)return;
+ for(const x of pendingViewChecks.values())cancelAnimationFrame(x.handle);
+ pendingViewChecks.clear();
+});
 function bindAnalyticsTracking(){
  if(analyticsTrackingBound)return;analyticsTrackingBound=true;
  document.addEventListener('taskflow:ads-media-visible',e=>{
@@ -481,7 +514,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.9.0',
+ version:'3.0.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
