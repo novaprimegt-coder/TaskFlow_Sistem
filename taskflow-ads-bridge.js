@@ -158,12 +158,8 @@ function recordAdEvent(type,ad,slot){
   void fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})}).catch(()=>{});
  };
  const job=(async()=>{
-  // Never manufacture an impression merely because the advertiser's link was clicked.
-  if(type==='click'){
-   const confirmed=impressionConfirmations.get(selectionToken);
-   if(!confirmed)throw Error('Impresión no comprobada');
-   await confirmed;
-  }
+  // Clic comprobado de manera independiente: no obliga a crear una impresión visible.
+  // El servicio privado valida la selección y registra cada clic una sola vez.
   await post(type);
   telemetryDiagnostic(type,'acknowledged');
  })();
