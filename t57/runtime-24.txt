@@ -411,40 +411,35 @@ run();
   line-height:1!important;
 }
 </style>
-<style id="tfCheckCenterLegalSungV13080">
-/* V130.8.0 — SOLO Dominio Jurídico y Sung Jin-Woo.
-   Centrar geométricamente el círculo interior sin modificar la acción de marcado. */
-#windowContainer.window-container.open #windowContent.tf21-legal .v83-legal-step .v83-legal-check,
-#windowContainer.window-container.open #windowContent.tf15-sung .tf15-mission .v32-check{
+<style id="tfCheckCenterLegalSungV13081">
+/* Centrado de círculo de marcado: solo Sung Jin-Woo y Dominio Jurídico.
+   El círculo usa el centro geométrico del botón, no la línea base ni una fila CSS. */
+#windowContainer.open #windowContent .tf15-mission .v32-check,
+#windowContainer.open #windowContent .v83-legal-step .v83-legal-check {
  position:relative!important;
  grid-column:4!important;
  grid-row:1!important;
- justify-self:center!important;
- align-self:center!important;
  display:grid!important;
  place-items:center!important;
- align-items:center!important;
- justify-items:center!important;
- padding:0!important;
- margin:0!important;
+ align-self:center!important;
+ justify-self:center!important;
  box-sizing:border-box!important;
+ margin:0!important;
+ padding:0!important;
  transform:none!important;
 }
-#windowContainer.window-container.open #windowContent.tf21-legal .v83-legal-step .v83-legal-check::after,
-#windowContainer.window-container.open #windowContent.tf15-sung .tf15-mission .v32-check::after{
+#windowContainer.open #windowContent .tf15-mission .v32-check::after,
+#windowContainer.open #windowContent .v83-legal-step .v83-legal-check::after {
  position:absolute!important;
- left:50%!important;
- top:50%!important;
- right:auto!important;
- bottom:auto!important;
- transform:translate(-50%,-50%)!important;
- margin:0!important;
- padding:0!important;
+ inset:0!important;
+ margin:auto!important;
+ transform:none!important;
+ box-sizing:border-box!important;
  display:grid!important;
  place-items:center!important;
+ padding:0!important;
  text-align:center!important;
  line-height:1!important;
- box-sizing:border-box!important;
  pointer-events:none!important;
 }
 </style>
