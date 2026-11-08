@@ -831,7 +831,7 @@ function fix(){
    if(body)important(body,bodyRules);
    const head=card.querySelector('.tfm-stat-head');
    if(head)important(head,bodyRules);
-   for(const node of card.querySelectorAll('b,strong,small,span:not(.tf15-stat-icon):not(.tf21-stat-icon):not(.tf32-stat-icon):not(.tf33-stat-icon):not(.tfm-stat-icon)')){
+   for(const node of card.querySelectorAll('b,strong,small,span:not(.tf15-stat-icon):not(.tf21-stat-icon):not(.tf32-stat-icon):not(.tf33-stat-icon):not(.tfm-stat-icon):not(.tf32-stat-body):not(.tf33-stat-body)')){
     if(node.closest('svg'))continue;
     important(node,textRules);
     if(node.matches('b,strong'))important(node,{'font-size':'clamp(12px,2.7vw,18px)','font-weight':'800','line-height':'1.22'});
