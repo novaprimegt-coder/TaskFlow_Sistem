@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.1.1
+/* TaskFlow ADS Bridge v3.2.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -44,6 +44,9 @@ let slotObserver=null,slotUpdateQueued=false;
 let geoPending=null,lastGeoGrid='',lastGeoAt=0;
 const GEO_GRID_CACHE='tf_ads_geo_gt_grid_v1';
 const GEO_API='https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_guatemala/FeatureServer/0/query';
+// Geocodificación de país/ciudad a partir de ubicación autorizada y coordenadas reducidas; sin enviar ID ni datos personales.
+const WORLD_GEO_URL='https://api.bigdatacloud.net/data/reverse-geocode-client';
+const WORLD_GEO_CACHE='tf_ads_geo_world_grid_v1';
 let context={country:'',region:'',city:''};
 
 function validHTTPS(value){
@@ -99,12 +102,11 @@ function dateEligible(c){
  return true
 }
 function targetEligible(c){
- // Solo se excluye una campaña si existe una incompatibilidad CONFIRMADA.
- // La ausencia temporal de datos de ubicación nunca bloquea anuncios aprobados.
+ // Los destinos específicos requieren coincidencia geográfica positiva; no suposiciones.
  const cc=countryCode(c.country),xc=countryCode(context.country);
- if(cc&&cc!=='ALL'&&xc&&cc!==xc)return false;
- if(c.region&&context.region&&normText(c.region)!==normText(context.region))return false;
- if(c.city&&context.city&&normText(c.city)!==normText(context.city))return false;
+ if(cc&&cc!=='ALL'&&(!xc||cc!==xc))return false;
+ if(c.region&&(!context.region||normText(c.region)!==normText(context.region)))return false;
+ if(c.city&&(!context.city||normText(c.city)!==normText(context.city)))return false;
  return true
 }
 
@@ -521,7 +523,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.1.1',
+ version:'3.2.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -551,57 +553,90 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now(
 // Convierte coordenadas autorizadas a municipio/departamento con una consulta
 // geográfica de precisión reducida. No transmite UID, correo ni hábitos.
 async function resolveAuthorizedRegion(position){
- const lat=Number(position&&position.latitude),lng=Number(position&&position.longitude);
- if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<13.7||lat>18||lng< -92.3||lng> -88)return false;
- // Solo se usa la posición que TaskFlow ya recibió con consentimiento.
+ const lat=Number(position?.latitude),lng=Number(position?.longitude);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
+ // No procesar geolocalización sin la decisión explícita ya concedida en TaskFlow.
  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
- const qlat=Number(lat.toFixed(3)),qlng=Number(lng.toFixed(3));
- const grid=qlat+','+qlng;
- const country=verifiedCountryFromLocation({latitude:lat,longitude:lng});
- if(grid!==lastGeoGrid||country!==context.country){
-  API.setContext({country,region:'',city:''});
+ const inGuatemala=verifiedCountryFromLocation({latitude:lat,longitude:lng})==='GT';
+ const digits=inGuatemala?3:2; // En el exterior se transmiten coordenadas aproximadas, no GPS exacto.
+ const qlat=Number(lat.toFixed(digits)),qlng=Number(lng.toFixed(digits));
+ const grid=(inGuatemala?'GT:':'WORLD:')+qlat+','+qlng;
+ if(lastGeoGrid!==grid){
+  // No arrastrar país/ciudad anteriores al cruzar fronteras.
+  API.setContext({country:inGuatemala?'GT':'',region:'',city:''});
+  lastGeoAt=0;
  }
  if(geoPending&&lastGeoGrid===grid)return geoPending;
- if(Date.now()-lastGeoAt<15*60*1000&&lastGeoGrid===grid&&context.region&&context.city)return true;
+ if(Date.now()-lastGeoAt<15*60*1000&&lastGeoGrid===grid&&context.country)return true;
  lastGeoGrid=grid;
  geoPending=(async()=>{
+  const cacheName=inGuatemala?GEO_GRID_CACHE:WORLD_GEO_CACHE;
   try{
-   const cached=JSON.parse(localStorage.getItem(GEO_GRID_CACHE)||'null');
-   if(cached&&cached.grid===grid&&Date.now()-Number(cached.at)<12*60*60*1000&&cached.region&&cached.city){
-    API.setContext({country:'GT',region:cached.region,city:cached.city});lastGeoAt=Date.now();return true;
+   const cached=JSON.parse(localStorage.getItem(cacheName)||'null');
+   if(cached&&cached.grid===grid&&Date.now()-Number(cached.at)<12*60*60*1000
+    &&/^[A-Z]{2}$/.test(String(cached.country||''))){
+    API.setContext({country:cached.country,region:cached.region||'',city:cached.city||''});
+    lastGeoAt=Date.now();return true;
    }
   }catch(_){}
-  const url=new URL(GEO_API);
-  const query={f:'json',where:'1=1',geometry:qlng+','+qlat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'nombre_1,depto_1',returnGeometry:'false'};
-  Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,v));
-  const ctrl=new AbortController(),stop=setTimeout(()=>ctrl.abort(),9000);
+  // Mantener la resolución oficial de municipio/departamento utilizada en Guatemala.
+  if(inGuatemala){
+   const url=new URL(GEO_API);
+   const query={f:'json',where:'1=1',geometry:qlng+','+qlat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'nombre_1,depto_1',returnGeometry:'false'};
+   Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,v));
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+   try{
+    const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
+    if(res.ok){
+     const data=await res.json(),matches=Array.isArray(data.features)?data.features:[];
+     if(matches.length===1){
+      const attrs=matches[0].attributes||{},region=String(attrs.depto_1||'').trim(),city=String(attrs.nombre_1||'').trim();
+      if(region&&city&&region.length<=100&&city.length<=100){
+       API.setContext({country:'GT',region,city});lastGeoAt=Date.now();
+       try{localStorage.setItem(cacheName,JSON.stringify({grid,country:'GT',region,city,at:lastGeoAt}))}catch(_){}
+       return true;
+      }
+     }
+    }
+   }catch(_){/* Segundo proveedor internacional cuando falla la resolución municipal. */}
+   finally{clearTimeout(timer)}
+  }
+  // Resto del mundo: geocodificación internacional del GPS ya autorizado,
+  // con latitud/longitud reducidas y sin ID de usuario, correo ni historial.
+  const url=new URL(WORLD_GEO_URL);
+  url.searchParams.set('latitude',String(qlat));
+  url.searchParams.set('longitude',String(qlng));
+  url.searchParams.set('localityLanguage','es');
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
   try{
-   const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:ctrl.signal});
+   const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
    if(!res.ok)return false;
-   const result=await res.json();
-   const matches=Array.isArray(result.features)?result.features:[];
-   if(matches.length!==1)return false;
-   const attrs=matches[0].attributes||{};
-   const region=String(attrs.depto_1||'').trim(),city=String(attrs.nombre_1||'').trim();
-   if(!region||!city||region.length>100||city.length>100)return false;
-   API.setContext({country:'GT',region,city});lastGeoAt=Date.now();
-   try{localStorage.setItem(GEO_GRID_CACHE,JSON.stringify({grid,region,city,at:lastGeoAt}))}catch(_){}
+   const data=await res.json(),country=countryCode(data?.countryCode||'');
+   if(!/^[A-Z]{2}$/.test(country)||country==='ZZ')return false;
+   // El país es el criterio principal; ciudad/región solo si el proveedor las resuelve.
+   const region=String(data?.principalSubdivision||'').trim().slice(0,100);
+   const city=String(data?.city||'').trim().slice(0,100);
+   API.setContext({country,region,city});lastGeoAt=Date.now();
+   try{localStorage.setItem(cacheName,JSON.stringify({grid,country,region,city,at:lastGeoAt}))}catch(_){}
    return true;
-  }catch(_){return false}finally{clearTimeout(stop)}
+  }catch(_){return false}finally{clearTimeout(timer)}
  })().finally(()=>{geoPending=null});
  return geoPending;
 }
 function useLocationDetail(detail){
+ if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return;
  const data=detail&&typeof detail==='object'?detail:{};
  const place=data.address&&typeof data.address==='object'?data.address:data;
- const region=place.region||place.department||place.state||'';
- const city=place.city||place.municipality||place.locality||'';
- if(region||city)API.setContext({country:place.country||context.country,region,city});
- else{
-  const pos=data.position&&typeof data.position==='object'?data.position:place;
-  if(Number.isFinite(Number(pos.latitude))&&Number.isFinite(Number(pos.longitude)))void resolveAuthorizedRegion(pos);
-  else applyWhenReady();
+ const region=String(place.region||place.department||place.state||'').trim();
+ const city=String(place.city||place.municipality||place.locality||'').trim();
+ const country=countryCode(place.countryCode||place.country||'');
+ // Conservar ubicaciones ya resueltas por la aplicación cuando incluyen código de país.
+ if(/^[A-Z]{2}$/.test(country)&&country!=='ZZ'&&region.length<=100&&city.length<=100){
+  API.setContext({country,region,city});return;
  }
+ const pos=data.position&&typeof data.position==='object'?data.position:place;
+ if(Number.isFinite(Number(pos.latitude))&&Number.isFinite(Number(pos.longitude)))void resolveAuthorizedRegion(pos);
+ else applyWhenReady();
 }
 document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
 document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
