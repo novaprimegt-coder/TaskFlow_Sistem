@@ -374,6 +374,23 @@ function hideLegacyTracker(panel,scroll,card){
     String(node.textContent||'').replace(/(?:1[0-2]|[1-9])|\s/g,'').trim()==='';
  });
  const largest=candidates.filter(node=>!candidates.some(other=>other!==node&&other.contains(node)));
+ // Si la escala original aparece como hermano de otro contenedor,
+ // recorrer desde la cabecera hasta el contenedor que contiene el progreso nuevo.
+ let host=card;
+ while(host.parentElement&&host.parentElement!==panel)host=host.parentElement;
+ const header=panel.querySelector(':scope > .v85-routine-modal-head');
+ if(header&&host.parentElement===panel){
+  let sibling=header.nextElementSibling;
+  while(sibling&&sibling!==host){
+   const next=sibling.nextElementSibling;
+   if(!sibling.matches('script,style')&&!sibling.contains(card)&&
+      !sibling.querySelector('.v94-mentalist-list,.v94-mentalist-protocol,.v94-mentalist-step,button,input,textarea')){
+    sibling.setAttribute('data-tfm-old-progress','yes');
+    sibling.style.setProperty('display','none','important');
+   }
+   sibling=next;
+  }
+ }
  for(const node of largest){
   node.setAttribute('data-tfm-old-progress','yes');
   node.style.setProperty('display','none','important');

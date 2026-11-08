@@ -80,7 +80,15 @@ document.addEventListener('change',e=>{
 },true);
 document.addEventListener('click',e=>{
  if(!e.isTrusted||!e.target||!e.target.closest)return;
- if(e.target.closest('#tf119AllOn,#tf119AllOff,#tf115AllOn,#tf115AllOff,#tf117AllOn,#tf117AllOff,#tf113AllOn,#tf113AllOff'))begin(IDS);
+ const btn=e.target.closest('#tf119AllOn,#tf119AllOff,#tf115AllOn,#tf115AllOff,#tf117AllOn,#tf117AllOff,#tf113AllOn,#tf113AllOff');
+ if(!btn)return;
+ begin(IDS);
+ if(/AllOff$/.test(btn.id)){
+  try{localStorage.setItem('taskflow_v13041_mentalista_user_choice','off');
+      localStorage.removeItem('taskflow_v13066_mentalista_enabled_guard')}catch(_){}
+ }else{
+  try{localStorage.setItem('taskflow_v13041_mentalista_user_choice','on')}catch(_){}
+ }
 },true);
 window.TaskFlowRoutineChoicesV131=Object.freeze({IDS:IDS.slice(),FIELD,parse,merge,mark,reset,trustedWrite});
 })();

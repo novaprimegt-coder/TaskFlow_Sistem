@@ -21,7 +21,17 @@ function get(k){try{return localStorage.getItem(k)}catch(_){return null}}
 function set(k,v){try{localStorage.setItem(k,String(v));return true}catch(_){return false}}
 function json(k,f={}){try{const x=JSON.parse(get(k)||'null');return x&&typeof x==='object'&&!Array.isArray(x)?x:f}catch(_){return f}}
 function cfg(){const s=json(CFG,{});let changed=false;for(const r of ROUTINES){if(typeof s[r.id]!=='boolean'){s[r.id]=false;changed=true}}if(changed){set(CFG,JSON.stringify(s));set(CFG_META,String(Date.now()))}return s}
-function saveCfg(s){set(CFG,JSON.stringify(s));set(CFG_META,String(Date.now()));applyVisibility();renderManager();queueCloud()}
+function saveCfg(s){
+ const p=window.TaskFlowRoutineChoicesV131;
+ if(p){
+  const old=p.parse(get(CFG)),changes=p.IDS.filter(id=>typeof s[id]==='boolean'&&s[id]!==old[id]);
+  if(changes.length)s=p.mark(s,changes,'manual');
+ }
+ if(s.mentalista===false){
+  set('taskflow_v13041_mentalista_user_choice','off');
+  try{localStorage.removeItem('taskflow_v13066_mentalista_enabled_guard')}catch(_){}
+ }else if(s.mentalista===true)set('taskflow_v13041_mentalista_user_choice','on');
+ set(CFG,JSON.stringify(s));set(CFG_META,String(Date.now()));applyVisibility();renderManager();queueCloud()}
 
 function installStyle(){
  if($('tfV117Style'))return;
@@ -114,7 +124,34 @@ async function req(uid,opt){let t=await token(false);if(!t)throw new Error('AUTH
 function queueCloud(){if(cloudTimer)clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>{cloudTimer=0;pushCloud().catch(()=>{})},600)}
 async function pushCloud(){if(cloudBusy||!cloudUid)return;cloudBusy=true;try{let at=Number(get(CFG_META))||Date.now();set(CFG_META,String(at));await req(cloudUid,{method:'PATCH',body:JSON.stringify({fields:{config:{stringValue:get(CFG)||JSON.stringify(cfg())},updatedAt:{integerValue:String(at)}}})})}finally{cloudBusy=false}}
 function remoteFields(d){const f=d&&d.fields||{};return{config:f.config&&f.config.stringValue||'',updatedAt:Number(f.updatedAt&&f.updatedAt.integerValue)||0}}
-async function reconcile(uid){const remote=remoteFields(await req(uid,{method:'GET'})),localAt=Number(get(CFG_META))||0;if(remote.updatedAt>localAt&&remote.config){try{const rc=JSON.parse(remote.config);const next=cfg();for(const r of ROUTINES)if(typeof rc[r.id]==='boolean')next[r.id]=rc[r.id];set(CFG,JSON.stringify(next));set(CFG_META,String(remote.updatedAt));applyVisibility();renderManager();return}catch(_){}}if(localAt>remote.updatedAt||!remote.config)await pushCloud()}
+async function reconcile(uid){
+ const remote=remoteFields(await req(uid,{method:'GET'})),p=window.TaskFlowRoutineChoicesV131;
+ const local=cfg(),localAt=Number(get(CFG_META))||0;
+ if(!remote.config){
+  // Un primer inicio no puede apagar rutinas de una cuenta previamente activa.
+  if(p){
+   const hasChoice=!!(local[p.FIELD]&&Object.keys(local[p.FIELD]).length);
+   if(!hasChoice&&!ROUTINES.some(r=>local[r.id]===true))return;
+  }
+  await pushCloud();return;
+ }
+ const incoming=p?p.parse(remote.config):JSON.parse(remote.config);
+ const next=p?p.merge(local,incoming):incoming;
+ const changed=JSON.stringify(next)!==JSON.stringify(local);
+ const repair=JSON.stringify(next)!==JSON.stringify(incoming);
+ if(next.mentalista===false){
+  set('taskflow_v13041_mentalista_user_choice','off');
+  try{localStorage.removeItem('taskflow_v13066_mentalista_enabled_guard')}catch(_){}
+ }else if(next.mentalista===true)set('taskflow_v13041_mentalista_user_choice','on');
+ if(changed)set(CFG,JSON.stringify(next));
+ if(repair){
+  set(CFG_META,String(Math.max(Date.now(),localAt,remote.updatedAt+1)));
+  applyVisibility();renderManager();queueCloud();
+ }else if(changed){
+  set(CFG_META,String(remote.updatedAt||Date.now()));
+  applyVisibility();renderManager();
+ }
+}
 function cloudWatch(){const u=window.TaskFlowFirebase&&window.TaskFlowFirebase.getUser?window.TaskFlowFirebase.getUser():null,uid=u&&u.uid||'';if(uid===cloudUid)return;cloudUid=uid;if(uid)reconcile(uid).catch(()=>{})}
 function clearStaleNotice(){const box=$('tfRecoveryBanner');if(box)box.classList.remove('show')}
 function applyAll(){installStyle();closeOldArtifacts();installSearch();manager();resetModal();mountReset();applyVisibility();cloudWatch();clearStaleNotice()}
