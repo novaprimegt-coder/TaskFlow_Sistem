@@ -26,7 +26,13 @@ function get(k){try{return localStorage.getItem(k)}catch(_){return null}}
 function set(k,v){try{localStorage.setItem(k,String(v));return true}catch(_){return false}}
 function json(k,f={}){try{const x=JSON.parse(get(k)||'null');return x&&typeof x==='object'?x:f}catch(_){return f}}
 function cfg(){const s=json(CFG,{});let changed=false;ROUTINES.forEach(r=>{if(typeof s[r.id]!=='boolean'){s[r.id]=false;changed=true}});if(changed)set(CFG,JSON.stringify(s));return s}
-function saveCfg(s){set(CFG,JSON.stringify(s));set(META,String(Date.now()));applyAll();renderManager();queueCloud()}
+function saveCfg(s){
+ if(window.TaskFlowRoutineChoicesV131){
+  const policy=window.TaskFlowRoutineChoicesV131,old=policy.parse(get(CFG));
+  const changed=policy.IDS.filter(id=>typeof s[id]==='boolean'&&s[id]!==old[id]);
+  if(changed.length)s=policy.mark(s,changed,'manual');
+ }
+ set(CFG,JSON.stringify(s));set(META,String(Date.now()));applyAll();renderManager();queueCloud()}
 
 function installStyle(){
  if($('tfV115Style'))return;
@@ -173,7 +179,13 @@ function queueCloud(){if(cloudTimer)clearTimeout(cloudTimer);cloudTimer=setTimeo
 async function token(force){return window.TaskFlowFirebase&&window.TaskFlowFirebase.getIdToken?window.TaskFlowFirebase.getIdToken(!!force):null}
 async function req(uid,opt){let t=await token(false);if(!t)throw new Error('AUTH');const url=API+'/users/'+encodeURIComponent(uid)+'/settings/routinesV115';const o=Object.assign({},opt||{});o.headers=Object.assign({'Authorization':'Bearer '+t,'Content-Type':'application/json'},o.headers||{});let r=await fetch(url,o);if(r.status===401){t=await token(true);if(t){o.headers.Authorization='Bearer '+t;r=await fetch(url,o)}}if(r.status===404)return null;const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error('HTTP '+r.status);return d}
 async function pushCloud(){if(cloudBusy||!cloudUid)return;cloudBusy=true;try{let at=Number(get(META))||0;if(!at){at=Date.now();set(META,String(at))}await req(cloudUid,{method:'PATCH',body:JSON.stringify({fields:{config:{stringValue:get(CFG)||JSON.stringify(cfg())},updatedAt:{integerValue:String(at)}}})})}finally{cloudBusy=false}}
-async function reconcile(uid){const local=Number(get(META))||0,d=await req(uid,{method:'GET'});if(!d){if(!local)set(META,String(Date.now()));await pushCloud();return}const f=d.fields||{},remote=Number(f.updatedAt&&f.updatedAt.integerValue||0),data=String(f.config&&f.config.stringValue||'');if(remote>local&&data){set(CFG,data);set(META,String(remote));applyAll();renderManager()}else if(local>remote)await pushCloud()}
+async function reconcile(uid){const local=Number(get(META))||0,d=await req(uid,{method:'GET'});if(!d){if(!local)set(META,String(Date.now()));await pushCloud();return}const f=d.fields||{},remote=Number(f.updatedAt&&f.updatedAt.integerValue||0),data=String(f.config&&f.config.stringValue||'');if(remote>local&&data){
+ const policy=window.TaskFlowRoutineChoicesV131;
+ const incoming=policy?policy.parse(data):data;
+ const next=policy?policy.merge(json(CFG,{}),incoming):incoming;
+ set(CFG,policy?JSON.stringify(next):next);set(META,String(remote));applyAll();renderManager();
+ if(policy&&JSON.stringify(next)!==JSON.stringify(incoming))queueCloud();
+}else if(local>remote)await pushCloud()}
 function cloudWatch(){const u=window.TaskFlowFirebase&&window.TaskFlowFirebase.getUser?window.TaskFlowFirebase.getUser():null,uid=u&&u.uid||'';if(uid===cloudUid)return;cloudUid=uid;if(uid)reconcile(uid).catch(()=>{})}
 
 function applyAll(){stripForense();applyRoutineVisibility();mountReset();installSearchProxy();cloudWatch()}

@@ -109,10 +109,21 @@ function readPrefMeta(uid){return readJson(prefMetaKey(uid))}
 function writePrefMeta(uid,hash,updatedAt){writeJsonNative(prefMetaKey(uid),{hash,updatedAt,lastSyncedAt:now()});nativeSet(PREF_BOUND,uid)}
 async function readRemotePrefs(uid){const doc=await getDoc(prefPath(uid));if(!doc)return null;const x=decodeFields(doc);if(typeof x.payload!=='string')return null;const parsed=JSON.parse(x.payload);if(!parsed||typeof parsed!=='object')throw new Error('PREF_DATA_INVALID');const values={};PREF_KEYS.forEach(k=>values[k]=String(parsed[k]||''));if(x.hash!==prefHash(values))throw new Error('PREF_HASH_MISMATCH');return{values,hash:x.hash,updatedAt:Number(x.clientUpdatedAt)||0}}
 function applyPrefs(uid,remote){
- const values=remote.values;prefDirty=false;
- for(const k of PREF_KEYS){if(values[k])nativeSet(k,values[k]);else nativeRemove(k)}
- nativeSet(PREF_TOUCH,String(remote.updatedAt||now()));
+ const values={...remote.values},policy=window.TaskFlowRoutineChoicesV131;
+ const bound=safeGet(PREF_BOUND)||'',accountChange=!!bound&&bound!==uid;
+ if(policy&&values['taskflow_routines_v115']){
+  const incoming=policy.parse(values['taskflow_routines_v115']);
+  const merged=policy.merge(policy.parse(safeGet('taskflow_routines_v115')),incoming,{accountChange});
+  values['taskflow_routines_v115']=JSON.stringify(merged);
+  values['taskflow_v13041_mentalista_user_choice']=merged.mentalista?'on':'off';
+ }
+ prefDirty=false;
+ const apply=()=>{for(const k of PREF_KEYS){if(values[k])nativeSet(k,values[k]);else nativeRemove(k)}};
+ if(policy)policy.trustedWrite(apply);else apply();
+ const changed=capturePrefs().hash!==remote.hash;
+ nativeSet(PREF_TOUCH,String(changed?now():remote.updatedAt||now()));
  writePrefMeta(uid,remote.hash,remote.updatedAt);
+ if(changed){prefDirty=true;queueRecheck('preserve-authorized-routines',420)}
  // Cambios de rutinas sin recargar toda la aplicación ni borrar campos en edición.
  for(const name of ['TaskFlowV117','TaskFlowV119']){
    try{const api=window[name];if(api&&typeof api.refresh==='function')api.refresh()}catch(_){}

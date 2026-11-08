@@ -93,7 +93,8 @@ async function writeMarker(uid,stamp){
 async function writeRoutineConfig(uid,stamp){
  let t=await token(false);if(!t)throw new Error('AUTH_REQUIRED');
  const url=API+'/users/'+encodeURIComponent(uid)+'/settings/routinesV115';
- const config={};for(const k of ROUTINE_KEYS)config[k]=false;
+ let config={};for(const k of ROUTINE_KEYS)config[k]=false;
+ if(window.TaskFlowRoutineChoicesV131)config=window.TaskFlowRoutineChoicesV131.reset(config,stamp);
  const name='projects/'+PROJECT+'/databases/(default)/documents/users/'+uid+'/settings/routinesV115';
  const body={name,fields:{config:{stringValue:JSON.stringify(config)},updatedAt:{integerValue:String(stamp)}}};
  const opt={method:'PATCH',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify(body)};
@@ -199,12 +200,13 @@ function resetTree(value,key){
  return value;
 }
 function resetRoutineState(stamp){
- const config={};for(const k of ROUTINE_KEYS)config[k]=false;
+ let config={};for(const k of ROUTINE_KEYS)config[k]=false;
+ if(window.TaskFlowRoutineChoicesV131)config=window.TaskFlowRoutineChoicesV131.reset(config,stamp);
  try{
-  localStorage.setItem(CFG,JSON.stringify(config));
-  localStorage.setItem(CFG_META,String(stamp));
   localStorage.setItem(MENTAL_USER,'off');
   localStorage.removeItem(MENTAL_GUARD);
+  localStorage.setItem(CFG,JSON.stringify(config));
+  localStorage.setItem(CFG_META,String(stamp));
   localStorage.removeItem(MENTAL_PROGRESS);
  }catch(_){}
  try{window.TaskFlowV117&&window.TaskFlowV117.refresh&&window.TaskFlowV117.refresh()}catch(_){}

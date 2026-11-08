@@ -25,6 +25,11 @@ function getCfg(){
  return c;
 }
 function writeCfg(c,notify=true){
+ if(notify&&window.TaskFlowRoutineChoicesV131){
+  const policy=window.TaskFlowRoutineChoicesV131,old=policy.parse(localStorage.getItem(CFG));
+  const changed=policy.IDS.filter(id=>typeof c[id]==='boolean'&&c[id]!==old[id]);
+  if(changed.length)c=policy.mark(c,changed,'manual');
+ }
  try{localStorage.setItem(CFG,JSON.stringify(c));localStorage.setItem(META,String(Date.now()))}catch(_){}
  if(notify){
    try{window.TaskFlowV117&&window.TaskFlowV117.refresh&&window.TaskFlowV117.refresh()}catch(_){}

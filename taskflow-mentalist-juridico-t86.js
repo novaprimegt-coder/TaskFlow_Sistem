@@ -362,19 +362,23 @@ function createCard(scroll){
 /* T89: suprime solo el panel superior duplicado de doce pasos.
    La tarjeta inferior conserva su progreso y el seguimiento original no se altera. */
 function hideLegacyTracker(panel,scroll,card){
- const header=panel.querySelector(':scope > .v85-routine-modal-head');
- if(!header||!scroll||scroll.parentElement!==panel)return;
- // El único bloque superior duplicado es el situado entre la cabecera y la lista.
- // Se conserva su estado interno; solo se suprime de la vista.
- let node=header.nextElementSibling;
- while(node&&node!==scroll){
-  const next=node.nextElementSibling;
-  if(!node.matches('script,style')&&!node.contains(scroll)&&
-     !node.classList.contains('tfm-legal-progress')){
-   node.setAttribute('data-tfm-old-progress','yes');
-   node.style.setProperty('display','none','important');
-  }
-  node=next;
+ // Encontrar el cuadro antiguo en cualquier profundidad del modal.
+ // Excluir el cuadro nuevo, la regla y todas las tarjetas de las doce pruebas.
+ const excluded='.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-protocol,.tfm-summary,.v85-routine-modal-head';
+ const candidates=[...panel.querySelectorAll('div,section,article,nav,ol')].filter(node=>{
+  if(node===card||node===scroll||node.contains(card)||node.closest(excluded)||
+     node.querySelector('.v94-mentalist-step,.v94-mentalist-list,.tfm-legal-progress,.tfm-summary,.v94-mentalist-protocol,.v85-routine-modal-head'))return false;
+  const numbered=[...node.querySelectorAll('*')].filter(e=>
+    e.childElementCount===0&&/^(?:[1-9]|1[0-2])$/.test(String(e.textContent||'').trim()));
+  return numbered.length===12&&numbered.every((e,i)=>Number(e.textContent.trim())===i+1)&&
+    String(node.textContent||'').replace(/(?:1[0-2]|[1-9])|\s/g,'').trim()==='';
+ });
+ const largest=candidates.filter(node=>!candidates.some(other=>other!==node&&other.contains(node)));
+ for(const node of largest){
+  node.setAttribute('data-tfm-old-progress','yes');
+  node.style.setProperty('display','none','important');
+  const bar=node.previousElementSibling;
+  if(bar&&bar.matches('[class*="progress-bar"],[class*="progress-track"],[class*="meter"],[class*="timeline-bar"]')&&!bar.querySelector('button,input'))bar.style.setProperty('display','none','important');
  }
 }
 function update(){

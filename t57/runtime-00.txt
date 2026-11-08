@@ -291,7 +291,7 @@ const CSS_FILES=[
 ];
 const JS_FILES=[
   'taskflow-503020.js', 'taskflow-503020-inputformat.js',
-  'taskflow-firebase-v108.js', 'taskflow-firestore-sync-v110.js',
+  'taskflow-firebase-v108.js', 'taskflow-routine-choices-v131.js', 'taskflow-firestore-sync-v110.js',
   'taskflow-v117.js', 'taskflow-v119.js', 'taskflow-v1193-spacing.js',
   'taskflow-v120.js', 'taskflow-v121-resetfix.js', 'taskflow-v122-habit-visual.js',
   'taskflow-v1303-routine-guard.js', 'taskflow-v125-routine-layout.js',
