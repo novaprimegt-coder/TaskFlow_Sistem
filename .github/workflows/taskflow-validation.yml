@@ -126,6 +126,10 @@ jobs:
             vm.runInNewContext(js,{window,document,navigator:{},localStorage:{getItem(){return null}},console,Intl,Date,setTimeout,clearTimeout});
             assert.equal(new Date(window.TaskFlowRegionalClock.getCycle(Date.parse(at)).reset).toISOString(),new Date(expect).toISOString(),label);
           }
+          const runtime=Array.from({length:25},(_,i)=>fs.readFileSync('t57/runtime-'+String(i).padStart(2,'0')+'.txt','utf8')).join('');
+          const scripts=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
+          assert.ok(scripts.length>=2,'Faltan scripts en el sistema reconstruido');
+          for(const script of scripts)new vm.Script(script[1],{filename:'TaskFlow-T57.js'});
           const live=fs.readFileSync('t57/runtime-24.txt','utf8');
           assert.ok(live.includes('window.__tfT57BootPatches.views'),'El inicio debe reutilizar codigo existente');
           assert.ok(!live.includes('const storeRepair=\'html=(\'+protectStoreMarkup.toString()'),'Regresion a compilacion duplicada del arranque');
