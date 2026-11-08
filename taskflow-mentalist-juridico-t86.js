@@ -352,22 +352,20 @@ function createCard(scroll){
  return card;
 }
 
-/* Oculta únicamente la antigua hilera de 12 indicadores cuando está duplicada
-   fuera de la tarjeta de progreso. No elimina nodos ni sus controladores. */
+/* T89: suprime solo el panel superior duplicado de doce pasos.
+   La tarjeta inferior conserva su progreso y el seguimiento original no se altera. */
 function hideLegacyTracker(panel,scroll,card){
- const candidates=panel.querySelectorAll('div,section,nav,ol');
- let match=null;
- for(const node of candidates){
-  if(node===scroll||node===card||node.contains(card))continue;
-  if(node.closest('.v85-routine-modal-head,.tfm-legal-progress,.v94-mentalist-list,.tfm-summary,.v94-mentalist-protocol'))continue;
-  if(node.querySelector('.v94-mentalist-list,.tfm-summary,.v94-mentalist-protocol,button,input,textarea'))continue;
-  const numbered=[...node.querySelectorAll('*')].filter(e=>
-   e.children.length===0&&/^(?:[1-9]|1[0-2])$/.test(String(e.textContent||'').trim()));
-  if(numbered.length!==12||numbered.some((e,i)=>Number(e.textContent.trim())!==i+1))continue;
-  if(String(node.textContent||'').replace(/[\d\s]+/g,'').trim())continue;
-  if(!match)match=node;
+ const previous=[...panel.children];
+ for(const node of previous){
+  if(node===scroll||node===card||node.classList.contains('v85-routine-modal-head'))continue;
+  if(node.querySelector('.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-step,.v94-mentalist-protocol,.tfm-summary'))continue;
+  const numbers=[...node.querySelectorAll('*')].filter(e=>
+   e.children.length===0&&/^(?:[1-9]|1[0-2])$/.test(String(e.textContent||'').trim())
+  ).map(e=>Number(e.textContent.trim()));
+  if(numbers.length<12||![1,2,3,4,5,6,7,8,9,10,11,12].every(n=>numbers.includes(n)))continue;
+  // No eliminar: ocultar solo el contenedor duplicado para preservar el código original.
+  if(node.getAttribute('data-tfm-old-progress')!=='yes')node.setAttribute('data-tfm-old-progress','yes');
  }
- if(match&&match.getAttribute('data-tfm-old-progress')!=='yes')match.setAttribute('data-tfm-old-progress','yes');
 }
 
 function update(){
