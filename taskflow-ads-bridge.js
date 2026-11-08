@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.1.0
+/* TaskFlow ADS Bridge v3.1.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -55,6 +55,8 @@ function trackedDestination(ad){
  if(!original)return '';
  if(!['traffic','leads','sales','app'].includes(String(ad?.objective||''))||!/^[a-f0-9-]{36}$/i.test(String(ad?.selectionToken||'')))return original;
  const u=new URL(original);
+ // Las tiendas de aplicaciones y mensajerías externas no deben recibir parámetros desconocidos.
+ if(['play.google.com','apps.apple.com','wa.me','api.whatsapp.com','t.me','m.me'].includes(u.hostname.toLowerCase()))return original;
  u.searchParams.set('tf_ads_click',ad.selectionToken);
  u.searchParams.set('tf_ads_campaign',String(ad.campaignId||''));
  return u.href;
@@ -519,7 +521,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.1.0',
+ version:'3.1.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
