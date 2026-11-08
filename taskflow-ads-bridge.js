@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.8.0
+/* TaskFlow ADS Bridge v2.8.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -11,6 +11,7 @@ const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURICompone
 const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'];
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
+const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
 let recommendations=new Map(),recommendationRun=0;
 async function refreshRecommendations(){
  const ticket=++recommendationRun;
@@ -137,6 +138,14 @@ function recordAdEvent(type,ad,slot){
  telemetryDiagnostic(type,'attempted');
  // A click must first have a confirmed impression; the server deduplicates both by selection token.
  const post=async event=>{
+  const controller=new AbortController(),stop=setTimeout(()=>controller.abort(),9000);
+  let verification;
+  try{
+   const confirmation=await fetch(CONFIRM_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event}),signal:controller.signal});
+   if(!confirmation.ok)throw Error('No se pudo verificar la entrega');
+   verification=await confirmation.json();
+  }finally{clearTimeout(stop)}
+  if(verification?.ok!==true)throw Error('Entrega sin confirmación válida');
   const response=await fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})});
   if(!response.ok)throw Error('HTTP '+response.status);
  };
@@ -454,7 +463,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.8.0',
+ version:'2.8.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
