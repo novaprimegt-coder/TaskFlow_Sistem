@@ -3,7 +3,7 @@
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
 'use strict';
-if(window.TaskFlowADS&&window.TaskFlowADS.version&&String(window.TaskFlowADS.version).startsWith('2.'))return;
+if(window.TaskFlowADS&&window.TaskFlowADS.version)return;
 
 const PROJECT_ID='taskflow-b0ece';
 const COLLECTION='adsPublicCampaigns';
