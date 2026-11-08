@@ -290,6 +290,13 @@ ${ROOT} .tfm-summary>.tfm-start svg{width:24px!important;height:24px!important}
  ${ROOT} .v94-mentalist-check{width:30px!important;height:30px!important;min-width:30px!important}
 }
 
+/* T90: sin bloque duplicado entre cabecera y progreso Mentalista. */
+${ROOT} > .v85-routine-modal-head ~ :has(~ .v96-mentalist-scroll){
+ display:none!important;visibility:hidden!important;
+ max-height:0!important;min-height:0!important;
+ margin:0!important;padding:0!important;border:0!important;
+ overflow:hidden!important;pointer-events:none!important;
+}
 `;
 const SVG_START='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
 const ICONS={
@@ -355,19 +362,21 @@ function createCard(scroll){
 /* T89: suprime solo el panel superior duplicado de doce pasos.
    La tarjeta inferior conserva su progreso y el seguimiento original no se altera. */
 function hideLegacyTracker(panel,scroll,card){
- const previous=[...panel.children];
- for(const node of previous){
-  if(node===scroll||node===card||node.classList.contains('v85-routine-modal-head'))continue;
-  if(node.querySelector('.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-step,.v94-mentalist-protocol,.tfm-summary'))continue;
-  const numbers=[...node.querySelectorAll('*')].filter(e=>
-   e.children.length===0&&/^(?:[1-9]|1[0-2])$/.test(String(e.textContent||'').trim())
-  ).map(e=>Number(e.textContent.trim()));
-  if(numbers.length<12||![1,2,3,4,5,6,7,8,9,10,11,12].every(n=>numbers.includes(n)))continue;
-  // No eliminar: ocultar solo el contenedor duplicado para preservar el código original.
-  if(node.getAttribute('data-tfm-old-progress')!=='yes')node.setAttribute('data-tfm-old-progress','yes');
+ const header=panel.querySelector(':scope > .v85-routine-modal-head');
+ if(!header||!scroll||scroll.parentElement!==panel)return;
+ // El único bloque superior duplicado es el situado entre la cabecera y la lista.
+ // Se conserva su estado interno; solo se suprime de la vista.
+ let node=header.nextElementSibling;
+ while(node&&node!==scroll){
+  const next=node.nextElementSibling;
+  if(!node.matches('script,style')&&!node.contains(scroll)&&
+     !node.classList.contains('tfm-legal-progress')){
+   node.setAttribute('data-tfm-old-progress','yes');
+   node.style.setProperty('display','none','important');
+  }
+  node=next;
  }
 }
-
 function update(){
  const current=state();if(!current)return;
  const {panel,scroll}=current;
