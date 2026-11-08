@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.6.0
+/* TaskFlow ADS Bridge v2.7.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -25,7 +25,7 @@ async function refreshRecommendations(){
     headers:{'Content-Type':'application/json'},body:JSON.stringify({placement,slot,country:context.country,region:context.region,city:context.city,sessionId})});
    if(!response.ok)return;
    const data=await response.json();
-   if(typeof data.campaignId==='string'&&catalog.some(a=>a.campaignId===data.campaignId&&a.placement===placement))next.set(slot,data.campaignId);
+   if(typeof data.campaignId==='string'&&typeof data.adId==='string'&&catalog.some(a=>a.campaignId===data.campaignId&&a.id===data.adId&&a.placement===placement))next.set(slot,{campaignId:data.campaignId,adId:data.adId});
   }catch(_){}
   finally{clearTimeout(timer)}
  }));
@@ -220,7 +220,7 @@ function lastKey(placement,slot){return 'taskflow_ads_last_v2_'+placement+'_'+St
 function pick(placement,slot){
  const favored=recommendations.get(slot);
  if(!favored)return null;
- const list=catalog.filter(a=>a.placement===placement&&a.campaignId===favored);if(!list.length)return null;
+ const list=catalog.filter(a=>a.placement===placement&&a.campaignId===favored.campaignId&&a.id===favored.adId);if(!list.length)return null;
  let last='';try{last=localStorage.getItem(lastKey(placement,slot))||''}catch(_){}
  const pool=list.length>1?list.filter(a=>a.id!==last):list;
  const lead=pool[Math.floor(Math.random()*pool.length)]||pool[0];
@@ -260,7 +260,7 @@ function queueBanner(slot){
 function bannerCandidates(slot){
  const favored=recommendations.get(slot);
  if(!favored)return [];
- const list=catalog.filter(a=>a.placement==='banner'&&a.campaignId===favored&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
+ const list=catalog.filter(a=>a.placement==='banner'&&a.campaignId===favored.campaignId&&a.id===favored.adId&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
  if(!list.length)return [];
  const shown=bannerStatus.get(slot),last=shown&&shown.id||'';
  const unseen=list.filter(a=>a.id!==last),seen=list.filter(a=>a.id===last);
@@ -329,7 +329,7 @@ async function displayBanner(slot){
  const live=element.querySelector('img');
  const current=displayed&&catalog.some(a=>a.placement==='banner'&&a.id===displayed.id&&a.src===displayed.src);
  const approvedSelection=recommendations.get(slot);
- if(current&&displayed.campaignId===approvedSelection&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
+ if(current&&approvedSelection&&displayed.campaignId===approvedSelection.campaignId&&displayed.id===approvedSelection.adId&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
  bannerBusy.add(slot);
  try{
   for(const ad of candidates){
@@ -348,7 +348,8 @@ async function displayBanner(slot){
   }
   // No mostrar nunca el icono roto del navegador.
   const currentAd=bannerStatus.get(slot);
-  const stillEligible=currentAd&&currentAd.campaignId===recommendations.get(slot)&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
+  const authorized=recommendations.get(slot);
+   const stillEligible=currentAd&&authorized&&currentAd.campaignId===authorized.campaignId&&currentAd.id===authorized.adId&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
   if(!stillEligible||!live||!live.complete||!validBannerPixels(live)){
    bannerStatus.delete(slot);
    window.TaskFlowAdsV50.render(slot,null);
@@ -451,7 +452,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.6.0',
+ version:'2.7.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
