@@ -8,9 +8,9 @@ window.__tfMentalistLegalProgressT86=true;
 const STYLE_ID='tfMentalistLegalProgressT86Style';
 const ROOT='#windowContainer.mentalist-modal.open #windowContent.tfMentalistReplicaT9';
 const CSS=`
-/* T95: Mentalista muestra solamente el progreso inferior aprobado. */
-${ROOT} > :not(.v85-routine-modal-head):not(.v96-mentalist-scroll):not(script):not(style){display:none!important}
-${ROOT} > .v96-mentalist-scroll > :not(.tfm-legal-progress):not(.v94-mentalist-protocol):not(.v94-mentalist-list):not(.tfm-summary):not(.v97-routine-guide):not(.v97-routine-guide-wrap):not(script):not(style){display:none!important}
+/* T96: solo la barra y escala duplicadas del resumen. */
+${ROOT} .tfm-summary .tf17-mental-steps,
+${ROOT} .tfm-summary > .tfm-meter{display:none!important}
 ${ROOT} .tfm-legal-progress{display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important;box-sizing:border-box!important;margin:0 0 14px!important;padding:15px 16px 16px!important;border:1px solid rgba(19,225,243,.82)!important;border-radius:24px!important;background:radial-gradient(circle at 0% 0%,rgba(26,214,255,.10),transparent 28%),linear-gradient(145deg,#071725 0%,#0a1730 42%,#09122a 100%)!important;box-shadow:inset 0 0 18px rgba(39,235,255,.05),0 0 12px rgba(1,181,255,.08)!important;color:#f5faff!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-head{display:grid!important;grid-template-columns:58px minmax(0,1fr) 141px 70px!important;gap:14px!important;align-items:center!important;min-width:0!important;min-height:68px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon{display:grid!important;place-items:center!important;width:50px!important;height:50px!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(14,131,178,.26),rgba(8,33,69,.96))!important;color:#29edf3!important}
@@ -366,27 +366,19 @@ function createCard(scroll){
 /* T95: el original de Mentalista crea SOLO cabecera y scroll.
    Se retiran los agregados visuales duplicados fuera de la tarjeta
    oficial, sin analizar numeros ni posiciones y sin alterar misiones. */
+/* T96: limpiar la duplicación de T17 sin modificar otras funciones. */
 function hideLegacyTracker(panel,scroll,card){
- if(!panel||!scroll||!card||!panel.contains(card))return 0;
- const allowedPanel=new Set([scroll,panel.querySelector(':scope > .v85-routine-modal-head')]);
- const allowedScroll=new Set([
-  card,
-  scroll.querySelector(':scope > .v94-mentalist-protocol'),
-  scroll.querySelector(':scope > .v94-mentalist-list'),
-  scroll.querySelector(':scope > .tfm-summary')
- ]);
- let removed=0;
- for(const node of [...panel.children]){
-  if(allowedPanel.has(node)||node.matches('script,style'))continue;
-  node.remove();removed++;
+ const summary=scroll.querySelector('.tfm-summary');
+ if(!summary)return;
+ summary.querySelectorAll('.tf17-mental-steps').forEach(el=>el.remove());
+ const oldBar=summary.querySelector(':scope > .tfm-meter');
+ if(oldBar)oldBar.remove();
+ const start=scroll.querySelector(':scope > .tf15-mental-start');
+ if(start){
+  if(summary.nextElementSibling!==start)scroll.insertBefore(summary,start);
+ }else if(summary!==scroll.lastElementChild){
+  scroll.appendChild(summary);
  }
- // Conservar los paneles nativos de regla, misiones y comienzo.
- // Las guias temporales siguen funcionando hasta que T9 las reagrupa.
- for(const node of [...scroll.children]){
-  if(allowedScroll.has(node)||node.matches('script,style,.v97-routine-guide,.v97-routine-guide-wrap'))continue;
-  node.remove();removed++;
- }
- return removed;
 }
 function update(){
  const current=state();if(!current)return;
