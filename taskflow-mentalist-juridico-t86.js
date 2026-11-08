@@ -8,6 +8,9 @@ window.__tfMentalistLegalProgressT86=true;
 const STYLE_ID='tfMentalistLegalProgressT86Style';
 const ROOT='#windowContainer.mentalist-modal.open #windowContent.tfMentalistReplicaT9';
 const CSS=`
+/* T95: Mentalista muestra solamente el progreso inferior aprobado. */
+${ROOT} > :not(.v85-routine-modal-head):not(.v96-mentalist-scroll):not(script):not(style){display:none!important}
+${ROOT} > .v96-mentalist-scroll > :not(.tfm-legal-progress):not(.v94-mentalist-protocol):not(.v94-mentalist-list):not(.tfm-summary):not(.v97-routine-guide):not(.v97-routine-guide-wrap):not(script):not(style){display:none!important}
 ${ROOT} .tfm-legal-progress{display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important;box-sizing:border-box!important;margin:0 0 14px!important;padding:15px 16px 16px!important;border:1px solid rgba(19,225,243,.82)!important;border-radius:24px!important;background:radial-gradient(circle at 0% 0%,rgba(26,214,255,.10),transparent 28%),linear-gradient(145deg,#071725 0%,#0a1730 42%,#09122a 100%)!important;box-shadow:inset 0 0 18px rgba(39,235,255,.05),0 0 12px rgba(1,181,255,.08)!important;color:#f5faff!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-head{display:grid!important;grid-template-columns:58px minmax(0,1fr) 141px 70px!important;gap:14px!important;align-items:center!important;min-width:0!important;min-height:68px!important}
 ${ROOT} .tfm-legal-progress .tf21-progress-icon{display:grid!important;place-items:center!important;width:50px!important;height:50px!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(14,131,178,.26),rgba(8,33,69,.96))!important;color:#29edf3!important}
@@ -360,42 +363,30 @@ function createCard(scroll){
    Nunca retira la tarjeta de progreso válida ni las misiones. */
 /* T94: retirar exclusivamente el contenedor superior por posición visual.
    La barra del progreso inferior y las 12 pruebas no se modifican. */
+/* T95: el original de Mentalista crea SOLO cabecera y scroll.
+   Se retiran los agregados visuales duplicados fuera de la tarjeta
+   oficial, sin analizar numeros ni posiciones y sin alterar misiones. */
 function hideLegacyTracker(panel,scroll,card){
- const header=panel.querySelector('.v85-routine-modal-head');
- if(!header||!card||!card.isConnected)return false;
- const h=header.getBoundingClientRect(),c=card.getBoundingClientRect(),p=panel.getBoundingClientRect();
- const top=h.bottom-20,bottom=c.top+6;
- if(!p.width||!c.width||bottom-top<55)return false;
- const protectedAreas='.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-protocol,.tfm-summary,.v85-routine-modal-head';
- function consider(node){
-  if(node===panel||node===scroll||node===card||node.contains(card)||node.contains(header)||node.closest(protectedAreas))return null;
-  if(node.querySelector('.tfm-legal-progress,.v94-mentalist-list,.v94-mentalist-protocol,.tfm-summary,.v85-routine-modal-head'))return null;
-  const r=node.getBoundingClientRect();
-  if(r.width<Math.max(140,p.width*.40)||r.height<26||r.top<top||r.bottom>bottom)return null;
-  const numbers=new Set([...node.querySelectorAll('*')].filter(el=>
-    el.childElementCount===0&&/^(?:[1-9]|1[0-2])$/.test(String(el.textContent||'').trim()))
-    .map(el=>Number(el.textContent.trim())));
-  return {node,score:(numbers.size>=9?1000000:0)+r.width*r.height};
+ if(!panel||!scroll||!card||!panel.contains(card))return 0;
+ const allowedPanel=new Set([scroll,panel.querySelector(':scope > .v85-routine-modal-head')]);
+ const allowedScroll=new Set([
+  card,
+  scroll.querySelector(':scope > .v94-mentalist-protocol'),
+  scroll.querySelector(':scope > .v94-mentalist-list'),
+  scroll.querySelector(':scope > .tfm-summary')
+ ]);
+ let removed=0;
+ for(const node of [...panel.children]){
+  if(allowedPanel.has(node)||node.matches('script,style'))continue;
+  node.remove();removed++;
  }
- const choices=[];
- for(const node of panel.querySelectorAll('div,section,nav,article,ol,ul')){
-  const c=consider(node);if(c)choices.push(c);
+ // Conservar los paneles nativos de regla, misiones y comienzo.
+ // Las guias temporales siguen funcionando hasta que T9 las reagrupa.
+ for(const node of [...scroll.children]){
+  if(allowedScroll.has(node)||node.matches('script,style,.v97-routine-guide,.v97-routine-guide-wrap'))continue;
+  node.remove();removed++;
  }
- choices.sort((a,b)=>b.score-a.score);
- let best=choices[0]||null;
- if(!best&&typeof document.elementFromPoint==='function'){
-  for(const x of [.5,.25,.75])for(const y of [.45,.64,.30]){
-   let node=document.elementFromPoint(p.left+p.width*x,h.bottom+(c.top-h.bottom)*y);
-   while(node&&node!==panel){
-    const match=consider(node);
-    if(match&&(!best||match.score>best.score))best=match;
-    node=node.parentElement;
-   }
-  }
- }
- if(!best)return false;
- best.node.remove();
- return true;
+ return removed;
 }
 function update(){
  const current=state();if(!current)return;
@@ -436,7 +427,18 @@ function initialize(){
   if(changes.some(r=>r.type==='childList'||r.type==='attributes'))schedule();
  });
  observer.observe(outer,{attributes:true,attributeFilter:['class']});
+ const observedScrolls=new WeakSet();
+ function observeScroll(){
+  const scroll=panel.querySelector(':scope > .v96-mentalist-scroll');
+  if(scroll&&!observedScrolls.has(scroll)){
+   observedScrolls.add(scroll);
+   observer.observe(scroll,{childList:true,subtree:false});
+  }
+ }
  observer.observe(panel,{childList:true,subtree:false});
+ const panelWatcher=new MutationObserver(()=>{observeScroll();schedule()});
+ panelWatcher.observe(panel,{childList:true,subtree:false});
+ observeScroll();
  document.addEventListener('click',()=>{schedule();setTimeout(schedule,110)},{capture:true,passive:true});
  // Actualizar solo mientras Mentalista está abierto, también tras sincronización.
  setInterval(()=>{if(state())update()},900);
