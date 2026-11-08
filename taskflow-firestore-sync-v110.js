@@ -8,7 +8,8 @@ const API='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(PRO
 const SOURCE_KEYS=['taskflow_db_v26','taskflow_503020_v1','taskflow_share_reward_claimed_v1','taskflow_share_count_v1'];
 // Compatibilidad: estos valores se sincronizan en un documento aparte para no alterar
 // el formato de los snapshots que aún utilizan otros dispositivos.
-const PREF_KEYS=['taskflow_routines_v115','taskflow_routines_v115_meta','taskflow_forced_routines_v113','taskflow_routines_v113_meta','taskflow_v13041_mentalista_user_choice','taskflow_routines_v119_defaulted'];
+/* Las preferencias pertenecen al sincronizador T49. Aquí solo se sincronizan datos principales. */
+const PREF_KEYS=[];
 const PREF_TOUCH='taskflow_cloud_pref_touch_v110';
 const PREF_BOUND='taskflow_cloud_pref_bound_v110';
 const PREF_META='taskflow_cloud_pref_meta_v110_';
@@ -239,7 +240,7 @@ async function syncNow(reason){
  syncing=(async()=>{
    try{
      await reconcile(uid);
-     if(uid===currentUid)await reconcilePrefs(uid);
+     if(uid===currentUid&&PREF_KEYS.length)await reconcilePrefs(uid);
      retryDelay=2000;
      return true;
    }catch(e){
@@ -271,7 +272,7 @@ function listenForRemote(uid){
      if(meta&&revision===Number(meta.lastRemoteRevision)&&String(remote.hash||'')===String(meta.lastSyncedHash||'')&&!dirty)return;
      queueRecheck('remote-change',160);
    },e=>{hasRemoteListener=false;warn('listener remoto',e)});
-   prefUnsubscribe=firestoreDb.doc(prefPath(uid)).onSnapshot(snap=>{
+   if(PREF_KEYS.length)prefUnsubscribe=firestoreDb.doc(prefPath(uid)).onSnapshot(snap=>{
      if(currentUid!==uid||!snap.exists||snap.metadata&&snap.metadata.hasPendingWrites)return;
      const remote=snap.data()||{},meta=readPrefMeta(uid);
      if(meta&&String(meta.hash||'')===String(remote.hash||'')&&!prefDirty)return;
