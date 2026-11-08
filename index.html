@@ -19,29 +19,35 @@ body{min-height:100dvh}
 .tfRetry{margin-top:18px;min-height:44px;border:1px solid #34e3ee;border-radius:12px;padding:10px 22px;background:#086577;color:#fff;font:800 14px system-ui,-apple-system,"Segoe UI",sans-serif}
 .tfRetry:focus-visible{outline:3px solid #fff;outline-offset:3px}
 
-/* Loader T84 — imagen de referencia original enviada por el usuario.
-   Únicamente se superpone el progreso funcional sobre el progreso impreso.
-   No hay pie, marca, imagen, contador ni ventana duplicados. */
-#tfSplash{position:fixed;inset:0;z-index:2147483644;display:grid;place-items:center;overflow:hidden;overscroll-behavior:none;background:#030814}
+/* TaskFlow T85 — 1080x1920 Full HD artwork + original touch waves.
+   Do not add a second splash illustration, footer or progress control. */
+#tfSplash{position:fixed;inset:0;z-index:2147483644;display:grid;place-items:center;overflow:hidden;overscroll-behavior:none;background:radial-gradient(ellipse at 50% 45%,#102c4d 0%,#030d1c 62%,#020713 100%)}
 #tfSplash[hidden]{display:none!important}
-.tfSplashArt{position:relative;width:min(100vw,49.81dvh);max-width:100%;aspect-ratio:765/1536;max-height:100dvh;overflow:hidden;isolation:isolate;background:#030814;container-type:inline-size}
-.tfSplashImage{display:block;width:100%;height:100%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:none;pointer-events:none}
-.tfSplashFallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse,#103257,#030814);color:#72effa;font-weight:900;font-size:clamp(32px,10cqw,64px)}
+.tfSplashArt{position:relative;width:min(100vw,56.25dvh);max-width:100%;aspect-ratio:9/16;max-height:100dvh;overflow:hidden;isolation:isolate;background:#030814;container-type:inline-size}
+.tfSplashImage{position:relative;z-index:0;display:block;width:100%;height:100%;object-fit:contain;object-position:center;user-select:none;-webkit-user-drag:none;pointer-events:none;image-rendering:auto}
+.tfSplashFallback{position:absolute;inset:0;z-index:0;display:none;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse,#103257,#030814);color:#72effa;font-weight:900;font-size:clamp(32px,10cqw,64px)}
 #tfSplash.fallback .tfSplashImage{visibility:hidden}
 #tfSplash.fallback .tfSplashFallback{display:flex}
-/* Coordinates match the single bar in the 765 × 1536 reference illustration. */
-.tfSplashMeter{position:absolute;z-index:2;top:54.1%;left:12.8%;width:75.4%;height:3.15%;display:flex;align-items:center;gap:3%;padding:0 2%;border:1px solid rgba(29,153,206,.38);border-radius:999px;background:linear-gradient(90deg,#072f50,#061a3a 75%,#06233f);box-shadow:inset 0 0 8px #0007,0 0 5px #0b54ad26;box-sizing:border-box;pointer-events:none}
-.tfSplashTrack{display:block;position:relative;flex:1;min-width:0;height:47%;min-height:5px;overflow:hidden;border:1px solid #175b85;border-radius:999px;background:#081531}
-#tfSplashFill{display:block;width:100%;height:100%;border-radius:inherit;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,#08f2eb,#168bfa 25%,#8746fb 55%,#f345d8 80%,#ffc47b 100%);box-shadow:0 0 9px #17ccf99e}
-#tfSplashPercent{min-width:10%;font:900 clamp(11px,3.3cqw,21px)/1 system-ui,-apple-system,"Segoe UI",sans-serif;text-align:right;color:#f2faff;font-variant-numeric:tabular-nums}
-@media(prefers-reduced-motion:reduce){#tfSplashFill{transition:none}}
+/* Waves revive the previous tap animation without covering the HD image. */
+#tfSplashSlats{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:.07;mix-blend-mode:screen;transition:opacity .25s ease;mask-image:radial-gradient(ellipse 85% 83% at 50% 50%,transparent 37%,rgba(0,0,0,.3) 73%,#000 100%);-webkit-mask-image:radial-gradient(ellipse 85% 83% at 50% 50%,transparent 37%,rgba(0,0,0,.3) 73%,#000 100%)}
+#tfSplash.tf-slats-touched #tfSplashSlats{opacity:.33}
+#tfSplashSlats canvas{display:block;width:100%;height:100%;pointer-events:none}
+.tfSplashWave{position:absolute;z-index:3;left:50%;top:50%;width:24px;height:24px;box-sizing:border-box;border:2px solid rgba(115,246,255,.96);border-radius:50%;pointer-events:none;box-shadow:0 0 15px 3px rgba(12,226,249,.74),inset 0 0 10px rgba(176,83,255,.75);background:radial-gradient(circle,rgba(8,232,248,.23),rgba(127,62,255,.12) 45%,transparent 70%);transform:translate(-50%,-50%) scale(.3);animation:tfSplashTouchWave .93s ease-out forwards}
+@keyframes tfSplashTouchWave{0%{opacity:.96;transform:translate(-50%,-50%) scale(.3)}34%{opacity:.85}100%{opacity:0;transform:translate(-50%,-50%) scale(10)}}
+/* The existing printed meter is fully covered by this ONE real meter. */
+.tfSplashMeter{position:absolute;z-index:4;top:54.55%;left:12.6%;width:74.8%;height:3.55%;display:flex;align-items:center;gap:3%;padding:0 2%;border:1px solid rgba(38,173,226,.58);border-radius:999px;background:linear-gradient(90deg,#06365a 0%,#081c3a 79%,#06213d 100%);box-shadow:0 0 10px rgba(18,169,240,.17),inset 0 0 9px #0009;box-sizing:border-box;pointer-events:none}
+.tfSplashTrack{display:block;position:relative;flex:1;min-width:0;height:49%;min-height:5px;overflow:hidden;border:1px solid #246797;border-radius:999px;background:#07132c;box-shadow:inset 0 1px 4px #000a}
+#tfSplashFill{display:block;width:100%;height:100%;border-radius:inherit;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,#00ebed,#168dfe 26%,#7845fa 55%,#f044ce 80%,#ffc87b);box-shadow:0 0 10px rgba(21,212,250,.83);will-change:transform}
+#tfSplashPercent{min-width:10%;text-align:right;color:#f5fdff;font:900 clamp(10px,3.2cqw,21px)/1 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums;text-shadow:0 0 6px #00b3f657}
+@media(prefers-reduced-motion:reduce){#tfSplashSlats,.tfSplashWave{display:none!important}#tfSplashFill{transition:none!important}}
 </style>
 </head>
 <body>
 <div id="tfSplash" role="status" aria-label="Cargando TaskFlow">
  <div class="tfSplashArt">
-  <img class="tfSplashImage" src="./taskflow-loading-t84.webp" alt="TaskFlow — Organiza · Avanza · Cumple" width="765" height="1536" fetchpriority="high" decoding="async" onerror="document.getElementById('tfSplash').classList.add('fallback')">
+  <img class="tfSplashImage" src="./taskflow-loading-fhd-1080x1920.webp" alt="TaskFlow — Organiza · Avanza · Cumple" width="1080" height="1920" fetchpriority="high" decoding="async" onerror="document.getElementById('tfSplash').classList.add('fallback')">
   <div class="tfSplashFallback" aria-hidden="true">TaskFlow</div>
+  <div id="tfSplashSlats" aria-hidden="true"></div>
   <div class="tfSplashMeter" id="tfSplashMeter" role="progressbar" aria-label="Inicio de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
    <span class="tfSplashTrack"><i id="tfSplashFill"></i></span><strong id="tfSplashPercent">0%</strong>
   </div>
@@ -49,6 +55,7 @@ body{min-height:100dvh}
 </div>
 <div id="tfBoot" role="alert" aria-live="assertive" hidden><div class="tfCard"><p class="tfErr" id="tfErr">No fue posible iniciar TaskFlow. Comprueba tu conexión y vuelve a intentarlo.</p><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 
+<script src="./taskflow-microslats.js?v=3-fhd-touch-20261107" defer></script>
 <script>
 (async function(){
 'use strict';
