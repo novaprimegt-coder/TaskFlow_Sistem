@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.0.0
+/* TaskFlow ADS Bridge v3.1.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -49,6 +49,15 @@ let context={country:'',region:'',city:''};
 function validHTTPS(value){
  if(typeof value!=='string'||!value.trim())return '';
  try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch(_){return ''}
+}
+function trackedDestination(ad){
+ const original=validHTTPS(ad?.destination);
+ if(!original)return '';
+ if(!['traffic','leads','sales','app'].includes(String(ad?.objective||''))||!/^[a-f0-9-]{36}$/i.test(String(ad?.selectionToken||'')))return original;
+ const u=new URL(original);
+ u.searchParams.set('tf_ads_click',ad.selectionToken);
+ u.searchParams.set('tf_ads_campaign',String(ad.campaignId||''));
+ return u.href;
 }
 function normText(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es')}
 function countryCode(v){const c=normText(v);return c==='guatemala'||c==='gt'?'GT':c.toUpperCase()}
@@ -228,7 +237,7 @@ function bindAnalyticsTracking(){
   const banner=target.closest('.tf50-ad-slot');
   if(banner){
    const status=bannerStatus.get(banner.id),ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
-   if(ad&&target.href===ad.destination){
+   if(ad&&status&&target.href===trackedDestination({...ad,selectionToken:status.selectionToken})){
    const media=banner.querySelector('img');
    if(media?.complete&&media.naturalWidth>0)recordVisibleAd(ad,banner.id,banner);
    recordAdEvent('click',ad,banner.id);
@@ -239,7 +248,7 @@ function bindAnalyticsTracking(){
   const interaction=target.closest('#tfInteractionAdV57');
   const placement=entry?'entry':interaction?'interaction':'';
   const ad=activeVerticalAds[placement];
-  if(ad&&target.href===ad.destination){
+  if(ad&&target.href===trackedDestination(ad)){
    const stage=document.getElementById(placement==='entry'?'tf56EntryStage':'tf57TouchStage');
    const media=stage?.querySelector('img,video');
    if(media&&(media.tagName==='IMG'?media.complete&&media.naturalWidth>0:media.readyState>=1))recordVisibleAd(ad,placement,stage);
@@ -367,7 +376,7 @@ function testedBanner(ad){
 function bannerNode(ad,img){
  if(!img)return null;
  if(!ad.destination)return img;
- const a=document.createElement('a');a.href=ad.destination;a.target='_blank';
+ const a=document.createElement('a');a.href=trackedDestination(ad);a.target='_blank';
  a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';
  a.setAttribute('aria-label',ad.ctaLabel||'Abrir anuncio');
  a.title=ad.ctaLabel||'Abrir anuncio';
@@ -448,7 +457,7 @@ function apply(){
  if(!entryRunning){
   const entry=pick('entry','entry');
   let accepted=false;
-  try{accepted=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:entry.destination,ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
+  try{accepted=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:trackedDestination(entry),ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
   activeVerticalAds.entry=accepted?entry:null;
   if(accepted){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
  }
@@ -456,7 +465,7 @@ function apply(){
  if(!interactionRunning){
   const interaction=pick('interaction','interaction');
   let accepted=false;
-  try{accepted=window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:interaction.destination,ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)===true}catch(e){console.warn('TaskFlow ADS interacción:',e)}
+  try{accepted=window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:trackedDestination(interaction),ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)===true}catch(e){console.warn('TaskFlow ADS interacción:',e)}
   activeVerticalAds.interaction=accepted?interaction:null;
  }
  return true
@@ -514,7 +523,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.0.0',
+ version:'3.1.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
