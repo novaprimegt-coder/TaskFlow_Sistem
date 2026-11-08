@@ -19,7 +19,7 @@ function uid(){
  try{const u=window.TaskFlowFirebase&&window.TaskFlowFirebase.getUser&&window.TaskFlowFirebase.getUser();return u&&u.uid?'user_'+u.uid:'guest'}catch(_){return 'guest'}
 }
 function day(){
- const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Guatemala',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:(window.TaskFlowRegionalClock&&window.TaskFlowRegionalClock.getTimeZone&&window.TaskFlowRegionalClock.getTimeZone())||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
  const p={};for(const x of parts)if(x.type!=='literal')p[x.type]=x.value;
  return p.year+'-'+p.month+'-'+p.day;
 }
