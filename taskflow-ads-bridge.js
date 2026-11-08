@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v2.8.1
+/* TaskFlow ADS Bridge v2.9.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -102,7 +102,7 @@ function targetEligible(c){
 const ANALYTICS_URL='https://taskflow-ads-media.vercel.app/api/analytics';
 let analyticsSession='',analyticsTrackingBound=false;
 const activeVerticalAds={entry:null,interaction:null};
-const impressionSeen=new Map();
+const impressionSeen=new Map(),impressionConfirmations=new Map();
 function analyticsSessionId(){
  if(analyticsSession)return analyticsSession;
  try{analyticsSession=sessionStorage.getItem('tfads_analytics_session_v1')||''}catch(_){}
@@ -136,7 +136,6 @@ function recordAdEvent(type,ad,slot){
  if(!/^[a-f0-9-]{36}$/i.test(selectionToken))return;
  const base={campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId,selectionToken};
  telemetryDiagnostic(type,'attempted');
- // A click must first have a confirmed impression; the server deduplicates both by selection token.
  const post=async event=>{
   const controller=new AbortController(),stop=setTimeout(()=>controller.abort(),9000);
   let verification;
@@ -146,14 +145,24 @@ function recordAdEvent(type,ad,slot){
    verification=await confirmation.json();
   }finally{clearTimeout(stop)}
   if(verification?.ok!==true)throw Error('Entrega sin confirmación válida');
-  const response=await fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})});
-  if(!response.ok)throw Error('HTTP '+response.status);
+  // Only the private SQL ledger is authoritative. This is optional legacy telemetry.
+  void fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})}).catch(()=>{});
  };
- void (async()=>{
-  if(type==='click')await post('impression');
+ const job=(async()=>{
+  // Never manufacture an impression merely because the advertiser's link was clicked.
+  if(type==='click'){
+   const confirmed=impressionConfirmations.get(selectionToken);
+   if(!confirmed)throw Error('Impresión no comprobada');
+   await confirmed;
+  }
   await post(type);
   telemetryDiagnostic(type,'acknowledged');
- })().catch(error=>{
+ })();
+ if(type==='impression'){
+  impressionConfirmations.set(selectionToken,job);
+  if(impressionConfirmations.size>500)impressionConfirmations.delete(impressionConfirmations.keys().next().value);
+ }
+ void job.catch(error=>{
   telemetryDiagnostic(type,'failed','No se confirmó la entrega');
   console.warn('TaskFlow ADS: evento no confirmado',String(error?.message||'Sin conexión'));
  });
@@ -186,14 +195,23 @@ function bindAnalyticsTracking(){
   const banner=target.closest('.tf50-ad-slot');
   if(banner){
    const status=bannerStatus.get(banner.id),ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
-   if(ad&&target.href===ad.destination)recordAdEvent('click',ad,banner.id);
+   if(ad&&target.href===ad.destination){
+   const media=banner.querySelector('img');
+   if(media?.complete&&media.naturalWidth>0)recordVisibleAd(ad,banner.id,banner);
+   recordAdEvent('click',ad,banner.id);
+  }
    return;
   }
   const entry=target.closest('#tfEntryAdV56');
   const interaction=target.closest('#tfInteractionAdV57');
   const placement=entry?'entry':interaction?'interaction':'';
   const ad=activeVerticalAds[placement];
-  if(ad&&target.href===ad.destination)recordAdEvent('click',ad,placement);
+  if(ad&&target.href===ad.destination){
+   const stage=document.getElementById(placement==='entry'?'tf56EntryStage':'tf57TouchStage');
+   const media=stage?.querySelector('img,video');
+   if(media&&(media.tagName==='IMG'?media.complete&&media.naturalWidth>0:media.readyState>=1))recordVisibleAd(ad,placement,stage);
+   recordAdEvent('click',ad,placement);
+  }
  },true);
  const checkBannerImpressions=()=>{
   for(const slot of BANNER_SLOTS){
@@ -463,7 +481,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'2.8.1',
+ version:'2.9.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
