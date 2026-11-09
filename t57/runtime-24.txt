@@ -1994,7 +1994,7 @@ function boot(){
     'box-sizing':'border-box','flex':'0 1 auto','width':'100%','min-width':'0','max-width':'100%',
     'height':'auto','min-height':'0','max-height':'none',
     'padding':'0','margin':'0','gap':'2px','overflow':'visible',
-    'text-align':'center','transform':'translateX(2px)',
+    'text-align':'center','transform':'translateX(-3px)',
     '-webkit-text-size-adjust':'none','text-size-adjust':'none'
    });
    const computed=getComputedStyle(card),w=Math.max(30,card.getBoundingClientRect().width-
