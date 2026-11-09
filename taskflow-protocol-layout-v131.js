@@ -53,7 +53,7 @@ function applyCards(pro,kind){
    'grid-column':'auto','grid-row':'auto','float':'none',
    'flex-shrink':'0','margin':'0 auto','transform':'none'});
   const body=card.querySelector('.'+kind+'-stat-body');
-  put(body,{'position':'static','inset':'auto','display':'flex',
+  put(body,{'position':'relative','left':'-14px','inset':'auto','display':'flex',
    'flex-direction':'column','align-items':'center','justify-content':'center',
    'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
    'gap':'3px','float':'none','flex':'0 1 auto',
@@ -67,11 +67,10 @@ function applyCards(pro,kind){
     const strong=leaf.matches('b,strong');
     const size=strong?'clamp(11px,2.8vw,17px)':'clamp(9px,2.3vw,12px)';
     sizeText(leaf,size,strong);
-    put(leaf,{'position':'relative','left':'-16px','right':'auto'});
    }
    if(card===cards[2]){
     const number=body.querySelector('b,strong');
-    if(number){sizeText(number,'clamp(10px,2.4vw,15px)',true);put(number,{'position':'relative','left':'-16px','right':'auto'});}
+    if(number)sizeText(number,'clamp(10px,2.4vw,15px)',true);
    }
   }
  }

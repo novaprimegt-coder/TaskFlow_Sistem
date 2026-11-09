@@ -1043,7 +1043,7 @@ schedule();
 })();
 </script>
 <script src="./taskflow-v58-stability.js?v=58-20261106" defer></script>
-<script src="./taskflow-protocol-layout-v131.js?v=1312-portrait-left-v146-20261109" defer></script>
+<script src="./taskflow-protocol-layout-v131.js?v=1313-portrait-labels-v148-20261109" defer></script>
 <style id="tf21OnlyProgressV132CSS">
 /* V132 | Solo Dominio Jurídico: encabezado y tarjetas sin superposición */
 #windowContent.tf21-legal .tf21-progress{box-sizing:border-box!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important}
@@ -1691,6 +1691,18 @@ function start(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+<style id="tfPortraitDuplicateIconsV148">
+/* Solo iconos secundarios superpuestos en las actividades señaladas.
+   Los fondos de referencia de .v69-routine-check se conservan. */
+#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .tf13067-task-icon,
+#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .tf13067-task-icon,
+#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .v69-routine-check > :is(svg,span,i,img,em),
+#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .v69-routine-check > :is(svg,span,i,img,em) {
+ display:none!important;
+ visibility:hidden!important;
+ pointer-events:none!important;
+}
+</style>
 <script id="tfPortraitWebViewFitV141">
 /* TaskFlow V141 — ajustar exclusivamente el progreso de Sócrates y Maquiavelo en WebView. */
 (function(){
@@ -1734,9 +1746,8 @@ function start(){
   if(!node)return;
   set(node,'box-sizing','border-box');
   set(node,'display','block');
-  const statText=!!node.closest('.tf32-stat,.tf33-stat');
-  set(node,'position',statText?'relative':'static');
-  if(statText)set(node,'left','-16px');
+  set(node,'position','static');
+  set(node,'left','auto');
   set(node,'width','100%');
   set(node,'min-width','0');
   set(node,'max-width','100%');
@@ -1843,7 +1854,8 @@ function start(){
    if(!body)return;
    set(body,'-webkit-text-size-adjust','none');
    set(body,'text-size-adjust','none');
-   set(body,'position','static');
+   set(body,'position','relative');
+   set(body,'left','-14px');
    set(body,'width','100%');
    set(body,'min-width','0');
    set(body,'max-width','100%');
@@ -1916,7 +1928,7 @@ function boot(){
  function fitText(el,max,first){
   if(!el)return;
   set(el,{
-   'position':'relative','left':'-16px','display':'block','box-sizing':'border-box',
+   'position':'static','left':'auto','display':'block','box-sizing':'border-box',
    'width':'100%','min-width':'0','max-width':'100%',
    'height':'auto','min-height':'0','max-height':'none',
    'white-space':'normal','overflow-wrap':'anywhere','word-break':'normal',
@@ -1992,7 +2004,7 @@ function boot(){
    if(!body)continue;
    set(body,{
     'display':'flex','flex-direction':'column','align-items':'center','justify-content':'center',
-    'position':'static','inset':'auto','grid-column':'auto','grid-row':'auto',
+    'position':'relative','left':'-14px','inset':'auto','grid-column':'auto','grid-row':'auto',
     'box-sizing':'border-box','flex':'0 1 auto','width':'100%','min-width':'0','max-width':'100%',
     'height':'auto','min-height':'0','max-height':'none',
     'padding':'0','margin':'0','gap':'2px','overflow':'visible',
