@@ -1549,6 +1549,148 @@ html {
  #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat-body > :is(small,span) {font-size:clamp(8px,2.15vw,10px)!important;}
 }
 </style>
+<script id="tf21WebViewFitV140">
+/* TaskFlow V140: ajuste activo únicamente para progreso jurídico en Android WebView. */
+(function(){
+'use strict';
+if(window.__tf21WebViewFitV140)return;
+window.__tf21WebViewFitV140=true;
+function start(){
+ const panel=document.getElementById('windowContent'),modal=document.getElementById('windowContainer');
+ if(!panel||!modal)return;
+ const webview=/\bwv\b|WebView|AppCreator24|Version\/4\.0/i.test(navigator.userAgent);
+ let frame=0;
+ function important(node,name,value){
+  if(node&&(node.style.getPropertyValue(name)!==value||node.style.getPropertyPriority(name)!=='important'))
+   node.style.setProperty(name,value,'important');
+ }
+ function textRects(node){
+  if(!node||!node.isConnected)return [];
+  try{const r=document.createRange();r.selectNodeContents(node);
+   const result=Array.from(r.getClientRects());r.detach?.();return result;
+  }catch(_){return []}
+ }
+ function textOutside(node,box){
+  if(!node||!box)return false;
+  const b=box.getBoundingClientRect();
+  if(!b.width)return false;
+  return textRects(node).some(r=>r.width>1&&(r.left<b.left-2||r.right>b.right+2));
+ }
+ function intersect(a,b){
+  if(!a||!b)return false;
+  const x=a.getBoundingClientRect(),y=b.getBoundingClientRect();
+  return x.right>y.left+2&&y.right>x.left+2&&x.bottom>y.top+2&&y.bottom>x.top+2;
+ }
+ function fit(){
+  if(!panel.classList.contains('tf21-legal')||!modal.classList.contains('open'))return;
+  const root=panel.querySelector('.tf21-progress');
+  if(!root)return;
+  const head=root.querySelector('.tf21-progress-head');
+  const cards=Array.from(root.querySelectorAll('.tf21-stats > .tf21-stat'));
+  if(!head||cards.length!==3)return;
+  const label=head.querySelector('.tf21-progress-label');
+  const pill=head.querySelector('.tf21-count-pill');
+  const pct=head.querySelector('.tf21-pct');
+  const statsBad=cards.some(card=>{
+   const body=card.querySelector('.tf21-stat-body');
+   return !!body&&(body.scrollWidth>body.clientWidth+2||
+    Array.from(body.children).some(el=>textOutside(el,card)));
+  });
+  const headBad=intersect(label,pill)||intersect(pill,pct)||
+   Array.from(label?.children||[]).some(el=>pill&&textRects(el).some(r=>{
+    const p=pill.getBoundingClientRect();
+    return r.right>p.left+2&&r.left<p.right-2&&r.bottom>p.top+2&&r.top<p.bottom-2;
+   }));
+  if(!webview&&!statsBad&&!headBad)return;
+  for(const [index,card] of cards.entries()){
+   const body=card.querySelector('.tf21-stat-body');
+   if(!body)continue;
+   const style=getComputedStyle(card);
+   const inner=Math.max(50,card.getBoundingClientRect().width-
+    (parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0)-2);
+   important(card,'min-width','0px');important(card,'max-width','100%');important(card,'height','auto');
+   important(body,'position','static');important(body,'min-width','0px');
+   important(body,'max-width','100%');important(body,'width','100%');important(body,'overflow','visible');
+   const texts=Array.from(body.children).filter(el=>el.matches('b,strong,span,small'));
+   texts.forEach((el,i)=>{
+    const primary=i===0;
+    const size=primary
+      ? (index===2?Math.min(15,Math.max(10,inner/8.4)):
+         Math.min(19,Math.max(12,inner/6.8)))
+      : Math.min(11,Math.max(8,inner/9.5));
+    important(el,'display','block');important(el,'position','static');
+    important(el,'max-width','100%');important(el,'width','100%');
+    important(el,'white-space','normal');important(el,'overflow-wrap','anywhere');
+    important(el,'word-break','normal');important(el,'text-overflow','clip');
+    important(el,'font-size',size.toFixed(2)+'px');
+    important(el,'line-height',primary?'1.18':'1.25');
+    let current=size;
+    for(let j=0;j<7&&textOutside(el,card)&&current>7.5;j++){
+     current=Math.max(7.5,current*.88);
+     important(el,'font-size',current.toFixed(2)+'px');
+    }
+   });
+  }
+  if(webview||headBad){
+   const width=head.getBoundingClientRect().width;
+   const secondRow=headBad||width<390;
+   const colIcon=Math.min(40,Math.max(30,width*.1));
+   const colPct=Math.min(50,Math.max(34,width*.11));
+   important(head,'display','grid');important(head,'min-width','0px');
+   important(head,'width','100%');important(head,'height','auto');important(head,'gap','6px 7px');
+   important(label,'min-width','0px');important(label,'max-width','100%');
+   const title=label?.querySelector('strong');
+   const subtitle=label?.querySelector('small');
+   if(title){important(title,'font-size',Math.min(15,Math.max(11,width/34)).toFixed(2)+'px');important(title,'white-space','normal');important(title,'overflow-wrap','anywhere')}
+   if(subtitle){important(subtitle,'font-size',Math.min(11,Math.max(9,width/52)).toFixed(2)+'px');important(subtitle,'white-space','normal');important(subtitle,'overflow-wrap','anywhere')}
+   if(pill){
+    important(pill,'position','static');important(pill,'min-width','0px');
+    important(pill,'max-width','100%');important(pill,'height','auto');
+    const count=pill.querySelector('b,strong'),caption=pill.querySelector('small,span');
+    if(count){important(count,'font-size','16px');important(count,'line-height','1.1')}
+    if(caption){important(caption,'font-size','8px');important(caption,'line-height','1.2');important(caption,'white-space','normal');important(caption,'overflow-wrap','anywhere')}
+   }
+   if(pct){important(pct,'position','static');important(pct,'white-space','nowrap');important(pct,'font-size',Math.min(28,Math.max(19,width/15)).toFixed(2)+'px')}
+   if(secondRow){
+    important(head,'grid-template-columns',colIcon+'px minmax(0,1fr) '+colPct+'px');
+    important(head,'grid-template-rows','auto auto');
+    if(label){important(label,'grid-column','2');important(label,'grid-row','1')}
+    if(pct){important(pct,'grid-column','3');important(pct,'grid-row','1')}
+    if(pill){important(pill,'grid-column','2 / 4');important(pill,'grid-row','2');important(pill,'justify-self','start');important(pill,'width','auto')}
+   }else{
+    const pillW=Math.max(72,Math.min(102,width*.17));
+    important(head,'grid-template-columns',colIcon+'px minmax(0,1fr) '+pillW+'px '+colPct+'px');
+    important(head,'grid-template-rows','auto');
+    if(label){important(label,'grid-column','2');important(label,'grid-row','1')}
+    if(pill){important(pill,'grid-column','3');important(pill,'grid-row','1');important(pill,'width','100%')}
+    if(pct){important(pct,'grid-column','4');important(pct,'grid-row','1')}
+    if(label&&pill&&Array.from(label.children).some(el=>textRects(el).some(r=>{
+     const p=pill.getBoundingClientRect();
+     return r.right>p.left-1&&r.bottom>p.top+1&&r.top<p.bottom-1;
+    }))){
+     important(head,'grid-template-columns',colIcon+'px minmax(0,1fr) '+colPct+'px');
+     important(head,'grid-template-rows','auto auto');
+     important(pill,'grid-column','2 / 4');important(pill,'grid-row','2');
+     important(pill,'width','auto');important(pill,'justify-self','start');
+     if(pct)important(pct,'grid-column','3');
+    }
+   }
+  }
+ }
+ function schedule(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;fit()})}
+ const changes=new MutationObserver(records=>{
+  if(records.some(m=>m.type==='childList'||m.type==='characterData'))schedule();
+ });
+ changes.observe(panel,{childList:true,subtree:true,characterData:true});
+ changes.observe(modal,{attributes:true,attributeFilter:['class']});
+ if(typeof ResizeObserver==='function'){const resize=new ResizeObserver(schedule);resize.observe(panel)}
+ window.addEventListener('resize',schedule,{passive:true});
+ window.addEventListener('pageshow',schedule,{passive:true});
+ schedule();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
