@@ -1734,7 +1734,9 @@ function start(){
   if(!node)return;
   set(node,'box-sizing','border-box');
   set(node,'display','block');
-  set(node,'position','static');
+  const statText=!!node.closest('.tf32-stat,.tf33-stat');
+  set(node,'position',statText?'relative':'static');
+  if(statText)set(node,'left','-16px');
   set(node,'width','100%');
   set(node,'min-width','0');
   set(node,'max-width','100%');
