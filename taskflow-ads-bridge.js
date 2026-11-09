@@ -694,7 +694,7 @@ async function resolveAuthorizedRegion(position){
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
  // No procesar geolocalización sin la decisión explícita ya concedida en TaskFlow.
  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
- void reportAuthorizedGeoPresence({latitude:lat,longitude:lng});
+ void reportAuthorizedGeoPresence({latitude:lat,longitude:lng,timestamp:Number(position?.timestamp||position?.updatedAt)||0});
  const inGuatemala=verifiedCountryFromLocation({latitude:lat,longitude:lng})==='GT';
  const digits=inGuatemala?3:2; // En el exterior se transmiten coordenadas aproximadas, no GPS exacto.
  const qlat=Number(lat.toFixed(digits)),qlng=Number(lng.toFixed(digits));
@@ -813,7 +813,7 @@ async function refreshLiveAuthorizedLocation(){
    if(p.state==='denied'){void withdrawAuthorizedGeoPresence();return false}
   }
   return await new Promise(resolve=>navigator.geolocation.getCurrentPosition(
-   position=>{void resolveAuthorizedRegion({latitude:position.coords.latitude,longitude:position.coords.longitude});resolve(true)},
+   position=>{void resolveAuthorizedRegion({latitude:position.coords.latitude,longitude:position.coords.longitude,timestamp:Number(position.timestamp)||Date.now()});resolve(true)},
    ()=>resolve(false),
    {enableHighAccuracy:false,maximumAge:300000,timeout:10000}
   ));
