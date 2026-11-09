@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.2.0
+/* TaskFlow ADS Bridge v3.3.5
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -14,18 +14,24 @@ const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskf
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
 const GEO_PRESENCE_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/presence';
 const GEO_WITHDRAW_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/withdraw';
-let recommendations=new Map(),recommendationRun=0;
+let recommendations=new Map(),recommendationRun=0,recommendationRetry=0;
+function retryRecommendations(ms){
+ if(recommendationRetry)clearTimeout(recommendationRetry);
+ recommendationRetry=setTimeout(()=>{recommendationRetry=0;if(config.enabled&&catalog.length)void refreshRecommendations()},Math.max(250,Number(ms)||4000));
+}
+function clearRecommendationRetry(){if(recommendationRetry)clearTimeout(recommendationRetry);recommendationRetry=0}
 async function refreshRecommendations(){
  const ticket=++recommendationRun;
  if(!config.enabled||!catalog.length){recommendations=new Map();applyWhenReady();return;}
  const slots=[...BANNER_SLOTS.map(slot=>({placement:'banner',slot})),{placement:'entry',slot:'entry'},{placement:'interaction',slot:'interaction'}];
- const sessionId=analyticsSessionId();if(!sessionId)return;
+ const sessionId=analyticsSessionId();if(!sessionId){retryRecommendations(5000);return;}
  const next=new Map();
  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){
   recommendations=next;applyWhenReady();return;
  }
- const token=await window.TaskFlowFirebase?.getIdToken?.().catch(()=>null);
- if(!token){recommendations=next;applyWhenReady();return;}
+ let token=null;
+ try{token=await window.TaskFlowFirebase?.getIdToken?.()||null}catch(_){}
+ if(!token){if(ticket!==recommendationRun)return;recommendations=next;applyWhenReady();retryRecommendations(4000);return;}
  await Promise.all(slots.map(async({placement,slot})=>{
   const previous=recommendations.get(slot);
   if(previous&&previous.expiresAt>Date.now()&&catalog.some(a=>a.campaignId===previous.campaignId&&a.id===previous.adId&&a.placement===placement)){next.set(slot,previous);return}
@@ -41,8 +47,9 @@ async function refreshRecommendations(){
  }));
  if(ticket!==recommendationRun)return;
  recommendations=next;
- for(const slot of BANNER_SLOTS)if(bannerNearViewport.has(slot))void displayBanner(slot);
+ for(const slot of BANNER_SLOTS)if(document.getElementById(slot))void displayBanner(slot);
  applyWhenReady();
+ if(!next.size&&catalog.length)retryRecommendations(12000);else clearRecommendationRetry();
 }
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
 let config={enabled:true,adminUrl:null,refreshMs:10000};
@@ -195,7 +202,15 @@ function analyticsSessionId(){
  if(analyticsSession)return analyticsSession;
  try{analyticsSession=sessionStorage.getItem('tfads_analytics_session_v1')||''}catch(_){}
  if(!/^[a-f0-9-]{24,80}$/i.test(analyticsSession)){
-  try{analyticsSession=crypto.randomUUID()}catch(_){analyticsSession=''}
+  try{
+   if(typeof crypto?.randomUUID==='function')analyticsSession=crypto.randomUUID();
+   else if(typeof crypto?.getRandomValues==='function'){
+    const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
+    bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+    const h=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+    analyticsSession=h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+   }else analyticsSession='';
+  }catch(_){analyticsSession=''}
   if(analyticsSession)try{sessionStorage.setItem('tfads_analytics_session_v1',analyticsSession)}catch(_){}
  }
  return analyticsSession;
@@ -383,12 +398,13 @@ function pick(placement,slot){
    Si la URL caducó, la carga falló o el archivo tiene medidas incorrectas,
    intentar otros creativos aprobados. No alterar el anuncio de ingreso o interacción. */
 const bannerFailures=new Map(),bannerStatus=new Map(),bannerBusy=new Set();
-const BANNER_TURN_MS=30000,IMAGE_TIMEOUT_MS=10000,BANNER_RETRY_MS=60000;
+const BANNER_TURN_MS=30000,IMAGE_TIMEOUT_MS=16000,BANNER_RETRY_MS=60000;
 const bannerNearViewport=new Set();
 let bannerViewportObserver=null;
 // No decodificar simultáneamente creativos fuera de pantalla (GIF grandes).
 function queueBanner(slot){
  const element=document.getElementById(slot);if(!element)return;
+ if(recommendations.has(slot)&&!element.classList.contains('tf50-has-ad')){void displayBanner(slot);return}
  if(typeof IntersectionObserver!=='function'){void displayBanner(slot);return}
  if(!bannerViewportObserver){
   bannerViewportObserver=new IntersectionObserver(entries=>{
@@ -499,6 +515,7 @@ async function displayBanner(slot){
   if(!stillEligible||!live||!live.complete||!validBannerPixels(live)){
    bannerStatus.delete(slot);
    window.TaskFlowAdsV50.render(slot,null);
+   if(authorized){recommendations.delete(slot);retryRecommendations(5000)}
   }
  }catch(e){console.warn('TaskFlow ADS: no fue posible mostrar banner',slot,e)}
  finally{bannerBusy.delete(slot)}
@@ -542,6 +559,7 @@ function apply(){
   let accepted=false;
   try{accepted=window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:trackedDestination(interaction),ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)===true}catch(e){console.warn('TaskFlow ADS interacción:',e)}
   activeVerticalAds.interaction=accepted?interaction:null;
+  if(accepted){try{document.dispatchEvent(new Event('taskflow:interaction-ad-creative-ready'))}catch(_){}}
  }
  return true
 }
@@ -561,10 +579,14 @@ function observeSlots(){
  });
  slotObserver.observe(document.documentElement,{childList:true,subtree:true});
 }
+let readinessTimer=0;
 function applyWhenReady(){
  observeSlots();
- if(apply())return;
- let tries=0;const t=setInterval(()=>{tries++;if(apply()||tries>=40)clearInterval(t)},250)
+ if(apply()){if(readinessTimer)clearInterval(readinessTimer);readinessTimer=0;return}
+ if(readinessTimer)return;
+ let tries=0;readinessTimer=setInterval(()=>{
+  tries++;if(apply()||tries>=120){clearInterval(readinessTimer);readinessTimer=0}
+ },500)
 }
 function rebuildCatalog(){
  catalog=rawCampaigns.flatMap(normalizeCampaign).slice(0,1200);
@@ -598,7 +620,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.3.4',
+ version:'3.3.5',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -609,8 +631,9 @@ const API={
  },
  setContext(next){
    if(!next||typeof next!=='object')return false;
-   context={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??''),neighborhood:String(next.neighborhood??context.neighborhood??'')};
-   rebuildCatalog();return true
+   const nextContext={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??''),neighborhood:String(next.neighborhood??context.neighborhood??'')};
+   if(Object.keys(nextContext).every(k=>nextContext[k]===context[k]))return true;
+   context=nextContext;rebuildCatalog();return true
  },
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
  refresh,
@@ -622,7 +645,9 @@ try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writabl
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule()},{once:true});else{observeSlots();void refresh();schedule()}
 window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>8000)void refresh();else applyWhenReady()},{passive:true});
-window.addEventListener('online',()=>{void refresh()},{passive:true});
+window.addEventListener('online',()=>{void refresh();retryRecommendations(1200)},{passive:true});
+document.addEventListener('taskflow:account-state-updated',()=>{if(catalog.length)retryRecommendations(300)},false);
+document.addEventListener('taskflow:permissions-ready',()=>{if(catalog.length&&localStorage.getItem('taskflow_location_decision_v52')==='granted')retryRecommendations(500)},false);
 document.addEventListener('taskflow:noads-status-updated',e=>{if(e.detail&&e.detail.active)apply();else void refresh()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>8000)void refresh()});
 // Convierte coordenadas autorizadas a municipio/departamento con una consulta
