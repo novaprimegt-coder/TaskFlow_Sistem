@@ -791,10 +791,7 @@ run();
 if(window.__tfProtocolCardsLiveFixV13087)return;
 window.__tfProtocolCardsLiveFixV13087=true;
 const sets=[
- ['.tf21-stats','.tf21-stat','tf21'],
  ['.tf15-stats','.tf15-stat','tf15'],
- ['.tf32-stats','.tf32-stat','tf32'],
- ['.tf33-stats','.tf33-stat','tf33'],
  ['.tfm-stats','.tfm-stat','tfm']
 ];
 const important=(el,props)=>{
@@ -1001,7 +998,7 @@ function fix(){
    }
   }
  }
- fixRequestedProgress(panel);
+ // V131: las tres rutinas se distribuyen en su controlador exclusivo.
 }
 let pending=false;
 function schedule(){
@@ -1048,5 +1045,6 @@ schedule();
 })();
 </script>
 <script src="./taskflow-v58-stability.js?v=58-20261106" defer></script>
+<script src="./taskflow-protocol-layout-v131.js?v=131-three-routine-progress-20261108" defer></script>
 </body>
 </html>
