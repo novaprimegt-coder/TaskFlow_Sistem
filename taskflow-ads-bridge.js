@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.4.0
+/* TaskFlow ADS Bridge v3.4.1
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -127,7 +127,7 @@ async function reportAuthorizedGeoPresence(position){
  try{
   const token=await window.TaskFlowFirebase?.getIdToken?.();
   if(!token)return false;
-  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),12000);
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);
   let response;
   try{
    response=await fetch(GEO_PRESENCE_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:ctrl.signal,
@@ -656,7 +656,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.4.0',
+ version:'3.4.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
