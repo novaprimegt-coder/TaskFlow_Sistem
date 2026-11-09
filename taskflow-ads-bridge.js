@@ -12,6 +12,8 @@ const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
+const GEO_PRESENCE_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/presence';
+const GEO_WITHDRAW_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/withdraw';
 let recommendations=new Map(),recommendationRun=0;
 async function refreshRecommendations(){
  const ticket=++recommendationRun;
@@ -19,13 +21,18 @@ async function refreshRecommendations(){
  const slots=[...BANNER_SLOTS.map(slot=>({placement:'banner',slot})),{placement:'entry',slot:'entry'},{placement:'interaction',slot:'interaction'}];
  const sessionId=analyticsSessionId();if(!sessionId)return;
  const next=new Map();
+ if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){
+  recommendations=next;applyWhenReady();return;
+ }
+ const token=await window.TaskFlowFirebase?.getIdToken?.().catch(()=>null);
+ if(!token){recommendations=next;applyWhenReady();return;}
  await Promise.all(slots.map(async({placement,slot})=>{
   const previous=recommendations.get(slot);
   if(previous&&previous.expiresAt>Date.now()&&catalog.some(a=>a.campaignId===previous.campaignId&&a.id===previous.adId&&a.placement===placement)){next.set(slot,previous);return}
   const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),6500);
   try{
    const response=await fetch(SELECTION_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:abort.signal,
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({placement,slot,country:context.country,region:context.region,city:context.city,sessionId})});
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({placement,slot,sessionId})});
    if(!response.ok)return;
    const data=await response.json();
    if(typeof data.campaignId==='string'&&typeof data.adId==='string'&&typeof data.selectionToken==='string'&&/^[a-f0-9-]{36}$/i.test(data.selectionToken)&&catalog.some(a=>a.campaignId===data.campaignId&&a.id===data.adId&&a.placement===placement))next.set(slot,{campaignId:data.campaignId,adId:data.adId,selectionToken:data.selectionToken,expiresAt:Date.now()+(placement==='banner'?30000:900000)});
@@ -47,7 +54,56 @@ const GEO_API='https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_
 // Geocodificación de país/ciudad a partir de ubicación autorizada y coordenadas reducidas; sin enviar ID ni datos personales.
 const WORLD_GEO_URL='https://api.bigdatacloud.net/data/reverse-geocode-client';
 const WORLD_GEO_CACHE='tf_ads_geo_world_grid_v1';
-let context={country:'',region:'',city:''};
+let context={country:'',region:'',city:'',neighborhood:''};
+
+
+let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false;
+async function reportAuthorizedGeoPresence(position){
+ if(!position||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||presenceBusy||document.hidden)return false;
+ const lat=Number(position.latitude),lng=Number(position.longitude);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
+ const grid=Number(lat.toFixed(2))+','+Number(lng.toFixed(2));
+ const user=window.TaskFlowFirebase?.getUser?.();
+ const account=String(user?.uid||user?.localId||'');
+ if(lastPresenceGrid===grid&&lastPresenceAccount===account&&Date.now()-lastPresenceAt<6*60*60*1000)return true;
+ presenceBusy=true;
+ try{
+  const token=await window.TaskFlowFirebase?.getIdToken?.();
+  if(!token)return false;
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),12000);
+  let response;
+  try{
+   response=await fetch(GEO_PRESENCE_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:ctrl.signal,
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body:JSON.stringify({consent:true,latitude:Number(lat.toFixed(2)),longitude:Number(lng.toFixed(2))})});
+  }finally{clearTimeout(timer)}
+  if(!response.ok)return false;
+  const payload=await response.json(),loc=payload?.location;
+  if(!payload.ok||!loc||!/^[A-Z]{2}$/.test(loc.country))return false;
+  lastPresenceGrid=grid;lastPresenceAccount=account;lastPresenceAt=Date.now();presencePresent=true;
+  API.setContext({country:loc.country,region:loc.region||'',city:loc.city||'',neighborhood:loc.neighborhood||''});
+  return true;
+ }catch(_){return false}
+ finally{presenceBusy=false}
+}
+async function withdrawAuthorizedGeoPresence(){
+ if(!presencePresent&&lastPresenceAt===0)return false;
+ lastPresenceAt=0;lastPresenceGrid='';lastPresenceAccount='';presencePresent=false;
+ const token=await window.TaskFlowFirebase?.getIdToken?.().catch(()=>null);
+ if(!token)return false;
+ try{
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
+  try{return (await fetch(GEO_WITHDRAW_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
+   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}',signal:ctrl.signal})).ok}
+  finally{clearTimeout(timer)}
+ }catch(_){return false}
+}
+function lastAuthorizedPosition(){
+ try{
+  const p=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
+  return p&&Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude))?p:null;
+ }catch(_){return null}
+}
 
 function validHTTPS(value){
  if(typeof value!=='string'||!value.trim())return '';
@@ -107,6 +163,7 @@ function targetEligible(c){
  if(cc&&cc!=='ALL'&&(!xc||cc!==xc))return false;
  if(c.region&&(!context.region||normText(c.region)!==normText(context.region)))return false;
  if(c.city&&(!context.city||normText(c.city)!==normText(context.city)))return false;
+ if(c.neighborhood&&(!context.neighborhood||normText(c.neighborhood)!==normText(context.neighborhood)))return false;
  return true
 }
 
@@ -523,7 +580,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.2.0',
+ version:'3.3.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -534,7 +591,7 @@ const API={
  },
  setContext(next){
    if(!next||typeof next!=='object')return false;
-   context={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??'')};
+   context={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??''),neighborhood:String(next.neighborhood??context.neighborhood??'')};
    rebuildCatalog();return true
  },
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
@@ -557,6 +614,7 @@ async function resolveAuthorizedRegion(position){
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
  // No procesar geolocalización sin la decisión explícita ya concedida en TaskFlow.
  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
+ void reportAuthorizedGeoPresence({latitude:lat,longitude:lng});
  const inGuatemala=verifiedCountryFromLocation({latitude:lat,longitude:lng})==='GT';
  const digits=inGuatemala?3:2; // En el exterior se transmiten coordenadas aproximadas, no GPS exacto.
  const qlat=Number(lat.toFixed(digits)),qlng=Number(lng.toFixed(digits));
@@ -624,7 +682,12 @@ async function resolveAuthorizedRegion(position){
  return geoPending;
 }
 function useLocationDetail(detail){
- if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return;
+ if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){
+  API.setContext({country:'',region:'',city:'',neighborhood:''});
+  void withdrawAuthorizedGeoPresence();return;
+ }
+ const authorized=lastAuthorizedPosition();
+ if(authorized)void reportAuthorizedGeoPresence(authorized);
  const data=detail&&typeof detail==='object'?detail:{};
  const place=data.address&&typeof data.address==='object'?data.address:data;
  const region=String(place.region||place.department||place.state||'').trim();
@@ -661,6 +724,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else void restoreAuthorizedLocation();
 window.addEventListener('pageshow',()=>{void restoreAuthorizedLocation()},{passive:true});
 
+// Mantener actividad únicamente mientras TaskFlow esté abierto y el permiso continúe vigente.
+setInterval(()=>{if(document.hidden)return;
+ const permitted=localStorage.getItem('taskflow_location_decision_v52')==='granted';
+ if(!permitted){if(presencePresent)void withdrawAuthorizedGeoPresence();return}
+ const position=lastAuthorizedPosition();if(position)void reportAuthorizedGeoPresence(position);
+},30*60*1000);
+window.addEventListener('storage',e=>{if(e.key==='taskflow_location_decision_v52'&&e.newValue!=='granted')void withdrawAuthorizedGeoPresence()},{passive:true});
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){
