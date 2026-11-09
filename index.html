@@ -95,13 +95,13 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=120-juridico-structure-20261109':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=92-ad-backend-recovery-20261108':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=121-juridico-sung-active-20261109':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=92-ad-backend-recovery-20261108':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
      const timeout=setTimeout(()=>controller.abort(),14000);
      try{
-       const response=await fetch(url,{cache:'default',credentials:'same-origin',signal:controller.signal});
+       const response=await fetch(url,{cache:p==='t57/runtime-24.txt'?'reload':'default',credentials:'same-origin',signal:controller.signal});
        if(!response.ok)throw new Error('LOAD_'+response.status);
        const body=await response.text();
        if(!body||body.length<50)throw new Error('EMPTY_PART');
