@@ -1691,6 +1691,205 @@ function start(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+<script id="tfPortraitWebViewFitV141">
+/* TaskFlow V141 — ajustar exclusivamente el progreso de Sócrates y Maquiavelo en WebView. */
+(function(){
+'use strict';
+if(window.__tfPortraitProgressFitV141)return;
+window.__tfPortraitProgressFitV141=true;
+const viewKinds=[
+ {panel:'tf32-socrates',key:'tf32'},
+ {panel:'tf33-machiavelli',key:'tf33'}
+];
+function start(){
+ const panel=document.getElementById('windowContent');
+ const outer=document.getElementById('windowContainer');
+ if(!panel||!outer)return;
+ const webview=/\bwv\b|WebView|AppCreator24|Version\/4\.0/i.test(String(navigator.userAgent||''));
+ let frame=0;
+ function set(node,property,value){
+  if(!node)return;
+  if(node.style.getPropertyValue(property)!==value||
+     node.style.getPropertyPriority(property)!=='important')
+   node.style.setProperty(property,value,'important');
+ }
+ function bounds(node){
+  if(!node?.isConnected)return [];
+  try{
+   const range=document.createRange();
+   range.selectNodeContents(node);
+   const items=Array.from(range.getClientRects());
+   range.detach?.();
+   return items;
+  }catch(_){return []}
+ }
+ function spills(node,box){
+  if(!node||!box)return false;
+  const rect=box.getBoundingClientRect();
+  if(rect.width<1)return false;
+  return bounds(node).some(r=>r.width>1&&(
+    r.left<rect.left-2||r.right>rect.right+2));
+ }
+ function adjustText(node,box,size,minSize,maxSize,primary){
+  if(!node)return;
+  set(node,'box-sizing','border-box');
+  set(node,'display','block');
+  set(node,'position','static');
+  set(node,'width','100%');
+  set(node,'min-width','0');
+  set(node,'max-width','100%');
+  set(node,'height','auto');
+  set(node,'min-height','0');
+  set(node,'white-space','normal');
+  set(node,'overflow-wrap','anywhere');
+  set(node,'word-break','normal');
+  set(node,'text-overflow','clip');
+  set(node,'transform','none');
+  set(node,'letter-spacing','normal');
+  set(node,'line-height',primary?'1.22':'1.3');
+  let current=Math.min(maxSize,Math.max(minSize,size));
+  set(node,'font-size',current.toFixed(2)+'px');
+  for(let attempt=0;attempt<9&&spills(node,box)&&current>minSize;attempt++){
+   current=Math.max(minSize,current*.88);
+   set(node,'font-size',current.toFixed(2)+'px');
+  }
+ }
+ function cardOverflow(card,key){
+  const body=card.querySelector('.'+key+'-stat-body');
+  if(!body)return false;
+  return body.scrollWidth>body.clientWidth+2||
+   Array.from(body.querySelectorAll('b,strong,small,span')).some(n=>spills(n,card));
+ }
+ function fitView(){
+  if(!outer.classList.contains('open'))return;
+  const type=viewKinds.find(v=>panel.classList.contains(v.panel));
+  if(!type)return;
+  const key=type.key;
+  const progress=panel.querySelector(':scope > .'+key+'-progress');
+  if(!progress||!progress.getBoundingClientRect().width)return;
+  const grid=progress.querySelector('.'+key+'-stats');
+  const cards=grid?Array.from(grid.children).filter(n=>n.classList.contains(key+'-stat')):[];
+  const copy=progress.querySelector('.'+key+'-progress-copy');
+  const percent=progress.querySelector('.'+key+'-percent');
+  if(cards.length!==3||!copy)return;
+  const title=copy.querySelector('strong');
+  const subtitle=copy.querySelector('small');
+  const isBad=cards.some(card=>cardOverflow(card,key))||
+    [title,subtitle].some(el=>spills(el,copy))||
+    spills(percent,progress);
+  if(!webview&&!isBad)return;
+  // Aplicar solo cuando la vista es WebView o se detecta un desbordamiento real.
+  set(progress,'-webkit-text-size-adjust','none');
+  set(progress,'text-size-adjust','none');
+  set(copy,'-webkit-text-size-adjust','none');
+  set(copy,'text-size-adjust','none');
+  set(copy,'min-width','0');
+  set(copy,'height','auto');
+  set(copy,'max-height','none');
+  set(copy,'overflow','visible');
+  const copyWidth=copy.getBoundingClientRect().width;
+  for(const [node,primary] of [[title,true],[subtitle,false]]){
+   if(!node)continue;
+   set(node,'-webkit-text-size-adjust','none');
+   set(node,'text-size-adjust','none');
+   // Los titulares usan únicamente el espacio libre junto al retrato existente.
+   adjustText(node,copy,
+    primary?copyWidth/12:copyWidth/18,
+    primary?12:9,
+    primary?23:14,
+    primary);
+   set(node,'text-align','left');
+  }
+  if(percent){
+   set(percent,'-webkit-text-size-adjust','none');
+   set(percent,'text-size-adjust','none');
+   set(percent,'position','relative');
+   set(percent,'inset','auto');
+   set(percent,'transform','none');
+   set(percent,'min-width','0');
+   set(percent,'max-width','67%');
+   set(percent,'white-space','nowrap');
+   const width=progress.getBoundingClientRect().width;
+   set(percent,'font-size',Math.min(39,Math.max(23,width/12)).toFixed(2)+'px');
+   set(percent,'line-height','1.16');
+  }
+  set(grid,'-webkit-text-size-adjust','none');
+  set(grid,'text-size-adjust','none');
+  set(grid,'display','grid');
+  set(grid,'grid-template-columns','repeat(3,minmax(0,1fr))');
+  set(grid,'grid-auto-rows','minmax(136px,auto)');
+  set(grid,'width','100%');
+  set(grid,'min-width','0');
+  set(grid,'max-width','100%');
+  set(grid,'height','auto');
+  set(grid,'max-height','none');
+  set(grid,'overflow','visible');
+  // Mantener el margen original que separa las tarjetas del retrato.
+  cards.forEach((card,index)=>{
+   set(card,'-webkit-text-size-adjust','none');
+   set(card,'text-size-adjust','none');
+   set(card,'box-sizing','border-box');
+   set(card,'min-width','0');
+   set(card,'max-width','100%');
+   set(card,'width','100%');
+   set(card,'height','auto');
+   set(card,'max-height','none');
+   set(card,'overflow','hidden');
+   const icon=card.querySelector('.'+key+'-stat-icon');
+   if(icon){set(icon,'flex-shrink','0');set(icon,'max-width','100%')}
+   const body=card.querySelector('.'+key+'-stat-body');
+   if(!body)return;
+   set(body,'-webkit-text-size-adjust','none');
+   set(body,'text-size-adjust','none');
+   set(body,'position','static');
+   set(body,'width','100%');
+   set(body,'min-width','0');
+   set(body,'max-width','100%');
+   set(body,'height','auto');
+   set(body,'max-height','none');
+   set(body,'overflow','visible');
+   set(body,'box-sizing','border-box');
+   const box=card.getBoundingClientRect();
+   const style=getComputedStyle(card);
+   const inner=Math.max(42,box.width-
+    (parseFloat(style.paddingLeft)||0)-
+    (parseFloat(style.paddingRight)||0)-2);
+   const labels=Array.from(body.children).filter(n=>n.matches('b,strong,small,span'));
+   labels.forEach(label=>{
+    const primary=label.matches('b,strong');
+    const size=primary?Math.min(index===2?15:17,inner/(index===2?7.5:6.8)):
+      Math.min(11,inner/9.5);
+    set(label,'-webkit-text-size-adjust','none');
+    set(label,'text-size-adjust','none');
+    adjustText(label,card,size,primary?10:7.5,primary?(index===2?15:17):11,primary);
+    set(label,'text-align','center');
+   });
+  });
+ }
+ function schedule(){
+  if(frame)return;
+  frame=requestAnimationFrame(()=>{frame=0;fitView()});
+ }
+ const nodes=new MutationObserver(records=>{
+  if(records.some(r=>r.type==='childList'||r.type==='characterData'))schedule();
+ });
+ nodes.observe(panel,{subtree:true,childList:true,characterData:true});
+ const mode=new MutationObserver(schedule);
+ mode.observe(panel,{attributes:true,attributeFilter:['class']});
+ mode.observe(outer,{attributes:true,attributeFilter:['class']});
+ if(typeof ResizeObserver==='function'){
+  const ro=new ResizeObserver(schedule);
+  ro.observe(panel);
+ }
+ window.addEventListener('resize',schedule,{passive:true});
+ window.addEventListener('orientationchange',schedule,{passive:true});
+ window.addEventListener('pageshow',schedule,{passive:true});
+ schedule();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+else start();
+})();
+</script>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
