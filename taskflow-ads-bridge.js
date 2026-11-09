@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.3.5
+/* TaskFlow ADS Bridge v3.4.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -14,6 +14,35 @@ const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskf
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
 const GEO_PRESENCE_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/presence';
 const GEO_WITHDRAW_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/withdraw';
+const OWNER_SYNC_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/sync/owned';
+let ownerRecoveryPending=null,ownerRecoveryUid='',ownerRecoveryAt=0,ownerRecoveryResult='pending';
+async function recoverOwnedAds(force=false){
+ const auth=window.TaskFlowFirebase,user=auth?.getUser?.(),uid=String(user?.uid||'');
+ if(!config.enabled||!uid||document.hidden||navigator.onLine===false)return false;
+ if(ownerRecoveryUid!==uid){ownerRecoveryUid=uid;ownerRecoveryAt=0;ownerRecoveryResult='pending'}
+ if(ownerRecoveryPending)return ownerRecoveryPending;
+ if(!force&&Date.now()-ownerRecoveryAt<5*60*1000)return ownerRecoveryResult==='ok';
+ ownerRecoveryAt=Date.now();
+ ownerRecoveryPending=(async()=>{
+  const token=await auth.getIdToken?.();
+  if(!token)throw Error('AUTH_NOT_READY');
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),42000);
+  try{
+   const resp=await fetch(OWNER_SYNC_URL,{method:'POST',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:ctrl.signal,
+    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:'{}'});
+   if(!resp.ok)throw Error('SYNC_HTTP_'+resp.status);
+   const data=await resp.json();
+   if(Number(data.synchronized)>0){void refresh();retryRecommendations(1000)}
+   if(data.ok!==true)throw Error('SYNC_PARTIAL');
+   ownerRecoveryResult='ok';return true;
+  }finally{clearTimeout(timer)}
+ })().catch(error=>{
+  ownerRecoveryResult='unavailable';
+  console.warn('TaskFlow ADS: sincronización del propietario no confirmada',error?.message||'Sin conexión');return false;
+ }).finally(()=>{ownerRecoveryPending=null});
+ return ownerRecoveryPending;
+}
+
 let recommendations=new Map(),recommendationRun=0,recommendationRetry=0;
 function retryRecommendations(ms){
  if(recommendationRetry)clearTimeout(recommendationRetry);
@@ -64,24 +93,30 @@ const WORLD_GEO_CACHE='tf_ads_geo_world_grid_v1';
 let context={country:'',region:'',city:'',neighborhood:''};
 
 
-let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false,withdrawConfirmed=false;
+let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false,withdrawConfirmed=false,lastGeoProbeAt=0;
 async function reportAuthorizedGeoPresence(position){
  if(!position||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||presenceBusy||document.hidden)return false;
- // No registrar audiencia cuando el permiso del sistema ya fue revocado, aunque exista una posición antigua guardada.
+ // Registrar presencia solamente desde una posición reciente y consentimiento vigente.
+ let permissionState='unknown';
  if(navigator.permissions?.query){
-  try{
-   const actual=await navigator.permissions.query({name:'geolocation'});
-   if(actual.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
-  }catch(_){return false}
- }else if(navigator.geolocation?.getCurrentPosition){
-  // Fallback for browsers without the Permissions API: use the browser's
-  // own consent check, never a saved coordinate as evidence of permission.
+  try{permissionState=(await navigator.permissions.query({name:'geolocation'})).state||'unknown'}
+  catch(_){permissionState='unknown'}
+ }
+ if(permissionState==='denied'){void withdrawAuthorizedGeoPresence();return false}
+ const timestamp=Number(position.timestamp||position.updatedAt||0);
+ const needsFresh=permissionState!=='granted'||!timestamp||Date.now()-timestamp>15*60*1000;
+ if(needsFresh){
+  if(!navigator.geolocation?.getCurrentPosition||Date.now()-lastGeoProbeAt<30000)return false;
+  lastGeoProbeAt=Date.now();
   try{
    const fresh=await new Promise((ok,bad)=>navigator.geolocation.getCurrentPosition(ok,bad,
-    {enableHighAccuracy:false,timeout:8000,maximumAge:300000}));
-   position={latitude:fresh.coords.latitude,longitude:fresh.coords.longitude};
-  }catch(_){void withdrawAuthorizedGeoPresence();return false}
- }else return false;
+    {enableHighAccuracy:false,timeout:10000,maximumAge:300000}));
+   position={latitude:fresh.coords.latitude,longitude:fresh.coords.longitude,timestamp:Number(fresh.timestamp)||Date.now()};
+  }catch(error){
+   if(Number(error?.code)===1)void withdrawAuthorizedGeoPresence();
+   return false;
+  }
+ }
  const lat=Number(position.latitude),lng=Number(position.longitude);
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
  const grid=Number(lat.toFixed(2))+','+Number(lng.toFixed(2));
@@ -104,6 +139,7 @@ async function reportAuthorizedGeoPresence(position){
   if(!payload.ok||!loc||!/^[A-Z]{2}$/.test(loc.country))return false;
   lastPresenceGrid=grid;lastPresenceAccount=account;lastPresenceAt=Date.now();presencePresent=true;
   API.setContext({country:loc.country,region:loc.region||'',city:loc.city||'',neighborhood:loc.neighborhood||''});
+  if(catalog.length)retryRecommendations(350);
   return true;
  }catch(_){return false}
  finally{presenceBusy=false}
@@ -620,14 +656,14 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.3.5',
+ version:'3.4.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
    if('enabled'in options)config.enabled=!!options.enabled;
    if('adminUrl'in options)config.adminUrl=validHTTPS(options.adminUrl)||null;
    if('refreshMs'in options)config.refreshMs=Math.max(10000,Number(options.refreshMs)||10000);
-   schedule();if(config.enabled)void refresh();else{catalog=[];rawCampaigns=[];applyWhenReady()}return true
+   schedule();if(config.enabled){void refresh();void recoverOwnedAds()}else{catalog=[];rawCampaigns=[];applyWhenReady()}return true
  },
  setContext(next){
    if(!next||typeof next!=='object')return false;
@@ -643,11 +679,12 @@ const API={
 };
 try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writable:false,configurable:false})}catch(_){window.TaskFlowADS=Object.freeze(API)}
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule()},{once:true});else{observeSlots();void refresh();schedule()}
-window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>8000)void refresh();else applyWhenReady()},{passive:true});
-window.addEventListener('online',()=>{void refresh();retryRecommendations(1200)},{passive:true});
-document.addEventListener('taskflow:account-state-updated',()=>{if(catalog.length)retryRecommendations(300)},false);
-document.addEventListener('taskflow:permissions-ready',()=>{if(catalog.length&&localStorage.getItem('taskflow_location_decision_v52')==='granted')retryRecommendations(500)},false);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule();setTimeout(()=>void recoverOwnedAds(),3500)},{once:true});else{observeSlots();void refresh();schedule();setTimeout(()=>void recoverOwnedAds(),3500)}
+window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>8000)void refresh();else applyWhenReady();void recoverOwnedAds()},{passive:true});
+window.addEventListener('online',()=>{void refresh();retryRecommendations(1200);void recoverOwnedAds()},{passive:true});
+document.addEventListener('taskflow:account-state-updated',()=>{if(catalog.length)retryRecommendations(300);void recoverOwnedAds()},false);
+document.addEventListener('taskflow:firebase-auth-changed',()=>{ownerRecoveryAt=0;void recoverOwnedAds();if(catalog.length)retryRecommendations(500)},false);
+document.addEventListener('taskflow:permissions-ready',()=>{if(catalog.length&&localStorage.getItem('taskflow_location_decision_v52')==='granted')retryRecommendations(500);void recoverOwnedAds()},false);
 document.addEventListener('taskflow:noads-status-updated',e=>{if(e.detail&&e.detail.active)apply();else void refresh()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>8000)void refresh()});
 // Convierte coordenadas autorizadas a municipio/departamento con una consulta
@@ -755,7 +792,7 @@ async function restoreAuthorizedLocation(){
   if(navigator.permissions&&typeof navigator.permissions.query==='function'){
    try{
     const permission=await navigator.permissions.query({name:'geolocation'});
-    if(permission.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
+    if(permission.state==='denied'){void withdrawAuthorizedGeoPresence();return false}
    }catch(_){}
   }
   const position=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
@@ -773,7 +810,7 @@ async function refreshLiveAuthorizedLocation(){
  try{
   if(navigator.permissions?.query){
    const p=await navigator.permissions.query({name:'geolocation'});
-   if(p.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
+   if(p.state==='denied'){void withdrawAuthorizedGeoPresence();return false}
   }
   return await new Promise(resolve=>navigator.geolocation.getCurrentPosition(
    position=>{void resolveAuthorizedRegion({latitude:position.coords.latitude,longitude:position.coords.longitude});resolve(true)},
