@@ -598,7 +598,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.3.3',
+ version:'3.3.4',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -742,6 +742,23 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else void restoreAuthorizedLocation();
 window.addEventListener('pageshow',()=>{void restoreAuthorizedLocation()},{passive:true});
 
+// Actualizar el país/región cuando el usuario se desplaza, sin solicitar ubicación si está denegada.
+async function refreshLiveAuthorizedLocation(){
+ if(document.hidden||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||!navigator.geolocation?.getCurrentPosition)return false;
+ try{
+  if(navigator.permissions?.query){
+   const p=await navigator.permissions.query({name:'geolocation'});
+   if(p.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
+  }
+  return await new Promise(resolve=>navigator.geolocation.getCurrentPosition(
+   position=>{void resolveAuthorizedRegion({latitude:position.coords.latitude,longitude:position.coords.longitude});resolve(true)},
+   ()=>resolve(false),
+   {enableHighAccuracy:false,maximumAge:300000,timeout:10000}
+  ));
+ }catch(_){return false}
+}
+// Comprobar cambios geográficos en sesiones prolongadas sin vigilar continuamente al usuario.
+setInterval(()=>{if(!document.hidden)void refreshLiveAuthorizedLocation()},15*60*1000);
 // Mantener actividad únicamente mientras TaskFlow esté abierto y el permiso continúe vigente.
 setInterval(()=>{if(document.hidden)return;
  const permitted=localStorage.getItem('taskflow_location_decision_v52')==='granted';
