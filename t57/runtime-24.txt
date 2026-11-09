@@ -1441,6 +1441,83 @@ schedule();
 </script>
 
 <link rel="stylesheet" href="./taskflow-mentalist-sung-structure-v133.css?v=134-live-mentalista-sung-20261108">
+
+<style id="tfWebViewResponsiveV138">
+/* V138: ajuste de tamaños y saltos de línea en WebView Android y pantallas estrechas.
+   Sin cambios en colores, funciones, textos, misiones ni estructuras. */
+html {
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+@media screen and (max-width:720px) {
+  html,body {width:100%;max-width:100%;min-width:0;}
+  body :is(.tf-panel,.tf-card,.tf-catalog,.tf-catalog-card,.kpi-grid,.kpi-card,.tf50-ad-slot,.tf56-entry-shell,.tf57-touch-shell),
+  #windowContainer,#windowContent,
+  #windowContent :is(.tf21-progress,.tf15-progress,.tf32-progress,.tf33-progress,.tfm-summary,
+    .tf21-progress-head,.tf15-progress-head,.tf32-progress-head,.tf33-progress-head,.tfm-summary-head,
+    .tf21-stats,.tf15-stats,.tf32-stats,.tf33-stats,.tfm-stats,
+    .tf21-stat,.tf15-stat,.tf32-stat,.tf33-stat,.tfm-stat,
+    .tf21-stat-body,.tf15-stat-body,.tf32-stat-body,.tf33-stat-body,.tfm-stat-body,
+    .v83-legal-list,.tf21-mission,.tf15-mission,.tf32-mission,.tf33-mission,
+    .v83-legal-step,.tf21-rule,.tf21-launch,.v94-mentalist-step) {
+    box-sizing:border-box;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  #windowContent :is(.tf21-progress-head,.tf15-progress-head,.tf32-progress-head,
+    .tf33-progress-head,.tfm-summary-head,.tf21-stat,.tf15-stat,.tf32-stat,.tf33-stat,
+    .tfm-stat,.v83-legal-step,.v94-mentalist-step) > * {
+    min-width:0;
+    max-width:100%;
+  }
+  #windowContent :is(.tf21-progress-label,.tf15-progress-label,.tf32-progress-label,
+    .tf33-progress-label,.tfm-summary-head,.tf21-stat-body,.tf15-stat-body,
+    .tf32-stat-body,.tf33-stat-body,.tfm-stat-body,.v83-legal-step-copy,
+    .tf21-rule,.tfm-stat-label,.v94-mentalist-step-copy) {
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-wrap:anywhere!important;
+    word-break:normal!important;
+  }
+  #windowContent :is(.tf21-stat-body,.tf15-stat-body,.tf32-stat-body,
+    .tf33-stat-body,.tfm-stat-body,.v83-legal-step-copy,
+    .v94-mentalist-step-copy,.tf21-rule) :is(strong,b,span,small,p) {
+    min-width:0!important;
+    max-width:100%!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    word-break:normal!important;
+    text-overflow:clip!important;
+  }
+  body :is(.tf-panel,.tf-card,.tf-catalog,.tf-catalog-card,.kpi-card)
+  :is(h1,h2,h3,h4,p,strong,small) {
+    max-width:100%;
+    overflow-wrap:anywhere;
+  }
+  #windowContent :is(input,textarea,select),
+  body :is(.tf-panel,.tf-catalog) :is(input,textarea,select) {
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+  #windowContent :is(img,video),
+  body :is(.tf-panel,.tf-catalog) :is(img,video) {
+    max-width:100%;
+  }
+}
+@media screen and (max-width:359px) {
+  #windowContent :is(.tf21-stat-body,.tf15-stat-body,.tf32-stat-body,
+    .tf33-stat-body,.tfm-stat-body) :is(strong,b,span,small) {
+    overflow-wrap:anywhere!important;
+    white-space:normal!important;
+  }
+  body :is(.tf-card,.tf-catalog-card,.kpi-card),
+  #windowContent :is(.tf21-mission,.tf15-mission,.tf32-mission,.tf33-mission) {
+    min-width:0!important;
+    max-width:100%!important;
+  }
+}
+</style>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
