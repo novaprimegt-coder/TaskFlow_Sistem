@@ -1914,7 +1914,7 @@ function boot(){
  function fitText(el,max,first){
   if(!el)return;
   set(el,{
-   'position':'static','display':'block','box-sizing':'border-box',
+   'position':'relative','left':'-8px','display':'block','box-sizing':'border-box',
    'width':'100%','min-width':'0','max-width':'100%',
    'height':'auto','min-height':'0','max-height':'none',
    'white-space':'normal','overflow-wrap':'anywhere','word-break':'normal',
