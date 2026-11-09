@@ -57,7 +57,7 @@ const WORLD_GEO_CACHE='tf_ads_geo_world_grid_v1';
 let context={country:'',region:'',city:'',neighborhood:''};
 
 
-let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false;
+let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false,withdrawConfirmed=false;
 async function reportAuthorizedGeoPresence(position){
  if(!position||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||presenceBusy||document.hidden)return false;
  const lat=Number(position.latitude),lng=Number(position.longitude);
@@ -66,7 +66,7 @@ async function reportAuthorizedGeoPresence(position){
  const user=window.TaskFlowFirebase?.getUser?.();
  const account=String(user?.uid||user?.localId||'');
  if(lastPresenceGrid===grid&&lastPresenceAccount===account&&Date.now()-lastPresenceAt<6*60*60*1000)return true;
- presenceBusy=true;
+ presenceBusy=true;withdrawConfirmed=false;
  try{
   const token=await window.TaskFlowFirebase?.getIdToken?.();
   if(!token)return false;
@@ -87,15 +87,18 @@ async function reportAuthorizedGeoPresence(position){
  finally{presenceBusy=false}
 }
 async function withdrawAuthorizedGeoPresence(){
- if(!presencePresent&&lastPresenceAt===0)return false;
- lastPresenceAt=0;lastPresenceGrid='';lastPresenceAccount='';presencePresent=false;
+ if(withdrawConfirmed)return true;
+ lastPresenceAt=0;lastPresenceGrid='';lastPresenceAccount='';
  const token=await window.TaskFlowFirebase?.getIdToken?.().catch(()=>null);
  if(!token)return false;
  try{
   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
-  try{return (await fetch(GEO_WITHDRAW_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
-   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}',signal:ctrl.signal})).ok}
-  finally{clearTimeout(timer)}
+  try{
+   const response=await fetch(GEO_WITHDRAW_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}',signal:ctrl.signal});
+   if(response.ok){presencePresent=false;withdrawConfirmed=true;return true}
+   return false;
+  }finally{clearTimeout(timer)}
  }catch(_){return false}
 }
 function lastAuthorizedPosition(){
@@ -580,7 +583,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.3.0',
+ version:'3.3.1',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -708,7 +711,7 @@ document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.det
    antes de que se cargara este puente. La ubicación no se entrega a anunciantes. */
 async function restoreAuthorizedLocation(){
  try{
-  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
+  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){void withdrawAuthorizedGeoPresence();return false}
   if(navigator.permissions&&typeof navigator.permissions.query==='function'){
    try{
     const permission=await navigator.permissions.query({name:'geolocation'});
@@ -727,9 +730,9 @@ window.addEventListener('pageshow',()=>{void restoreAuthorizedLocation()},{passi
 // Mantener actividad únicamente mientras TaskFlow esté abierto y el permiso continúe vigente.
 setInterval(()=>{if(document.hidden)return;
  const permitted=localStorage.getItem('taskflow_location_decision_v52')==='granted';
- if(!permitted){if(presencePresent)void withdrawAuthorizedGeoPresence();return}
+ if(!permitted){if(!withdrawConfirmed)void withdrawAuthorizedGeoPresence();return}
  const position=lastAuthorizedPosition();if(position)void reportAuthorizedGeoPresence(position);
-},30*60*1000);
+},60*1000);
 window.addEventListener('storage',e=>{if(e.key==='taskflow_location_decision_v52'&&e.newValue!=='granted')void withdrawAuthorizedGeoPresence()},{passive:true});
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
