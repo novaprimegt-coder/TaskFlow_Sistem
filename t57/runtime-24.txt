@@ -1177,6 +1177,360 @@ function apply(){
    }
   }
  }
+ // V135 — Exclusivamente la estructura de Dominio Jurídico.
+ // Aplicar el patrón Sung Jin-Woo/Mentalista sin alterar imágenes, iconos, textos, colores, cinco misiones ni acciones.
+ const compact=window.matchMedia('(max-width:599px)').matches;
+ const tiny=window.matchMedia('(max-width:339px)').matches;
+ const narrow=window.matchMedia('(max-width:399px)').matches;
+ const set=(node,rules)=>important(node,rules);
+ set(panel,{
+  'display':'block','position':'relative','width':'100%','max-width':'760px',
+  'height':'auto','min-height':'0','max-height':'none','overflow':'visible',
+  'margin':'0 auto','padding':compact?'0 8px 12px':'0 11px 12px',
+  'box-sizing':'border-box'
+ });
+ const header=panel.querySelector(':scope > .v85-routine-modal-head');
+ if(header){
+  set(header,{
+   'position':'relative','display':'grid','grid-template-columns':compact?'50px minmax(0,1fr) 38px':'70px minmax(0,1fr) 54px',
+   'grid-template-rows':'auto','align-items':'center','gap':compact?'7px':'12px',
+   'width':'100%','max-width':'100%','height':'auto','min-height':compact?'93px':'125px',
+   'max-height':'none','margin':compact?'0 0 7px':'0 0 9px',
+   'padding':compact?'10px 8px':'17px 16px',
+   'box-sizing':'border-box','overflow':'hidden','transform':'none'
+  });
+  set(header.querySelector('.v85-routine-modal-icon'),{
+   'position':'relative','grid-column':'1','grid-row':'1','align-self':'center',
+   'width':compact?'49px':'70px','height':compact?'57px':'80px',
+   'min-width':'0','min-height':'0','max-width':'100%','max-height':'none',
+   'margin':'0','transform':'none'
+  });
+  const titleBox=header.querySelector('.v85-routine-modal-copy');
+  set(titleBox,{
+   'position':'relative','grid-column':'2','grid-row':'1','align-self':'center',
+   'display':'flex','flex-direction':'column','gap':compact?'3px':'4px',
+   'width':'100%','min-width':'0','max-width':'100%','height':'auto',
+   'margin':'0','padding':'0','text-align':'left','overflow':'visible','transform':'none'
+  });
+  set(titleBox?.querySelector('h2'),{
+   'display':'block','width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','margin':'3px 0 2px','padding':'0',
+   'font-size':compact?'clamp(20px,6vw,28px)':'clamp(23px,5vw,36px)',
+   'line-height':'1.07','white-space':'normal','overflow-wrap':'anywhere',
+   'text-overflow':'clip','transform':'none'
+  });
+  for(const subtitle of titleBox?.querySelectorAll('.tf21-subtitle,.eyebrow,.v85-routine-kicker,.tf21-kicker')||[]){
+   set(subtitle,{
+    'position':'relative','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','white-space':'normal','overflow-wrap':'anywhere',
+    'font-size':compact?'clamp(8px,2.4vw,11px)':'11px',
+    'line-height':'1.34','text-align':'left','transform':'none'
+   });
+  }
+  set(header.querySelector('.window-close'),{
+   'position':'absolute','inset':'auto','top':compact?'10px':'17px',
+   'right':compact?'8px':'12px','grid-column':'3','grid-row':'1',
+   'width':compact?'38px':'54px','height':compact?'38px':'54px',
+   'min-width':compact?'38px':'54px','min-height':compact?'38px':'54px',
+   'max-width':'none','z-index':'4','margin':'0','transform':'none'
+  });
+ }
+ set(progress,{
+  'display':'flex','flex-direction':'column','align-items':'stretch','justify-content':'flex-start',
+  'gap':compact?'8px':'10px','width':'100%','min-width':'0','max-width':'100%',
+  'height':'auto','min-height':'0','max-height':'none',
+  'padding':compact?'10px 8px':'15px 13px 13px',
+  'margin':compact?'0 0 7px':'0 0 10px',
+  'border-radius':compact?'15px':'20px',
+  'box-sizing':'border-box','overflow':'hidden'
+ });
+ if(head){
+  set(head,{
+   'display':'grid','grid-template-columns':tiny?'34px minmax(0,1fr) 34px':compact?'36px minmax(0,1fr) 73px 34px':'53px minmax(0,1fr) 92px 60px',
+   'grid-template-rows':tiny?'auto auto':'auto','grid-auto-flow':'row',
+   'gap':tiny?'6px 7px':compact?'7px':'12px','align-items':'center',
+   'justify-content':'stretch','justify-items':'stretch',
+   'width':'100%','min-width':'0','max-width':'100%','height':'auto','min-height':'0',
+   'padding':'0','margin':'0','overflow':'visible'
+  });
+  set(head.querySelector('.tf21-progress-icon'),{
+   'position':'static','inset':'auto','display':'grid','place-items':'center',
+   'grid-column':'1','grid-row':'1','justify-self':'start',
+   'width':tiny?'34px':compact?'36px':'53px',
+   'height':tiny?'34px':compact?'36px':'53px',
+   'min-width':'0','min-height':'0','max-width':'100%','max-height':'none',
+   'margin':'0','padding':'0','transform':'none'
+  });
+  set(head.querySelector('.tf21-progress-icon svg'),{
+   'width':compact?'22px':'29px','height':compact?'22px':'29px'
+  });
+  set(label,{
+   'position':'static','inset':'auto','display':'flex','flex-direction':'column',
+   'grid-column':'2','grid-row':'1','gap':'3px','align-items':'flex-start',
+   'justify-content':'center','width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','margin':'0','padding':'0','overflow':'visible'
+  });
+  for(const leaf of label?.querySelectorAll('strong,small')||[]){
+   set(leaf,{
+    'position':'static','display':'block','width':'100%','min-width':'0',
+    'max-width':'100%','height':'auto','min-height':'0','margin':'0','padding':'0',
+    'font-size':leaf.tagName==='STRONG'?(compact?'11px':'15px'):(compact?'9px':'11px'),
+    'line-height':'1.3','letter-spacing':'normal','white-space':'normal',
+    'overflow-wrap':'anywhere','text-overflow':'clip','text-align':'left','transform':'none'
+   });
+  }
+  set(pill,{
+   'position':'static','inset':'auto','display':'flex','flex-direction':'column',
+   'grid-column':tiny?'2 / 4':'3','grid-row':tiny?'2':'1',
+   'align-items':'center','justify-content':'center',
+   'align-self':'center','justify-self':tiny?'start':'center',
+   'gap':'2px','width':tiny?'auto':compact?'73px':'92px',
+   'min-width':'0','max-width':tiny?'100%':compact?'73px':'92px',
+   'height':'auto','min-height':'0','margin':'0',
+   'padding':compact?'5px 4px':'7px 12px','overflow':'visible',
+   'white-space':'normal','transform':'none'
+  });
+  for(const leaf of pill?.querySelectorAll('b,strong,small')||[]){
+   set(leaf,{
+    'display':'block','position':'static','width':'100%','max-width':'100%',
+    'height':'auto','min-height':'0','margin':'0','padding':'0',
+    'font-size':leaf.tagName==='SMALL'?(compact?'7px':'8px'):(compact?'13px':'19px'),
+    'line-height':'1.2','white-space':leaf.tagName==='SMALL'?'normal':'nowrap',
+    'overflow-wrap':'anywhere','text-align':'center'
+   });
+  }
+  set(percent,{
+   'position':'static','inset':'auto','display':'block',
+   'grid-column':tiny?'3':'4','grid-row':'1','align-self':'center',
+   'justify-self':'end','width':'auto','min-width':'0',
+   'max-width':compact?'34px':'60px','height':'auto',
+   'margin':'0','padding':'0','font-size':compact?'21px':'30px',
+   'line-height':'1.15','letter-spacing':'normal','white-space':'nowrap',
+   'text-align':'right','transform':'none'
+  });
+ }
+ set(bar,{
+  'position':'relative','inset':'auto','display':'block',
+  'width':compact?'calc(100% - 6px)':'calc(100% - 20px)',
+  'min-width':'0','max-width':'100%','height':compact?'9px':'12px',
+  'min-height':compact?'9px':'12px','max-height':compact?'9px':'12px',
+  'margin':compact?'0 3px':'0 10px','padding':'0',
+  'overflow':'hidden','transform':'none'
+ });
+ set(steps,{
+  'position':'relative','display':'grid','grid-template-columns':'repeat(5,minmax(0,1fr))',
+  'align-items':'center','gap':'0','width':'100%','min-width':'0','max-width':'100%',
+  'height':'auto','min-height':compact?'21px':'27px',
+  'margin':compact?'0':'0 1px','padding':'0','overflow':'visible','transform':'none'
+ });
+ for(const node of steps?.children||[]){
+  set(node,{
+   'position':'relative','inset':'auto','display':'grid','place-items':'center',
+   'grid-column':'auto','grid-row':'auto','justify-self':'center','align-self':'center',
+   'width':compact?'min(21px,94%)':'min(25px,94%)',
+   'min-width':'0','max-width':'100%','height':'auto','aspect-ratio':'1',
+   'margin':'0','padding':'0','line-height':'1','white-space':'nowrap',
+   'font-size':compact?'8px':'11px','transform':'none'
+  });
+ }
+ if(grid){
+  set(grid,{
+   'position':'relative','display':'grid','grid-template-columns':'repeat(3,minmax(0,1fr))',
+   'grid-template-rows':'auto','grid-auto-rows':compact?'minmax(103px,auto)':'minmax(118px,auto)',
+   'align-items':'stretch','gap':compact?'5px':'10px',
+   'width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'margin':'0','padding':'0','overflow':'visible','transform':'none'
+  });
+  const cards=[...grid.children].filter(el=>el.classList.contains('tf21-stat'));
+  for(const card of cards){
+   set(card,{
+    'position':'relative','inset':'auto','display':'flex','flex-direction':'column',
+    'grid-template-columns':'none','grid-template-rows':'auto',
+    'grid-column':'auto','grid-row':'auto','align-items':'flex-start',
+    'justify-content':'flex-start','justify-self':'stretch','align-self':'stretch',
+    'gap':compact?'5px':'6px','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':compact?(tiny?'119px':'103px'):'118px',
+    'max-height':'none','margin':'0','padding':compact?'8px 6px':'10px 9px',
+    'box-sizing':'border-box','overflow':'hidden','text-align':'left','transform':'none'
+   });
+   const icon=card.querySelector('.tf21-stat-icon');
+   set(icon,{
+    'position':'relative','inset':'auto','display':'grid','place-items':'center',
+    'grid-column':'auto','grid-row':'auto','align-self':'flex-start',
+    'justify-self':'start','width':compact?'30px':'36px',
+    'height':compact?'30px':'36px','min-width':'0','min-height':'0',
+    'max-width':'100%','max-height':'none','flex':'0 0 auto',
+    'margin':'0','padding':'0','transform':'none'
+   });
+   set(icon?.querySelector('svg'),{
+    'width':compact?'19px':'22px','height':compact?'19px':'22px'
+   });
+   const body=card.querySelector('.tf21-stat-body');
+   set(body,{
+    'position':'static','inset':'auto','display':'flex','flex-direction':'column',
+    'grid-column':'auto','grid-row':'auto',
+    'align-items':'flex-start','justify-content':'flex-start','gap':'3px',
+    'flex':'1 1 auto','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':'0','max-height':'none',
+    'margin':'0','padding':'0','overflow':'visible','text-align':'left','transform':'none'
+   });
+   for(const leaf of body?.querySelectorAll(':scope > b,:scope > strong,:scope > span,:scope > small')||[]){
+    const isNumber=leaf.matches('b,strong');
+    set(leaf,{
+     'display':'block','position':'static','width':'100%','min-width':'0','max-width':'100%',
+     'height':'auto','min-height':'0','max-height':'none',
+     'margin':'0','padding':'0','white-space':'normal','overflow-wrap':'anywhere',
+     'word-break':'normal','text-overflow':'clip','text-align':'left',
+     'letter-spacing':'normal','line-height':isNumber?'1.22':'1.3',
+     'font-size':isNumber?(compact?(card===cards[2]?'10px':'clamp(11px,3.35vw,14px)'):(card===cards[2]?'clamp(10px,2.9vw,16px)':'clamp(12px,3.4vw,18px)')):(compact?'clamp(8px,2.15vw,10px)':'clamp(9px,2.3vw,12px)'),
+     'transform':'none'
+    });
+   }
+  }
+ }
+ const list=panel.querySelector(':scope > .v83-legal-list.v97-routine-scroll');
+ if(list){
+  set(list,{
+   'position':'relative','inset':'auto','display':'flex','flex-direction':'column',
+   'align-items':'stretch','justify-content':'flex-start',
+   'gap':compact?'7px':'9px','width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'margin':'0','padding':'3px 2px 24px','overflow':'visible',
+   'touch-action':'pan-y','transform':'none'
+  });
+  const rule=list.querySelector(':scope > .tf21-rule');
+  if(rule){
+   set(rule,{
+    'position':'relative','display':'grid',
+    'grid-template-columns':compact?'32px minmax(0,1fr)':'44px minmax(0,1fr)',
+    'align-items':'center','gap':compact?'8px':'12px',
+    'order':'-1','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':'0','max-height':'none',
+    'margin':'0','padding':compact?'8px':'12px 14px','overflow':'visible'
+   });
+   set(rule.querySelector('.tf21-rule-icon'),{
+    'width':compact?'32px':'42px','height':compact?'32px':'42px',
+    'min-width':'0','min-height':'0','max-width':'100%','margin':'0'
+   });
+   const ruleText=rule.querySelector(':scope > div');
+   set(ruleText,{'width':'100%','min-width':'0','max-width':'100%','overflow':'visible'});
+   set(ruleText?.querySelector('strong'),{
+    'font-size':compact?'11px':'15px','line-height':'1.2',
+    'white-space':'normal','overflow-wrap':'anywhere'
+   });
+   set(ruleText?.querySelector('p'),{
+    'font-size':compact?'9px':'11px','line-height':'1.5',
+    'white-space':'normal','overflow-wrap':'anywhere'
+   });
+  }
+  for(const mission of list.querySelectorAll(':scope > .v97-routine-guide-wrap.tf21-mission')){
+   set(mission,{
+    'position':'relative','inset':'auto','display':'block','order':'0','flex':'0 0 auto',
+    'width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':'0','max-height':'none',
+    'margin':'0','padding':'0','overflow':'hidden','transform':'none'
+   });
+   const row=mission.querySelector('.v83-legal-step');
+   if(row){
+    set(row,{
+     'position':'relative','display':'grid',
+     'grid-template-columns':tiny?'18px 29px minmax(0,1fr) 26px 9px':compact?'22px 33px minmax(0,1fr) 27px 10px':'40px 48px minmax(0,1fr) 40px 17px',
+     'grid-template-rows':'auto','align-items':'center','gap':tiny?'5px':compact?'6px':'10px',
+     'width':'100%','min-width':'0','max-width':'100%',
+     'height':'auto','min-height':compact?'59px':'70px','max-height':'none',
+     'margin':'0','padding':tiny?'6px 5px':compact?'6px':'7px 12px',
+     'box-sizing':'border-box','overflow':'visible','transform':'none'
+    });
+    const number=row.querySelector('.tf21-num');
+    set(number,{
+     'position':'relative','grid-column':'1','grid-row':'1',
+     'align-self':'center','justify-self':'center',
+     'width':'auto','min-width':'0','max-width':'100%',
+     'font-size':compact?'11px':'14px','line-height':'1.2','margin':'0'
+    });
+    const ico=row.querySelector('.v83-legal-step-icon');
+    set(ico,{
+     'position':'relative','display':'grid','place-items':'center',
+     'grid-column':'2','grid-row':'1','align-self':'center','justify-self':'center',
+     'width':tiny?'29px':compact?'33px':'46px',
+     'height':tiny?'29px':compact?'33px':'46px',
+     'min-width':'0','min-height':'0','max-width':'100%','max-height':'none',
+     'margin':'0','padding':'0','transform':'none'
+    });
+    set(ico?.querySelector('svg'),{
+     'width':compact?'21px':'27px','height':compact?'21px':'27px'
+    });
+    const content=row.querySelector('.v83-legal-step-copy');
+    set(content,{
+     'position':'relative','display':'flex','flex-direction':'column',
+     'grid-column':'3','grid-row':'1','align-items':'flex-start',
+     'justify-content':'center','gap':'4px','width':'100%','min-width':'0',
+     'max-width':'100%','height':'auto','min-height':'0',
+     'margin':'0','padding':'0','overflow':'visible','text-align':'left',
+     'white-space':'normal','transform':'none'
+    });
+    for(const leaf of content?.querySelectorAll('strong,span,small,p')||[]){
+     set(leaf,{
+      'display':'block','position':'static','width':'100%','min-width':'0',
+      'max-width':'100%','height':'auto','min-height':'0',
+      'margin':'0','padding':'0','font-size':leaf.matches('strong')?(compact?'12px':'14px'):(compact?'9px':'10px'),
+      'line-height':leaf.matches('strong')?'1.18':'1.35',
+      'white-space':'normal','overflow-wrap':'anywhere','text-overflow':'clip',
+      'text-align':'left','transform':'none'
+     });
+    }
+    const check=row.querySelector('.v83-legal-check');
+    set(check,{
+     'position':'relative','display':'grid','place-items':'center',
+     'grid-column':'4','grid-row':'1','align-self':'center','justify-self':'center',
+     'width':tiny?'26px':compact?'27px':'36px',
+     'height':tiny?'27px':compact?'28px':'36px',
+     'min-width':'0','min-height':'0','max-width':'100%','max-height':'none',
+     'margin':'0','padding':'0'
+    });
+    set(row.querySelector('.tf21-row-arrow'),{
+     'position':'relative','grid-column':'5','grid-row':'1',
+     'align-self':'center','justify-self':'center',
+     'width':'auto','min-width':'0','margin':'0',
+     'font-size':compact?'17px':'23px','line-height':'1'
+    });
+   }
+   const guide=mission.querySelector('.v97-routine-guide');
+   set(guide,{
+    'position':'relative','display':'block',
+    'width':'calc(100% - 14px)','min-width':'0','max-width':'calc(100% - 14px)',
+    'height':'auto','min-height':'32px','max-height':'none',
+    'margin':'0 7px 6px','padding':'0','overflow':'hidden'
+   });
+   set(guide?.querySelector('summary'),{
+    'display':'flex','align-items':'center','width':'100%','min-width':'0',
+    'height':'auto','min-height':'32px','padding':'5px 8px',
+    'font-size':'10px','line-height':'1.35','white-space':'normal',
+    'overflow-wrap':'anywhere'
+   });
+   set(guide?.querySelector('.v97-routine-guide-body'),{
+    'font-size':'11px','line-height':'1.55','padding':'5px 11px 10px',
+    'white-space':'normal','overflow-wrap':'anywhere'
+   });
+  }
+ }
+ for(const btn of panel.querySelectorAll('.tf21-launch')){
+  set(btn,{
+   'position':'relative','display':'grid','grid-template-columns':'36px minmax(0,1fr)',
+   'align-items':'center','justify-content':'center',
+   'gap':'12px','width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'57px','max-height':'none','order':'1',
+   'margin':'4px 0 3px','padding':'10px 14px','box-sizing':'border-box',
+   'font-size':'13px','line-height':'1.3','text-align':'center'
+  });
+  set(btn.querySelector('svg'),{'width':'22px','height':'22px','min-width':'0','margin':'0'});
+  set(btn.querySelector('span:not(.tf21-next)'),{
+   'width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','white-space':'normal','overflow-wrap':'anywhere','text-align':'center'
+  });
+ }
+
  // Eliminar físicamente solo la flecha derecha; el botón y su acción permanecen.
  for(const arrow of panel.querySelectorAll('.tf21-launch > .tf21-next'))arrow.remove();
  for(const btn of panel.querySelectorAll('.tf21-launch')){
