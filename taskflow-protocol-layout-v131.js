@@ -4,7 +4,7 @@
 'use strict';
 if(window.__tfProtocolThreeLayoutV131)return;
 window.__tfProtocolThreeLayoutV131=true;
-const kinds=['tf21','tf32','tf33'];
+const kinds=['tf32','tf33']; // Dominio Jurídico usa su controlador exclusivo V132.
 function put(node,rules){
  if(!node)return;
  for(const [property,value] of Object.entries(rules)){
