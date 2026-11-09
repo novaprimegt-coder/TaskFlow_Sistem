@@ -51,9 +51,9 @@ jobs:
           assert.ok(core.includes('function setupQuickActionButtons(){'),'Faltan acciones rápidas');
           assert.ok(loader.includes('tfShopHistorySafeV130126'),'Falta saneamiento no destructivo del historial');
           assert.ok(!loader.includes('Preparando el sistema')&&loader.includes('.boot.error'),'El cargador visual antiguo sigue disponible o falta recuperación');
-          assert.ok(root.includes('const SPLASH_MS=10000')&&root.includes('taskflow-loading-reference.jpg')&&root.includes('await keepSplashExactlyTenSeconds()'),'Falta pantalla colorida oficial de 10 segundos en inicio principal');
+          assert.ok(root.includes('const SPLASH_MS=10000')&&root.includes('taskflow-loading-fhd-1080x1920.webp')&&exists('taskflow-loading-fhd-1080x1920.webp')&&root.includes('await keepSplashExactlyTenSeconds()'),'Falta pantalla colorida oficial de 10 segundos en inicio principal');
           assert.ok(loader.includes('SPLASH_MS=10000')&&loader.includes('await waitForColorSplash()')&&loader.includes('taskflow-loading-reference.jpg'),'Falta pantalla colorida en cargador auxiliar');
-          assert.ok(exists('taskflow-v58-stability.js')&&bridge.includes("version:'2.5.3'"),'Falta módulo vigente y puente ADS actualizado');
+          assert.ok(exists('taskflow-v58-stability.js')&&/version:'3\.\d+\.\d+'/.test(bridge),'Falta módulo vigente y puente ADS actualizado');
           assert.ok(bridge.includes('function testedBanner(ad)')&&bridge.includes('async function displayBanner(slot)')&&bridge.includes('function validBannerPixels(img)'),'No se comprueba la carga real de banners');
           assert.ok(root.includes('t57/runtime-24.txt')&&root.includes('TF_T57'),'Falta el arranque vigente T57');
           assert.ok(!root.includes('Función de tienda inesperada; se conserva el paquete original'),'Error de arranque antiguo reintroducido');
@@ -74,6 +74,8 @@ jobs:
           assert.ok(live.includes('img.naturalWidth===WIDTH*2')&&live.includes('v.videoWidth===WIDTH*2'),'Anuncios HD 2x no admitidos');
           assert.ok(!live.includes("let stamp=Number(get('tf_audio_reset_device_t34'))"),'Reinicio diario confundido con reinicio manual');
           assert.ok(live.includes('taskflow-v58-stability.js'),'Protección diaria no cargada');
+          assert.ok(live.includes('function fixRequestedProgress(panel)')&&live.includes('fixRequestedProgress(panel);'),'Falta corrección de progreso de las tres rutinas');
+          for(const k of ['tf21-legal','tf32-socrates','tf33-machiavelli'])assert.ok(live.includes(k),'Falta rutina '+k);
           const startChunks=['00','01','02'].map(id=>read('t57/runtime-'+id+'.txt')).join('');
           assert.ok(!startChunks.includes('aria-label="Cargando TaskFlow"')&&!startChunks.includes('Preparando TaskFlow…'),'Se reintrodujo la pantalla de carga antigua');
           assert.ok(!startChunks.includes('filter:blur(24px) brightness(.46)')&&startChunks.includes('#boot.error'),'Recursos pesados de splash o recuperación ausente');

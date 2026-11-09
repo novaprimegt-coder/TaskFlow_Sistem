@@ -833,6 +833,139 @@ const textRules={
  'word-break':'normal','text-overflow':'clip','text-align':'center',
  'letter-spacing':'normal','transform':'none'
 };
+
+/* V130.8.8: límites reales del progreso en Dominio Jurídico, Sócrates y Maquiavelo.
+   Mantiene las otras rutinas, actividades, valores y controles intactos. */
+function fixRequestedProgress(panel){
+ const kind=panel.classList.contains('tf21-legal')?'tf21':
+  panel.classList.contains('tf32-socrates')?'tf32':
+  panel.classList.contains('tf33-machiavelli')?'tf33':null;
+ if(!kind)return;
+ const progress=panel.querySelector('.'+kind+'-progress');
+ if(!progress)return;
+ const base={
+  'display':'flex','flex-direction':'column','align-items':'stretch',
+  'width':'100%','min-width':'0','max-width':'100%',
+  'height':'auto','min-height':'0','max-height':'none',
+  'box-sizing':'border-box','overflow':'hidden','isolation':'isolate'
+ };
+ important(progress,base);
+ if(kind==='tf21'){
+  const head=progress.querySelector('.tf21-progress-head');
+  important(head,{'display':'grid','grid-template-columns':'40px minmax(0,1fr) 54px',
+   'grid-template-rows':'auto auto','gap':'8px 9px','align-items':'start',
+   'width':'100%','min-width':'0','max-width':'100%','height':'auto',
+   'min-height':'0','max-height':'none','padding':'0','margin':'0','position':'relative'});
+  const icon=head?.querySelector('.tf21-progress-icon');
+  important(icon,{'position':'relative','grid-column':'1','grid-row':'1 / 3',
+   'align-self':'start','justify-self':'center','margin':'0','transform':'none'});
+  const label=head?.querySelector('.tf21-progress-label');
+  important(label,{'display':'flex','flex-direction':'column','gap':'4px',
+   'grid-column':'2','grid-row':'1','position':'static','width':'100%',
+   'min-width':'0','max-width':'100%','height':'auto','min-height':'0',
+   'margin':'0','padding':'0','overflow':'visible','transform':'none'});
+  important(label?.querySelector('strong'),{'display':'block','position':'static',
+   'width':'100%','max-width':'100%','height':'auto','margin':'0','padding':'0',
+   'font-size':'clamp(13px,3.6vw,19px)','line-height':'1.24',
+   'white-space':'normal','overflow-wrap':'break-word','transform':'none'});
+  important(label?.querySelector('small'),{'display':'block','position':'static',
+   'width':'100%','max-width':'100%','height':'auto','margin':'0','padding':'0',
+   'font-size':'clamp(10px,2.6vw,13px)','line-height':'1.34',
+   'white-space':'normal','overflow-wrap':'break-word','transform':'none'});
+  const pill=head?.querySelector('.tf21-count-pill');
+  important(pill,{'position':'static','inset':'auto','display':'inline-flex',
+   'flex-direction':'column','flex-wrap':'nowrap','align-items':'center',
+   'justify-content':'center','gap':'2px','grid-column':'2 / 4',
+   'grid-row':'2','align-self':'start','justify-self':'start',
+   'box-sizing':'border-box','width':'auto','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','padding':'5px 12px','margin':'0',
+   'overflow':'visible','transform':'none'});
+  for(const leaf of pill?.querySelectorAll('b,strong,small')||[]){
+   important(leaf,{'position':'static','display':'block','width':'auto',
+    'max-width':'100%','height':'auto','margin':'0','padding':'0',
+    'line-height':'1.18','white-space':'normal','overflow-wrap':'anywhere',
+    'text-align':'center','transform':'none'});
+  }
+  const pct=head?.querySelector('.tf21-pct');
+  important(pct,{'position':'static','inset':'auto','grid-column':'3',
+   'grid-row':'1','align-self':'start','justify-self':'end',
+   'width':'auto','max-width':'100%','height':'auto',
+   'margin':'0','padding':'0','line-height':'1.1','font-size':'clamp(24px,5vw,36px)',
+   'white-space':'nowrap','text-align':'right','transform':'none'});
+ }else{
+  const u=kind==='tf32'?'--tfs-u':'--tfm-u';
+  const copy=progress.querySelector('.'+kind+'-progress-copy');
+  important(progress,{'padding':'clamp(12px,2.8vw,20px)'});
+  important(copy,{'display':'flex','flex-direction':'column','gap':'4px',
+   'position':'relative','z-index':'2','width':'69%','min-width':'0',
+   'max-width':'69%','height':'auto','min-height':'calc(135 * var('+u+'))',
+   'max-height':'none','margin':'0','padding':'0','overflow':'visible',
+   'transform':'none'});
+  important(copy?.querySelector('strong'),{'position':'static','display':'block',
+   'max-width':'100%','width':'100%','height':'auto','margin':'0','padding':'0',
+   'font-size':'clamp(16px,3.4vw,25px)','line-height':'1.22',
+   'white-space':'normal','overflow-wrap':'break-word','transform':'none'});
+  important(copy?.querySelector('small'),{'position':'static','display':'block',
+   'max-width':'100%','width':'100%','height':'auto','margin':'0','padding':'0',
+   'font-size':'clamp(11px,2.45vw,15px)','line-height':'1.3',
+   'white-space':'normal','overflow-wrap':'break-word','transform':'none'});
+  const pct=progress.querySelector('.'+kind+'-percent');
+  important(pct,{'position':'relative','z-index':'2','inset':'auto',
+   'align-self':'flex-start','width':'69%','max-width':'69%',
+   'height':'auto','min-height':'0','margin':'6px 0 0','padding':'0',
+   'font-size':'clamp(24px,5vw,40px)','line-height':'1.1',
+   'text-align':'left','white-space':'nowrap','transform':'none'});
+  const bar=progress.querySelector('.'+kind+'-bar');
+  important(bar,{'position':'relative','z-index':'2','width':'69%',
+   'min-width':'0','max-width':'69%','height':'10px','min-height':'10px',
+   'margin':'7px 0 0','padding':'0','transform':'none'});
+ }
+ const grid=progress.querySelector('.'+kind+'-stats');
+ if(!grid)return;
+ important(grid,{'display':'grid','grid-template-columns':'repeat(3,minmax(0,1fr))',
+  'grid-auto-rows':'minmax(132px,auto)','gap':'6px','align-items':'stretch',
+  'justify-content':'stretch','position':'relative','z-index':'4',
+  'width':'100%','min-width':'0','max-width':'100%',
+  'height':'auto','min-height':'0','max-height':'none',
+  'margin':'14px 0 0','padding':'0','box-sizing':'border-box','transform':'none'});
+ const cards=Array.from(grid.children).filter(el=>el.classList.contains(kind+'-stat'));
+ for(const card of cards){
+  important(card,{'display':'flex','flex-direction':'column',
+   'align-items':'center','justify-content':'center','gap':'6px',
+   'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
+   'width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'132px','max-height':'none',
+   'box-sizing':'border-box','margin':'0','padding':'10px 5px',
+   'overflow':'hidden','text-align':'center','transform':'none'});
+  const icon=card.querySelector('.'+kind+'-stat-icon');
+  important(icon,{'display':'grid','place-items':'center',
+   'align-self':'center','justify-self':'center','flex-shrink':'0',
+   'grid-column':'auto','grid-row':'auto','margin':'0 auto','transform':'none'});
+  const body=card.querySelector('.'+kind+'-stat-body');
+  important(body,{'position':'static','display':'flex','flex-direction':'column',
+   'align-items':'center','justify-content':'center','gap':'3px',
+   'width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'grid-column':'auto','grid-row':'auto','box-sizing':'border-box',
+   'margin':'0','padding':'0','overflow':'visible',
+   'text-align':'center','transform':'none'});
+  for(const leaf of body?.querySelectorAll('b,strong,small,span')||[]){
+   important(leaf,{'display':'block','position':'static','grid-column':'auto',
+    'grid-row':'auto','box-sizing':'border-box','width':'100%',
+    'min-width':'0','max-width':'100%','height':'auto','max-height':'none',
+    'padding':'0','margin':'0','white-space':'normal',
+    'overflow-wrap':'anywhere','word-break':'normal','text-overflow':'clip',
+    'text-align':'center','letter-spacing':'normal','transform':'none',
+    'font-size':leaf.matches('b,strong')?'clamp(11px,2.8vw,17px)':'clamp(9px,2.35vw,12px)',
+    'line-height':leaf.matches('b,strong')?'1.24':'1.34'});
+  }
+  if(card===cards[2]){
+   const value=body?.querySelector('b,strong');
+   important(value,{'font-size':'clamp(10px,2.35vw,15px)','line-height':'1.24'});
+  }
+ }
+}
+
 function fix(){
  const panel=document.getElementById('windowContent');
  if(!panel)return;
@@ -868,6 +1001,7 @@ function fix(){
    }
   }
  }
+ fixRequestedProgress(panel);
 }
 let pending=false;
 function schedule(){
