@@ -60,6 +60,13 @@ let context={country:'',region:'',city:'',neighborhood:''};
 let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false,withdrawConfirmed=false;
 async function reportAuthorizedGeoPresence(position){
  if(!position||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||presenceBusy||document.hidden)return false;
+ // No registrar audiencia cuando el permiso del sistema ya fue revocado, aunque exista una posición antigua guardada.
+ if(navigator.permissions?.query){
+  try{
+   const actual=await navigator.permissions.query({name:'geolocation'});
+   if(actual.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
+  }catch(_){return false}
+ }else return false;
  const lat=Number(position.latitude),lng=Number(position.longitude);
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
  const grid=Number(lat.toFixed(2))+','+Number(lng.toFixed(2));
@@ -583,7 +590,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.3.1',
+ version:'3.3.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -715,7 +722,7 @@ async function restoreAuthorizedLocation(){
   if(navigator.permissions&&typeof navigator.permissions.query==='function'){
    try{
     const permission=await navigator.permissions.query({name:'geolocation'});
-    if(permission.state!=='granted')return false;
+    if(permission.state!=='granted'){void withdrawAuthorizedGeoPresence();return false}
    }catch(_){}
   }
   const position=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
