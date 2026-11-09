@@ -1890,6 +1890,146 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else start();
 })();
 </script>
+<script id="tfPortraitCardsContainV142">
+/* TaskFlow V142. Sócrates y Maquiavelo: tarjetas adaptables y contenidas en WebView. */
+(function(){
+'use strict';
+if(window.__tfPortraitCardsContainV142)return;
+window.__tfPortraitCardsContainV142=true;
+const modes=[['tf32-socrates','tf32'],['tf33-machiavelli','tf33']];
+function boot(){
+ const panel=document.getElementById('windowContent');
+ const outer=document.getElementById('windowContainer');
+ if(!panel||!outer)return;
+ let queued=false;
+ function put(el,p,v){
+  if(el&&(el.style.getPropertyValue(p)!==v||el.style.getPropertyPriority(p)!=='important')){
+   el.style.setProperty(p,v,'important');
+  }
+ }
+ function set(el,props){
+  if(!el)return;
+  for(const [p,v] of Object.entries(props))put(el,p,v);
+ }
+ function fitText(el,max,first){
+  if(!el)return;
+  set(el,{
+   'position':'static','display':'block','box-sizing':'border-box',
+   'width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'white-space':'normal','overflow-wrap':'anywhere','word-break':'normal',
+   'text-overflow':'clip','transform':'none','letter-spacing':'normal',
+   'text-align':'center','line-height':first?'1.18':'1.26',
+   '-webkit-text-size-adjust':'none','text-size-adjust':'none'
+  });
+  const size=Math.min(first?14:10,Math.max(first?10:8,max/(first?5.7:8.2)));
+  put(el,'font-size',size.toFixed(2)+'px');
+  // Nunca truncar las palabras largas: reducir solo si todavía exceden la tarjeta.
+  let s=size;
+  for(let i=0;i<7;i++){
+   const parent=el.closest('.tf32-stat,.tf33-stat');
+   if(!parent)break;
+   const a=parent.getBoundingClientRect();
+   let escapes=false;
+   try{
+    const range=document.createRange();
+    range.selectNodeContents(el);
+    escapes=Array.from(range.getClientRects()).some(r=>r.width>0&&(r.left<a.left-2||r.right>a.right+2));
+    range.detach?.();
+   }catch(_){}
+   if(!escapes||s<=7.5)break;
+   s=Math.max(7.5,s*.87);
+   put(el,'font-size',s.toFixed(2)+'px');
+  }
+ }
+ function apply(){
+  if(!outer.classList.contains('open'))return;
+  const mode=modes.find(item=>panel.classList.contains(item[0]));
+  if(!mode)return;
+  const key=mode[1],progress=panel.querySelector(':scope > .'+key+'-progress');
+  if(!progress)return;
+  const grid=progress.querySelector('.'+key+'-stats');
+  if(!grid)return;
+  const cards=Array.from(grid.children).filter(n=>n.classList.contains(key+'-stat'));
+  if(cards.length!==3)return;
+  const compact=window.innerWidth<=900 || /(?:\bwv\b|WebView|AppCreator24|Version\/4\.0)/i.test(navigator.userAgent) ||
+    cards.some(c=>c.getBoundingClientRect().width<155);
+  if(!compact)return;
+  set(progress,{
+   'box-sizing':'border-box','width':'100%','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'overflow':'hidden','-webkit-text-size-adjust':'none','text-size-adjust':'none'
+  });
+  set(grid,{
+   'display':'grid','grid-template-columns':'repeat(3,minmax(0,1fr))',
+   'grid-auto-rows':'minmax(80px,auto)','align-items':'stretch','gap':'5px',
+   'box-sizing':'border-box','min-width':'0','max-width':'100%',
+   'height':'auto','min-height':'0','max-height':'none',
+   'overflow':'visible','-webkit-text-size-adjust':'none','text-size-adjust':'none'
+  });
+  for(const card of cards){
+   set(card,{
+    'display':'flex','flex-direction':'column','align-items':'center','justify-content':'center',
+    'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
+    'position':'relative','inset':'auto','float':'none','flex-wrap':'nowrap',
+    'box-sizing':'border-box','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':'80px','max-height':'none',
+    'padding':'7px 3px','margin':'0','gap':'4px','overflow':'hidden',
+    'text-align':'center','transform':'none',
+    '-webkit-text-size-adjust':'none','text-size-adjust':'none'
+   });
+   const icon=card.querySelector('.'+key+'-stat-icon');
+   set(icon,{
+    'display':'grid','place-items':'center','position':'relative','inset':'auto',
+    'align-self':'center','justify-self':'center','flex':'0 0 auto',
+    'grid-column':'auto','grid-row':'auto',
+    'width':'24px','height':'24px','min-width':'0','min-height':'0','max-width':'100%',
+    'margin':'0 auto','transform':'none'
+   });
+   const body=card.querySelector('.'+key+'-stat-body');
+   if(!body)continue;
+   set(body,{
+    'display':'flex','flex-direction':'column','align-items':'center','justify-content':'center',
+    'position':'static','inset':'auto','grid-column':'auto','grid-row':'auto',
+    'box-sizing':'border-box','flex':'0 1 auto','width':'100%','min-width':'0','max-width':'100%',
+    'height':'auto','min-height':'0','max-height':'none',
+    'padding':'0','margin':'0','gap':'2px','overflow':'visible',
+    'text-align':'center','transform':'none',
+    '-webkit-text-size-adjust':'none','text-size-adjust':'none'
+   });
+   const computed=getComputedStyle(card),w=Math.max(30,card.getBoundingClientRect().width-
+      (parseFloat(computed.paddingLeft)||0)-(parseFloat(computed.paddingRight)||0)-4);
+   for(const leaf of Array.from(body.children).filter(n=>n.matches('b,strong,small,span'))){
+    fitText(leaf,w,leaf.matches('b,strong'));
+   }
+  }
+ }
+ function schedule(){
+  if(queued)return;
+  queued=true;
+  requestAnimationFrame(()=>{queued=false;apply()});
+ }
+ const mutations=new MutationObserver(events=>{
+  if(events.some(e=>e.type==='childList'||e.type==='characterData'||
+     (e.type==='attributes'&&e.attributeName==='style'&&
+      e.target.closest?.('.tf32-progress,.tf33-progress'))))schedule();
+ });
+ mutations.observe(panel,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style']});
+ const cls=new MutationObserver(schedule);
+ cls.observe(panel,{attributes:true,attributeFilter:['class']});
+ cls.observe(outer,{attributes:true,attributeFilter:['class']});
+ if(typeof ResizeObserver==='function'){
+  const ro=new ResizeObserver(schedule);ro.observe(panel);
+ }
+ window.addEventListener('resize',schedule,{passive:true});
+ window.addEventListener('orientationchange',schedule,{passive:true});
+ window.addEventListener('pageshow',schedule,{passive:true});
+ schedule();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+else boot();
+})();
+</script>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
