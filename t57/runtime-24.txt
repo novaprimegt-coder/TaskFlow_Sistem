@@ -1518,6 +1518,37 @@ html {
   }
 }
 </style>
+
+<style id="tf21StatsWebViewV139">
+/* V139: exclusivo de las tres tarjetas estadísticas de Dominio Jurídico.
+   El navegador conserva sus dimensiones; la WebView no debe agrandar los textos. */
+@media screen and (max-width:900px) {
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stats, #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stats * {
+  -webkit-text-size-adjust:none!important;
+  text-size-adjust:none!important;
+ }
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stats {min-width:0!important;max-width:100%!important;}
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat {min-width:0!important;max-width:100%!important;overflow:hidden!important;}
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat-body {
+  position:static!important;min-width:0!important;max-width:100%!important;
+  width:100%!important;overflow:visible!important;box-sizing:border-box!important;
+ }
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat-body > :is(strong,b,span,small) {
+  display:block!important;position:static!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;
+  word-break:normal!important;text-overflow:clip!important;
+  box-sizing:border-box!important;
+ }
+}
+/* Si la WebView informa un viewport más ancho que Chrome, los textos de
+   las tarjetas mantienen los límites tipográficos ya usados en móvil. */
+@media screen and (min-width:600px) and (max-width:900px) {
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat-body > :is(b,strong) {font-size:clamp(11px,3.35vw,14px)!important;}
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat:nth-child(3) .tf21-stat-body > :is(b,strong) {font-size:clamp(10px,2.75vw,12px)!important;}
+ #windowContainer#windowContainer#windowContainer#windowContainer#windowContainer#windowContainer.window-container.open.tf21-legal-open > #windowContent#windowContent#windowContent#windowContent#windowContent#windowContent.window-content.tf21-legal > .tf21-progress .tf21-stat-body > :is(small,span) {font-size:clamp(8px,2.15vw,10px)!important;}
+}
+</style>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
