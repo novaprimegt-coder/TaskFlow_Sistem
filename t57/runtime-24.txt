@@ -1245,6 +1245,9 @@ function apply(){
   'box-sizing':'border-box','overflow':'hidden'
  });
  if(head){
+  const legalLabel=head.querySelector('.tf21-progress-label');
+  const legalPill=head.querySelector('.tf21-count-pill');
+  const legalPercent=head.querySelector('.tf21-pct');
   set(head,{
    'display':'grid','grid-template-columns':tiny?'34px minmax(0,1fr) 34px':compact?'36px minmax(0,1fr) 73px 34px':'53px minmax(0,1fr) 92px 60px',
    'grid-template-rows':tiny?'auto auto':'auto','grid-auto-flow':'row',
@@ -1264,13 +1267,13 @@ function apply(){
   set(head.querySelector('.tf21-progress-icon svg'),{
    'width':compact?'22px':'29px','height':compact?'22px':'29px'
   });
-  set(label,{
+  set(legalLabel,{
    'position':'static','inset':'auto','display':'flex','flex-direction':'column',
    'grid-column':'2','grid-row':'1','gap':'3px','align-items':'flex-start',
    'justify-content':'center','width':'100%','min-width':'0','max-width':'100%',
    'height':'auto','min-height':'0','margin':'0','padding':'0','overflow':'visible'
   });
-  for(const leaf of label?.querySelectorAll('strong,small')||[]){
+  for(const leaf of legalLabel?.querySelectorAll('strong,small')||[]){
    set(leaf,{
     'position':'static','display':'block','width':'100%','min-width':'0',
     'max-width':'100%','height':'auto','min-height':'0','margin':'0','padding':'0',
@@ -1279,7 +1282,7 @@ function apply(){
     'overflow-wrap':'anywhere','text-overflow':'clip','text-align':'left','transform':'none'
    });
   }
-  set(pill,{
+  set(legalPill,{
    'position':'static','inset':'auto','display':'flex','flex-direction':'column',
    'grid-column':tiny?'2 / 4':'3','grid-row':tiny?'2':'1',
    'align-items':'center','justify-content':'center',
@@ -1290,7 +1293,7 @@ function apply(){
    'padding':compact?'5px 4px':'7px 12px','overflow':'visible',
    'white-space':'normal','transform':'none'
   });
-  for(const leaf of pill?.querySelectorAll('b,strong,small')||[]){
+  for(const leaf of legalPill?.querySelectorAll('b,strong,small')||[]){
    set(leaf,{
     'display':'block','position':'static','width':'100%','max-width':'100%',
     'height':'auto','min-height':'0','margin':'0','padding':'0',
@@ -1299,7 +1302,7 @@ function apply(){
     'overflow-wrap':'anywhere','text-align':'center'
    });
   }
-  set(percent,{
+  set(legalPercent,{
    'position':'static','inset':'auto','display':'block',
    'grid-column':tiny?'3':'4','grid-row':'1','align-self':'center',
    'justify-self':'end','width':'auto','min-width':'0',
