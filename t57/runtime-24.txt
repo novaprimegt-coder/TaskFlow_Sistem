@@ -1695,6 +1695,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* Solo SVG adicionales de los 5 iconos marcados. Mantener fondos originales. */
 #windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .tf13067-task-icon svg,
 #windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .tf13067-task-icon svg,
+#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .tf13068-number svg,
+#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .tf13068-number svg,
 #windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .v69-routine-check svg,
 #windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .v69-routine-check svg{
  display:none!important;visibility:hidden!important;pointer-events:none!important;
@@ -2070,7 +2072,7 @@ function start(){
    const title=normalize(heading?.textContent);
    if(!tasks[current].includes(title))continue;
    // Conservar los fondos visuales originales de .v69-routine-check.
-   for(const node of wrap.querySelectorAll('.tf13067-task-icon,.v69-routine-check')){
+   for(const node of wrap.querySelectorAll('.tf13067-task-icon,.tf13068-number,.v69-routine-check')){
     for(const svg of node.querySelectorAll('svg')){
      svg.remove();
     }
