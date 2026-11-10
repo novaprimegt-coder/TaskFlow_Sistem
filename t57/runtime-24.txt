@@ -2046,6 +2046,54 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else boot();
 })();
 </script>
+<script id="tfPortraitIconCleanupV152">
+/* Quitar exclusivamente las capas SVG duplicadas de cinco actividades de Sócrates/Maquiavelo. */
+(function(){
+'use strict';
+if(window.__tfPortraitIconCleanupV152)return;
+window.__tfPortraitIconCleanupV152=true;
+const tasks={
+ 'tf32-socrates':['EXPLORA ALGO NUEVO','CORRIGE UNA IDEA PROPIA','EXPLICA LO APRENDIDO'],
+ 'tf33-machiavelli':['DEFINE LA VICTORIA','LEE EL TABLERO']
+};
+const normalize=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+function start(){
+ const content=document.getElementById('windowContent');
+ if(!content)return;
+ let queued=false;
+ function clean(){
+  const current=content.classList.contains('tf32-socrates')?'tf32-socrates':
+    content.classList.contains('tf33-machiavelli')?'tf33-machiavelli':null;
+  if(!current)return;
+  for(const wrap of content.querySelectorAll('.v97-routine-guide-wrap')){
+   const heading=wrap.querySelector('.v69-routine-copy strong,.v69-routine-copy b');
+   const title=normalize(heading?.textContent);
+   if(!tasks[current].includes(title))continue;
+   // Conservar los fondos visuales originales de .v69-routine-check.
+   for(const node of wrap.querySelectorAll('.tf13067-task-icon,.v69-routine-check')){
+    for(const svg of node.querySelectorAll('svg')){
+     svg.remove();
+    }
+    if(node.dataset.tf13074Icon)delete node.dataset.tf13074Icon;
+   }
+  }
+ }
+ function schedule(){
+  if(queued)return;queued=true;
+  requestAnimationFrame(()=>{queued=false;clean()});
+ }
+ const watch=new MutationObserver(events=>{
+  if(events.some(ev=>ev.type==='childList'))schedule();
+ });
+ watch.observe(content,{subtree:true,childList:true});
+ new MutationObserver(schedule).observe(content,{attributes:true,attributeFilter:['class']});
+ document.addEventListener('click',schedule,{capture:true,passive:true});
+ schedule();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+else start();
+})();
+</script>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
