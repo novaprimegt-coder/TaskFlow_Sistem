@@ -1043,7 +1043,7 @@ schedule();
 })();
 </script>
 <script src="./taskflow-v58-stability.js?v=58-20261106" defer></script>
-<script src="./taskflow-protocol-layout-v131.js?v=1315-portrait-near-icon-v150-20261109" defer></script>
+<script src="./taskflow-protocol-layout-v131.js?v=1316-portrait-reference-cards-v151-20261109" defer></script>
 <style id="tf21OnlyProgressV132CSS">
 /* V132 | Solo Dominio Jurídico: encabezado y tarjetas sin superposición */
 #windowContent.tf21-legal .tf21-progress{box-sizing:border-box!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important}
@@ -1692,15 +1692,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 <style id="tfPortraitDuplicateIconsV148">
-/* Solo iconos secundarios superpuestos en las actividades señaladas.
-   Los fondos de referencia de .v69-routine-check se conservan. */
-#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .tf13067-task-icon,
-#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .tf13067-task-icon,
-#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .v69-routine-check > :is(svg,span,i,img,em),
-#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .v69-routine-check > :is(svg,span,i,img,em) {
- display:none!important;
- visibility:hidden!important;
- pointer-events:none!important;
+/* Solo SVG adicionales de los 5 iconos marcados. Mantener fondos originales. */
+#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .tf13067-task-icon svg,
+#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .tf13067-task-icon svg,
+#windowContent#windowContent.tf32-socrates :is(.tf32-activity-3,.tf32-activity-4,.tf32-activity-5) .v69-routine-check svg,
+#windowContent#windowContent.tf33-machiavelli :is(.tf33-activity-1,.tf33-activity-2) .v69-routine-check svg{
+ display:none!important;visibility:hidden!important;pointer-events:none!important;
 }
 </style>
 <script id="tfPortraitWebViewFitV141">
@@ -1830,7 +1827,7 @@ function start(){
   set(grid,'text-size-adjust','none');
   set(grid,'display','grid');
   set(grid,'grid-template-columns','repeat(3,minmax(0,1fr))');
-  set(grid,'grid-auto-rows','minmax(136px,auto)');
+  set(grid,'grid-auto-rows','minmax(168px,auto)');
   set(grid,'width','100%');
   set(grid,'min-width','0');
   set(grid,'max-width','100%');
@@ -1854,8 +1851,8 @@ function start(){
    if(!body)return;
    set(body,'-webkit-text-size-adjust','none');
    set(body,'text-size-adjust','none');
-   set(body,'position','relative');
-   set(body,'left','-28px');
+   set(body,'position','static');
+   set(body,'left','auto');
    set(body,'width','100%');
    set(body,'min-width','0');
    set(body,'max-width','100%');
@@ -1936,7 +1933,7 @@ function boot(){
    'text-align':'center','line-height':first?'1.18':'1.26',
    '-webkit-text-size-adjust':'none','text-size-adjust':'none'
   });
-  const size=Math.min(first?14:10,Math.max(first?10:8,max/(first?5.7:8.2)));
+  const size=Math.min(first?19:12,Math.max(first?12:9,max/(first?5.4:8.5)));
   put(el,'font-size',size.toFixed(2)+'px');
   // Nunca truncar las palabras largas: reducir solo si todavía exceden la tarjeta.
   let s=size;
@@ -1976,20 +1973,24 @@ function boot(){
   });
   set(grid,{
    'display':'grid','grid-template-columns':'repeat(3,minmax(0,1fr))',
-   'grid-auto-rows':'minmax(80px,auto)','align-items':'stretch','gap':'5px',
+   'grid-auto-rows':'minmax(168px,auto)','align-items':'stretch','gap':'5px',
    'box-sizing':'border-box','min-width':'0','max-width':'100%',
    'height':'auto','min-height':'0','max-height':'none',
    'overflow':'visible','-webkit-text-size-adjust':'none','text-size-adjust':'none'
   });
-  for(const card of cards){
+  for(const [index,card] of cards.entries()){
+   const accent=["#e8b15a","#a36be7","#18d6e3"][index%3];
    set(card,{
     'display':'flex','flex-direction':'column','align-items':'center','justify-content':'center',
     'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
     'position':'relative','inset':'auto','float':'none','flex-wrap':'nowrap',
     'box-sizing':'border-box','width':'100%','min-width':'0','max-width':'100%',
-    'height':'auto','min-height':'80px','max-height':'none',
-    'padding':'7px 3px','margin':'0','gap':'4px','overflow':'hidden',
+    'height':'auto','min-height':'168px','max-height':'none',
+    'padding':'16px 7px','margin':'0','gap':'8px','overflow':'hidden',
     'text-align':'center','transform':'none',
+    'border':'2px solid '+accent,'border-radius':'22px',
+    'background':'linear-gradient(155deg,#0c1530,#0a1024)',
+    'box-shadow':'inset 0 1px 0 #ffffff0a,0 0 10px #00000022',
     '-webkit-text-size-adjust':'none','text-size-adjust':'none'
    });
    const icon=card.querySelector('.'+key+'-stat-icon');
@@ -1997,14 +1998,15 @@ function boot(){
     'display':'grid','place-items':'center','position':'relative','inset':'auto',
     'align-self':'center','justify-self':'center','flex':'0 0 auto',
     'grid-column':'auto','grid-row':'auto',
-    'width':'24px','height':'24px','min-width':'0','min-height':'0','max-width':'100%',
+    'width':'44px','height':'44px','min-width':'0','min-height':'0','max-width':'100%',
+    'background-color':accent,
     'margin':'0 auto','transform':'none'
    });
    const body=card.querySelector('.'+key+'-stat-body');
    if(!body)continue;
    set(body,{
     'display':'flex','flex-direction':'column','align-items':'center','justify-content':'center',
-    'position':'relative','inset':'auto','left':'-28px','grid-column':'auto','grid-row':'auto',
+    'position':'static','inset':'auto','left':'auto','grid-column':'auto','grid-row':'auto',
     'box-sizing':'border-box','flex':'0 1 auto','width':'100%','min-width':'0','max-width':'100%',
     'height':'auto','min-height':'0','max-height':'none',
     'padding':'0','margin':'0','gap':'2px','overflow':'visible',

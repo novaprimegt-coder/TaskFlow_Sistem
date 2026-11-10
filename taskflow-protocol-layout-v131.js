@@ -29,7 +29,7 @@ function applyCards(pro,kind){
  const grid=pro.querySelector('.'+kind+'-stats');
  if(!grid)return;
  put(grid,{'display':'grid','grid-template-columns':'repeat(3,minmax(0,1fr))',
-  'grid-template-rows':'auto','grid-auto-rows':'minmax(136px,auto)',
+  'grid-template-rows':'auto','grid-auto-rows':'minmax(168px,auto)',
   'align-items':'stretch','justify-content':'stretch','gap':'7px',
   'position':'relative','z-index':'3','float':'none','clear':'both',
   'width':'100%','min-width':'0','max-width':'100%',
@@ -37,26 +37,31 @@ function applyCards(pro,kind){
   'padding':'0','margin':kind==='tf21'?'12px 0 0':'40px 0 0',
   'box-sizing':'border-box','overflow':'visible','transform':'none'});
  const cards=Array.from(grid.children).filter(n=>n.classList.contains(kind+'-stat'));
- for(const card of cards){
+ for(const [index,card] of cards.entries()){
+  const accent=["#e8b15a","#a36be7","#18d6e3"][index%3];
   put(card,{'display':'flex','flex-direction':'column',
    'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
    'align-items':'center','justify-content':'center','align-self':'stretch',
    'justify-self':'stretch','position':'relative','inset':'auto',
    'float':'none','gap':'6px','flex-wrap':'nowrap',
    'width':'100%','min-width':'0','max-width':'100%',
-   'height':'auto','min-height':'136px','max-height':'none',
-   'padding':'10px 4px','margin':'0','box-sizing':'border-box',
-   'text-align':'center','overflow':'hidden','transform':'none'});
+   'height':'auto','min-height':'168px','max-height':'none',
+   'padding':'16px 7px','margin':'0','box-sizing':'border-box',
+   'text-align':'center','overflow':'hidden','transform':'none',
+   'border':'2px solid '+accent,'border-radius':'22px',
+   'background':'linear-gradient(155deg,#0c1530,#0a1024)',
+   'box-shadow':'inset 0 1px 0 #ffffff0a,0 0 10px #00000022'});
   const icon=card.querySelector('.'+kind+'-stat-icon');
   put(icon,{'position':'relative','inset':'auto','display':'grid',
    'place-items':'center','align-self':'center','justify-self':'center',
    'grid-column':'auto','grid-row':'auto','float':'none',
-   'flex-shrink':'0','margin':'0 auto','transform':'none'});
+   'flex-shrink':'0','margin':'0 auto','transform':'none',
+   'width':'44px','height':'44px','max-width':'100%','background-color':accent});
   const body=card.querySelector('.'+kind+'-stat-body');
-  put(body,{'position':'relative','inset':'auto','left':'-28px','display':'flex',
+  put(body,{'position':'static','inset':'auto','left':'auto','display':'flex',
    'flex-direction':'column','align-items':'center','justify-content':'center',
    'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
-   'gap':'3px','float':'none','flex':'0 1 auto',
+   'gap':'5px','float':'none','flex':'0 1 auto',
    'width':'100%','min-width':'0','max-width':'100%',
    'height':'auto','min-height':'0','max-height':'none',
    'padding':'0','margin':'0','box-sizing':'border-box',
@@ -65,7 +70,7 @@ function applyCards(pro,kind){
    const texts=Array.from(body.children).filter(n=>n.matches('b,strong,span,small'));
    for(const leaf of texts){
     const strong=leaf.matches('b,strong');
-    const size=strong?'clamp(11px,2.8vw,17px)':'clamp(9px,2.3vw,12px)';
+    const size=strong?'clamp(13px,3.4vw,19px)':'clamp(9px,2.3vw,12px)';
     sizeText(leaf,size,strong);
    }
    if(card===cards[2]){

@@ -84,8 +84,17 @@ function titleFor(card){
   const text=norm(card&&card.textContent);
   return Object.keys(MISSIONS).find(title=>text.includes(title))||'';
 }
+const NO_DUPLICATE_ICONS=new Set(["EXPLORA ALGO NUEVO","CORRIGE UNA IDEA PROPIA","EXPLICA LO APRENDIDO","DEFINE LA VICTORIA","LEE EL TABLERO"]);
 function ensureIcon(card,title){
   if(!card||!title)return;
+  if(NO_DUPLICATE_ICONS.has(title)){
+    const existing=card.querySelector('.tf13067-task-icon');
+    if(existing&&existing.dataset.tf13074Icon){
+      existing.querySelectorAll(':scope > svg').forEach(svg=>svg.remove());
+      delete existing.dataset.tf13074Icon;
+    }
+    return;
+  }
   let icon=card.querySelector('.tf13067-task-icon');
   if(!icon){
     icon=document.createElement('span');
