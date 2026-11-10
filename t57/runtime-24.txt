@@ -2108,6 +2108,137 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else start();
 })();
 </script>
+<style id="tfPortraitHeroHeadersV155">
+/* ÚNICAMENTE encabezados de Sócrates y Maquiavelo: composición inspirada en Dominio Jurídico. */
+/* Reutilizar los retratos originales de sus respectivas imágenes de referencia. */
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head {
+  --tf-head-unit:var(--tfs-u);
+  --tf-hero-accent:#21e6e5;
+  --tf-hero-portrait:var(--tfs-reference);
+  --tf-hero-sheet-width:calc(716 * var(--tfs-u));
+  --tf-hero-sheet-height:calc(1536 * var(--tfs-u));
+  --tf-hero-crop-x:calc(-508 * var(--tfs-u));
+  --tf-hero-crop-y:calc(-219 * var(--tfs-u));
+  --tf-hero-gradient:linear-gradient(92deg,#2ee7ec 3%,#87b5ff 51%,#a26beb 100%);
+}
+#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head {
+  --tf-head-unit:var(--tfm-u);
+  --tf-hero-accent:#e2b359;
+  --tf-hero-portrait:var(--tfm-reference);
+  --tf-hero-sheet-width:calc(864 * var(--tfm-u));
+  --tf-hero-sheet-height:calc(1536 * var(--tfm-u));
+  --tf-hero-crop-x:calc(-612 * var(--tfm-u));
+  --tf-hero-crop-y:calc(-192 * var(--tfm-u));
+  --tf-hero-gradient:linear-gradient(95deg,#ffdf8b 4%,#f2ad6b 51%,#a779e8 100%);
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head {
+ position:relative!important;isolation:isolate!important;box-sizing:border-box!important;
+ display:grid!important;
+ grid-template-columns:calc(90 * var(--tf-head-unit)) minmax(0,1fr) calc(64 * var(--tf-head-unit))!important;
+ grid-template-rows:auto!important;align-items:center!important;
+ gap:calc(15 * var(--tf-head-unit))!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ height:auto!important;min-height:calc(160 * var(--tf-head-unit))!important;max-height:none!important;
+ margin:0 0 calc(10 * var(--tf-head-unit))!important;
+ padding:calc(18 * var(--tf-head-unit)) calc(15 * var(--tf-head-unit))!important;
+ overflow:hidden!important;
+ border:calc(1 * var(--tf-head-unit)) solid color-mix(in srgb,var(--tf-hero-accent) 36%,transparent)!important;
+ border-radius:calc(26 * var(--tf-head-unit))!important;
+ background:linear-gradient(93deg,rgba(2,14,29,.97) 0%,rgba(8,15,39,.96) 52%,rgba(19,16,46,.79) 100%)!important;
+ box-shadow:inset 0 0 30px rgba(26,200,226,.06),0 8px 25px rgba(0,0,0,.12)!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head::before,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head::before{
+ content:''!important;display:block!important;position:absolute!important;inset:0!important;
+ width:100%!important;height:100%!important;z-index:0!important;pointer-events:none!important;
+ background:radial-gradient(ellipse at 80% 35%,rgba(110,77,192,.24),transparent 55%)!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head::after,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head::after {
+ content:''!important;display:block!important;position:absolute!important;
+ top:0!important;right:0!important;bottom:auto!important;left:auto!important;
+ width:calc(210 * var(--tf-head-unit))!important;height:100%!important;
+ background-image:var(--tf-hero-portrait)!important;
+ background-size:var(--tf-hero-sheet-width) var(--tf-hero-sheet-height)!important;
+ background-position:var(--tf-hero-crop-x) var(--tf-hero-crop-y)!important;
+ background-repeat:no-repeat!important;
+ -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 27%,#000 90%)!important;
+ mask-image:linear-gradient(90deg,transparent 0%,#000 27%,#000 90%)!important;
+ opacity:.82!important;z-index:1!important;pointer-events:none!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head > .v85-routine-modal-icon,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head > .v85-routine-modal-icon {
+ position:relative!important;grid-column:1!important;grid-row:1!important;
+ z-index:3!important;align-self:center!important;justify-self:start!important;
+ margin:0!important;padding:0!important;transform:none!important;
+ filter:drop-shadow(0 0 9px rgba(39,216,229,.20))!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head > .v85-routine-modal-copy,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head > .v85-routine-modal-copy {
+ position:relative!important;grid-column:2!important;grid-row:1!important;
+ display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+ justify-content:center!important;gap:calc(4 * var(--tf-head-unit))!important;
+ z-index:3!important;min-width:0!important;width:100%!important;max-width:100%!important;
+ margin:0!important;padding:0!important;transform:none!important;
+ text-align:left!important;overflow:visible!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head .v85-routine-modal-copy .eyebrow,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head .v85-routine-modal-copy .eyebrow {
+ display:block!important;position:static!important;transform:none!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ font-size:clamp(10px,1.8vw,17px)!important;line-height:1.25!important;
+ font-weight:700!important;letter-spacing:.13em!important;
+ white-space:normal!important;overflow-wrap:break-word!important;color:#aebed8!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head .v85-routine-modal-copy h2,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head .v85-routine-modal-copy h2 {
+ display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
+ margin:0!important;padding:0!important;position:relative!important;
+ font-size:clamp(26px,5.4vw,56px)!important;line-height:1.05!important;
+ font-weight:800!important;letter-spacing:-.025em!important;
+ white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important;
+ transform:none!important;transform-origin:left center!important;text-shadow:none!important;
+ background:var(--tf-hero-gradient)!important;
+ -webkit-background-clip:text!important;background-clip:text!important;
+ -webkit-text-fill-color:transparent!important;color:var(--tf-hero-accent)!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head .tf32-subtitle,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head .tf33-subtitle {
+ display:block!important;position:static!important;transform:none!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ font-size:clamp(10px,1.8vw,17px)!important;line-height:1.4!important;
+ font-weight:400!important;color:#b8c7df!important;
+ white-space:normal!important;overflow-wrap:break-word!important;
+ margin:0!important;padding:0!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head > .v85-routine-progress-pill,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head > .v85-routine-progress-pill {
+ position:absolute!important;grid-column:auto!important;grid-row:auto!important;
+ top:calc(15 * var(--tf-head-unit))!important;
+ right:calc(87 * var(--tf-head-unit))!important;
+ width:calc(80 * var(--tf-head-unit))!important;
+ height:calc(40 * var(--tf-head-unit))!important;
+ min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+ display:grid!important;place-items:center!important;
+ z-index:4!important;margin:0!important;padding:0!important;transform:none!important;
+ background:rgba(16,17,39,.80)!important;border:1px solid var(--tf-hero-accent)!important;
+ border-radius:999px!important;color:var(--tf-hero-accent)!important;
+ font-size:clamp(12px,2.6vw,20px)!important;
+}
+#windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head > .window-close,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head > .window-close {
+ position:absolute!important;grid-column:auto!important;grid-row:auto!important;
+ top:calc(10 * var(--tf-head-unit))!important;right:calc(10 * var(--tf-head-unit))!important;
+ z-index:5!important;margin:0!important;padding:0!important;
+ transform:none!important;
+}
+/* Anchos estrechos: permitir los subtítulos sin invadir la imagen ni los botones. */
+@media(max-width:440px){
+ #windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head{
+   min-height:calc(168 * var(--tf-head-unit))!important;
+   gap:calc(9 * var(--tf-head-unit))!important;
+   padding:calc(14 * var(--tf-head-unit)) calc(11 * var(--tf-head-unit))!important;
+ }
+ #windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head .v85-routine-modal-copy h2,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head .v85-routine-modal-copy h2{
+   font-size:clamp(22px,6vw,32px)!important;
+ }
+ #windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head::after,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head::after{opacity:.58!important;}
+}
+@media(prefers-reduced-motion:reduce){
+ #windowContainer#windowContainer.window-container.open.tf32-socrates-open > #windowContent#windowContent.window-content.tf32-socrates > .v85-routine-modal-head::after,#windowContainer#windowContainer.window-container.open.tf33-machiavelli-open > #windowContent#windowContent.window-content.tf33-machiavelli > .v85-routine-modal-head::after{transition:none!important;animation:none!important;}
+}
+</style>
 <script src="./taskflow-mentalist-sung-structure-v133.js?v=133-mentalista-sung-20261108" defer></script>
 </body>
 </html>
