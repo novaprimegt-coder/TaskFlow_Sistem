@@ -53,7 +53,7 @@ function applyCards(pro,kind){
    'grid-column':'auto','grid-row':'auto','float':'none',
    'flex-shrink':'0','margin':'0 auto','transform':'none'});
   const body=card.querySelector('.'+kind+'-stat-body');
-  put(body,{'position':'relative','inset':'auto','left':'-18px','display':'flex',
+  put(body,{'position':'relative','inset':'auto','left':'-28px','display':'flex',
    'flex-direction':'column','align-items':'center','justify-content':'center',
    'grid-template-columns':'none','grid-column':'auto','grid-row':'auto',
    'gap':'3px','float':'none','flex':'0 1 auto',
