@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.4.1
+/* TaskFlow ADS Bridge v3.4.2
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -8,7 +8,11 @@ if(window.TaskFlowADS&&window.TaskFlowADS.version)return;
 const PROJECT_ID='taskflow-b0ece';
 const COLLECTION='adsPublicCampaigns';
 const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(PROJECT_ID)+'/databases/(default)/documents/'+encodeURIComponent(COLLECTION);
-const BANNER_SLOTS=['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter'];
+const bannerSlots = () => window.TaskFlowAdsV50?.slots || [];
+const VERTICAL_PLACEMENTS = ['entry', 'interaction'];
+const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
+const adsPermitted = () => config.enabled && !paidNoAds() &&
+ localStorage.getItem('taskflow_location_decision_v52') === 'granted';
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
@@ -43,42 +47,93 @@ async function recoverOwnedAds(force=false){
  return ownerRecoveryPending;
 }
 
-let recommendations=new Map(),recommendationRun=0,recommendationRetry=0;
+let recommendations = new Map();
+let recommendationRequest = null, recommendationQueued = false, recommendationRetry = 0;
+const completedSelections = new Set();
 function retryRecommendations(ms){
  if(recommendationRetry)clearTimeout(recommendationRetry);
  recommendationRetry=setTimeout(()=>{recommendationRetry=0;if(config.enabled&&catalog.length)void refreshRecommendations()},Math.max(250,Number(ms)||4000));
 }
 function clearRecommendationRetry(){if(recommendationRetry)clearTimeout(recommendationRetry);recommendationRetry=0}
-async function refreshRecommendations(){
- const ticket=++recommendationRun;
- if(!config.enabled||!catalog.length){recommendations=new Map();applyWhenReady();return;}
- const slots=[...BANNER_SLOTS.map(slot=>({placement:'banner',slot})),{placement:'entry',slot:'entry'},{placement:'interaction',slot:'interaction'}];
- const sessionId=analyticsSessionId();if(!sessionId){retryRecommendations(5000);return;}
- const next=new Map();
- if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){
-  recommendations=next;applyWhenReady();return;
+
+function refreshRecommendations() {
+ if (recommendationRequest) {
+  recommendationQueued = true;
+  return recommendationRequest;
  }
- let token=null;
- try{token=await window.TaskFlowFirebase?.getIdToken?.()||null}catch(_){}
- if(!token){if(ticket!==recommendationRun)return;recommendations=next;applyWhenReady();retryRecommendations(4000);return;}
- await Promise.all(slots.map(async({placement,slot})=>{
-  const previous=recommendations.get(slot);
-  if(previous&&previous.expiresAt>Date.now()&&catalog.some(a=>a.campaignId===previous.campaignId&&a.id===previous.adId&&a.placement===placement)){next.set(slot,previous);return}
-  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),6500);
-  try{
-   const response=await fetch(SELECTION_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:abort.signal,
-    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({placement,slot,sessionId})});
-   if(!response.ok)return;
-   const data=await response.json();
-   if(typeof data.campaignId==='string'&&typeof data.adId==='string'&&typeof data.selectionToken==='string'&&/^[a-f0-9-]{36}$/i.test(data.selectionToken)&&catalog.some(a=>a.campaignId===data.campaignId&&a.id===data.adId&&a.placement===placement))next.set(slot,{campaignId:data.campaignId,adId:data.adId,selectionToken:data.selectionToken,expiresAt:Date.now()+(placement==='banner'?30000:900000)});
-  }catch(_){}
-  finally{clearTimeout(timer)}
+ recommendationRequest = loadRecommendations().finally(() => {
+  recommendationRequest = null;
+  if (recommendationQueued) {
+   recommendationQueued = false;
+   void refreshRecommendations();
+  }
+ });
+ return recommendationRequest;
+}
+
+function verticalApi(placement) {
+ return placement === 'entry' ? window.TaskFlowEntryAdV56 : window.TaskFlowInteractionAdV57;
+}
+
+async function loadRecommendations() {
+ if (!adsPermitted() || !catalog.length) {
+  recommendations.clear();
+  applyWhenReady();
+  return;
+ }
+ const sessionId = analyticsSessionId();
+ if (!sessionId) { retryRecommendations(5000); return; }
+ const auth = window.TaskFlowFirebase;
+ const uid = auth?.getUser?.()?.uid;
+ let token = null;
+ try { token = await auth?.getIdToken?.(); } catch (_) {}
+ if (!token) {
+  recommendations.clear();
+  applyWhenReady();
+  retryRecommendations(4000);
+  return;
+ }
+ const slots = bannerSlots().filter(slot => document.getElementById(slot))
+  .map(slot => ({placement: 'banner', slot}));
+ for (const placement of VERTICAL_PLACEMENTS) {
+  if (!verticalApi(placement)?.hasShown?.()) slots.push({placement, slot: placement});
+ }
+ const next = new Map();
+ await Promise.all(slots.map(async ({placement, slot}) => {
+  const candidates = catalog.filter(ad => ad.placement === placement);
+  if (!candidates.length) return;
+  const previous = recommendations.get(slot);
+  if (previous && previous.expiresAt > Date.now() && !completedSelections.has(previous.selectionToken) &&
+      candidates.some(ad => ad.campaignId === previous.campaignId && ad.id === previous.adId)) {
+   next.set(slot, previous);
+   return;
+  }
+  if (placement !== 'banner' && verticalApi(placement)?.isRunning?.()) return;
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 6500);
+  try {
+   const response = await fetch(SELECTION_URL, {
+    method: 'POST', mode: 'cors', credentials:'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
+    body: JSON.stringify({placement, slot, sessionId}),
+   });
+   if (!response.ok) return;
+   const {campaignId, adId, selectionToken} = await response.json();
+   if (typeof selectionToken === 'string' && /^[a-f0-9-]{36}$/i.test(selectionToken) &&
+       candidates.some(ad => ad.campaignId === campaignId && ad.id === adId)) {
+    next.set(slot, {campaignId, adId, selectionToken,
+     expiresAt: Date.now() + (placement === 'banner' ? 30000 : 900000)});
+   }
+  } catch (_) {} finally { clearTimeout(timer); }
  }));
- if(ticket!==recommendationRun)return;
- recommendations=next;
- for(const slot of BANNER_SLOTS)if(document.getElementById(slot))void displayBanner(slot);
+ if (!adsPermitted() || window.TaskFlowFirebase?.getUser?.()?.uid !== uid) next.clear();
+ for (const [slot, selected] of next) {
+  if (completedSelections.has(selected.selectionToken)) next.delete(slot);
+ }
+ recommendations = next;
  applyWhenReady();
- if(!next.size&&catalog.length)retryRecommendations(12000);else clearRecommendationRetry();
+ if (!next.size && catalog.length) retryRecommendations(12000);
+ else clearRecommendationRetry();
 }
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
 let config={enabled:true,adminUrl:null,refreshMs:10000};
@@ -308,6 +363,11 @@ function recordAdEvent(type,ad,slot){
 const pendingViewChecks=new Map();
 function visibleRect(el){
  if(!el||document.hidden||el.isConnected===false)return false;
+ if (el.matches('.tf50-ad-slot')) {
+  if (document.querySelector('#tfEntryAdV56.open,#tfInteractionAdV57.open,#tfPermissionGateT52:not([hidden]),#tfPayPalNoAdsModal:not([hidden])')) return false;
+  const foreground = document.querySelector('#windowContainer.open') || document.querySelector('#sideMenu.open');
+  if (foreground && !foreground.contains(el)) return false;
+ }
  const r=el.getBoundingClientRect();
  if(!Number.isFinite(r.width)||!Number.isFinite(r.height)||r.width<=5||r.height<=5)return false;
  const w=Math.max(0,Math.min(r.right,innerWidth)-Math.max(0,r.left));
@@ -382,13 +442,13 @@ function bindAnalyticsTracking(){
   }
  },true);
  const checkBannerImpressions=()=>{
-  for(const slot of BANNER_SLOTS){
+  for(const slot of bannerSlots()){
    const status=bannerStatus.get(slot),el=document.getElementById(slot);
    const ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
    if(ad&&el){const img=el.querySelector('img');if(img?.complete&&img.naturalWidth>0)recordVisibleAd(ad,slot,el)}
   }
  };
- window.addEventListener('scroll',checkBannerImpressions,{passive:true});
+ window.addEventListener('scroll',checkBannerImpressions,{capture:true,passive:true});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkBannerImpressions()});
  window.addEventListener('resize',checkBannerImpressions,{passive:true});
  setInterval(()=>{if(!document.hidden)checkBannerImpressions()},12000);
@@ -413,67 +473,24 @@ function normalizeCampaign(c){
    return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
 }
-function lastKey(placement,slot){return 'taskflow_ads_last_v2_'+placement+'_'+String(slot||'default')}
-function pick(placement,slot){
- const favored=recommendations.get(slot);
- if(!favored)return null;
- const list=catalog.filter(a=>a.placement===placement&&a.campaignId===favored.campaignId&&a.id===favored.adId);if(!list.length)return null;
- let last='';try{last=localStorage.getItem(lastKey(placement,slot))||''}catch(_){}
- const pool=list.length>1?list.filter(a=>a.id!==last):list;
- const lead=pool[Math.floor(Math.random()*pool.length)]||pool[0];
- // Se conserva la selección de campaña, pero se prioriza su creativo HD si existe.
- const siblings=pool.filter(a=>a.campaignId===lead.campaignId);
- const hdWidth=placement==='banner'?2400:2160;
- const hd=siblings.filter(a=>a.mediaWidth===hdWidth);
- const options=hd.length?hd:siblings;
- const ad=options[Math.floor(Math.random()*options.length)]||lead;
- try{localStorage.setItem(lastKey(placement,slot),ad.id)}catch(_){}
- return {...ad,selectionToken:favored.selectionToken}
+const bannerFailures = new Map(), bannerStatus = new Map(), bannerBusy = new Set();
+const verticalFailures = new Map();
+const BANNER_TURN_MS = 30000, IMAGE_TIMEOUT_MS = 16000, BANNER_RETRY_MS = 60000;
+
+function selectedCreatives(placement, slot, failures) {
+ const selected = recommendations.get(slot);
+ if (!selected || completedSelections.has(selected.selectionToken)) return [];
+ return catalog.filter(ad => ad.placement === placement && ad.campaignId === selected.campaignId &&
+  ad.id === selected.adId && (failures.get(ad.src) || 0) <= Date.now())
+  .sort((a, b) => b.mediaWidth - a.mediaWidth)
+  .map(ad => ({...ad, selectionToken: selected.selectionToken}));
 }
-/* Nunca insertar un <img> sin verificar que el archivo se haya cargado realmente.
-   Si la URL caducó, la carga falló o el archivo tiene medidas incorrectas,
-   intentar otros creativos aprobados. No alterar el anuncio de ingreso o interacción. */
-const bannerFailures=new Map(),bannerStatus=new Map(),bannerBusy=new Set();
-const BANNER_TURN_MS=30000,IMAGE_TIMEOUT_MS=16000,BANNER_RETRY_MS=60000;
-const bannerNearViewport=new Set();
-let bannerViewportObserver=null;
-// No decodificar simultáneamente creativos fuera de pantalla (GIF grandes).
-function queueBanner(slot){
- const element=document.getElementById(slot);if(!element)return;
- if(recommendations.has(slot)&&!element.classList.contains('tf50-has-ad')){void displayBanner(slot);return}
- if(typeof IntersectionObserver!=='function'){void displayBanner(slot);return}
- if(!bannerViewportObserver){
-  bannerViewportObserver=new IntersectionObserver(entries=>{
-   for(const entry of entries){
-    const id=entry.target&&entry.target.id;
-    if(!BANNER_SLOTS.includes(id))continue;
-    if(entry.isIntersecting){bannerNearViewport.add(id);void displayBanner(id)}
-    else bannerNearViewport.delete(id);
-   }
-  },{root:null,rootMargin:'260px 0px',threshold:0});
- }
- bannerViewportObserver.observe(element);
- if(bannerNearViewport.has(slot))void displayBanner(slot);
+function queueBanner(slot) {
+ if (document.getElementById(slot)) void displayBanner(slot);
+ else bannerStatus.delete(slot);
 }
-function bannerCandidates(slot){
- const favored=recommendations.get(slot);
- if(!favored)return [];
- const list=catalog.filter(a=>a.placement==='banner'&&a.campaignId===favored.campaignId&&a.id===favored.adId&&(!bannerFailures.has(a.src)||Date.now()>=bannerFailures.get(a.src)));
- if(!list.length)return [];
- const shown=bannerStatus.get(slot),last=shown&&shown.id||'';
- const unseen=list.filter(a=>a.id!==last),seen=list.filter(a=>a.id===last);
- const shuffle=items=>items.map(a=>({a,r:Math.random()})).sort((a,b)=>a.r-b.r).map(o=>o.a);
- // Aleatorizar campañas y ofrecer primero la variante HD de cada una,
- // sin excluir a anunciantes con creativos estándar.
- const pool=shuffle(unseen).concat(shuffle(seen)),seenCampaigns=new Set(),ordered=[];
- for(const ad of pool){
-  const key=ad.campaignId;
-  if(seenCampaigns.has(key))continue;
-  seenCampaigns.add(key);
-  ordered.push(...pool.filter(a=>a.campaignId===key).sort((a,b)=>(b.mediaWidth||0)-(a.mediaWidth||0)));
- }
- // Se usan únicamente creativos de la campaña autorizada por el servicio privado.
- return ordered.map(a=>({...a,selectionToken:favored.selectionToken}));
+function bannerCandidates(slot) {
+ return selectedCreatives('banner', slot, bannerFailures);
 }
 function validBannerPixels(img){
  const w=img.naturalWidth,h=img.naturalHeight;
@@ -494,10 +511,11 @@ function testedBanner(ad){
   img.alt='';img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
   img.draggable=false;img.style.objectFit='contain';img.style.imageRendering='auto';
   try{img.fetchPriority='high'}catch(_){}
-  img.onload=()=>done(validBannerPixels(img)?img:null);
+  const verify=()=>done(validBannerPixels(img)&&img.naturalWidth===ad.mediaWidth&&img.naturalHeight===ad.mediaHeight?img:null);
+  img.onload=verify;
   img.onerror=()=>done(null);
   img.src=ad.src;
-  if(img.complete)queueMicrotask(()=>{if(!finished&&img.complete)done(validBannerPixels(img)?img:null)});
+  if(img.complete)queueMicrotask(verify);
  });
 }
 function bannerNode(ad,img){
@@ -511,110 +529,125 @@ function bannerNode(ad,img){
  a.className='tf-ads-cta-link';
  // No agregar un segundo hijo: TaskFlowAdsV50 exige A > IMG exclusivamente.
  a.appendChild(img);
- if(!document.getElementById('tfAdsBannerCtaStyles')){
-  const style=document.createElement('style');style.id='tfAdsBannerCtaStyles';
-  style.textContent='.tf50-ad-slot>.tf-ads-cta-link{position:relative!important}.tf50-ad-slot>.tf-ads-cta-link:after{content:attr(data-tf-ad-cta);position:absolute;right:5px;bottom:5px;z-index:4;max-width:60%;padding:4px 7px;border-radius:5px;background:rgba(7,20,39,.9);color:white;font:700 10px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}';
-  document.head.appendChild(style);
- }
  return a;
 }
 async function displayBanner(slot){
- if(bannerBusy.has(slot)||!config.enabled||(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()))return;
- const element=document.getElementById(slot);
- if(!element)return;
- const candidates=bannerCandidates(slot);
- const displayed=bannerStatus.get(slot);
- const live=element.querySelector('img');
- const current=displayed&&catalog.some(a=>a.placement==='banner'&&a.id===displayed.id&&a.src===displayed.src);
- const approvedSelection=recommendations.get(slot);
- if(current&&approvedSelection&&displayed.campaignId===approvedSelection.campaignId&&displayed.id===approvedSelection.adId&&live&&live.complete&&validBannerPixels(live)&&Date.now()-displayed.at<BANNER_TURN_MS)return;
+ if (bannerBusy.has(slot) || !adsPermitted()) return;
+ const element = document.getElementById(slot);
+ if (!element) return;
+ const selected = recommendations.get(slot);
+ const live = element.querySelector('img');
+ const current = bannerStatus.get(slot);
+ const approved = current && selected && current.campaignId === selected.campaignId &&
+  current.id === selected.adId && catalog.some(a => a.placement === 'banner' &&
+   a.campaignId === current.campaignId && a.id === current.id && a.src === current.src);
+ if (approved && live?.complete && validBannerPixels(live) &&
+     current.selectionToken === selected.selectionToken && Date.now() - current.at < BANNER_TURN_MS) return;
  bannerBusy.add(slot);
- try{
-  for(const ad of candidates){
-   // Se conserva el anuncio anterior durante la validación, evitando destellos vacíos.
-   const img=await testedBanner(ad);
-   if(!config.enabled||(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()))return;
-   if(!img)continue;
-   if(!document.getElementById(slot))return;
-   if(!catalog.some(x=>x.placement==='banner'&&x.id===ad.id&&x.src===ad.src))continue;
-   if(window.TaskFlowAdsV50.render(slot,bannerNode(ad,img))){
-    bannerStatus.set(slot,{id:ad.id,campaignId:ad.campaignId,src:ad.src,selectionToken:ad.selectionToken,at:Date.now()});
-    recordVisibleAd(ad,slot,element);
-    try{localStorage.setItem(lastKey('banner',slot),ad.id)}catch(_){}
+ try {
+  for (const ad of bannerCandidates(slot)) {
+   const img = await testedBanner(ad);
+   if (!adsPermitted() || recommendations.get(slot)?.selectionToken !== ad.selectionToken) return;
+   if (!img || !catalog.some(a => a.placement === 'banner' && a.campaignId === ad.campaignId &&
+       a.id === ad.id && a.src === ad.src)) continue;
+   const currentElement = document.getElementById(slot);
+   if (!currentElement) return;
+   if (window.TaskFlowAdsV50.render(slot, bannerNode(ad,img))) {
+    bannerStatus.set(slot, {...ad, at: Date.now()});
+    recordVisibleAd(ad, slot, currentElement);
     return;
    }
   }
-  // No mostrar nunca el icono roto del navegador.
-  const currentAd=bannerStatus.get(slot);
-  const authorized=recommendations.get(slot);
-   const stillEligible=currentAd&&authorized&&currentAd.campaignId===authorized.campaignId&&currentAd.id===authorized.adId&&catalog.some(a=>a.placement==='banner'&&a.id===currentAd.id&&a.src===currentAd.src);
-  if(!stillEligible||!live||!live.complete||!validBannerPixels(live)){
+  if (!approved || !live?.complete || !validBannerPixels(live)) {
    bannerStatus.delete(slot);
-   window.TaskFlowAdsV50.render(slot,null);
-   if(authorized){recommendations.delete(slot);retryRecommendations(5000)}
+   window.TaskFlowAdsV50.render(slot, null);
   }
- }catch(e){console.warn('TaskFlow ADS: no fue posible mostrar banner',slot,e)}
- finally{bannerBusy.delete(slot)}
+ } catch (error) {
+  console.warn('TaskFlow ADS: no fue posible mostrar banner', slot, error);
+ } finally {
+  bannerBusy.delete(slot);
+ }
 }
+
 function runtimeReady(){
- return !!(window.TaskFlowAdsV50&&window.TaskFlowAdsV50.render&&window.TaskFlowEntryAdV56&&window.TaskFlowEntryAdV56.setCreative&&window.TaskFlowInteractionAdV57&&window.TaskFlowInteractionAdV57.setCreative)
+ return !!(window.TaskFlowAdsV50?.render && VERTICAL_PLACEMENTS.every(slot => verticalApi(slot)?.setCreative));
 }
-function apply(){
+
+function apply() {
+ if (!runtimeReady()) return false;
  bindAnalyticsTracking();
- if(!config.enabled||!runtimeReady())return false;
- if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive()){
-  // Un beneficio confirmado por el servidor debe retirar todo anuncio visible,
-  // incluso si la suscripción se validó desde otro dispositivo.
-  BANNER_SLOTS.forEach(slot=>{bannerStatus.delete(slot);try{window.TaskFlowAdsV50.render(slot,null)}catch(_){}});
-  for(const [api,buttonId] of [[window.TaskFlowEntryAdV56,'tf56EntryContinue'],[window.TaskFlowInteractionAdV57,'tf57TouchClose']]){
-   try{
-    if(api&&api.isRunning&&api.isRunning()){
-     const button=document.getElementById(buttonId);
-     if(button)button.disabled=false;
-     api.close&&api.close();
-    }
-    api&&api.setCreative&&api.setCreative(null);
-   }catch(error){console.warn('TaskFlow: no se pudo cerrar el anuncio al verificar la suscripción',error)}
-  }
-  return false;
- }
- try{window.TaskFlowAdsV50.refresh&&window.TaskFlowAdsV50.refresh()}catch(_){}
- BANNER_SLOTS.forEach(slot=>{queueBanner(slot)});
- // No reemplazar un creativo que ya está reproduciéndose en pantalla.
- const entryRunning=!!window.TaskFlowEntryAdV56.isRunning?.();
- if(!entryRunning){
-  const entry=pick('entry','entry');
-  let accepted=false;
-  try{accepted=window.TaskFlowEntryAdV56.setCreative(entry?{type:entry.type==='video'?'video':'image',src:entry.src,destination:trackedDestination(entry),ctaLabel:entry.ctaLabel,objective:entry.objective,sound:entry.sound}:null)===true}catch(e){console.warn('TaskFlow ADS ingreso:',e)}
-  activeVerticalAds.entry=accepted?entry:null;
-  if(accepted){try{document.dispatchEvent(new Event('taskflow:entry-ad-creative-ready'))}catch(_){}}
- }
- const interactionRunning=!!window.TaskFlowInteractionAdV57.isRunning?.();
- if(!interactionRunning){
-  const interaction=pick('interaction','interaction');
-  let accepted=false;
-  try{accepted=window.TaskFlowInteractionAdV57.setCreative(interaction?{type:interaction.type,src:interaction.src,destination:trackedDestination(interaction),ctaLabel:interaction.ctaLabel,objective:interaction.objective,sound:interaction.sound}:null)===true}catch(e){console.warn('TaskFlow ADS interacción:',e)}
-  activeVerticalAds.interaction=accepted?interaction:null;
-  if(accepted){try{document.dispatchEvent(new Event('taskflow:interaction-ad-creative-ready'))}catch(_){}}
- }
- return true
-}
-function observeSlots(){
- if(slotObserver||!document.documentElement||typeof MutationObserver!=='function')return;
- slotObserver=new MutationObserver(records=>{
-  if(slotUpdateQueued||!config.enabled||!catalog.some(a=>a.placement==='banner'))return;
-  for(const record of records){
-   for(const node of record.addedNodes){
-    if(node.nodeType!==1)continue;
-    if(BANNER_SLOTS.some(id=>node.id===id||(node.querySelector&&node.querySelector('#'+id)))){
-     slotUpdateQueued=true;
-     requestAnimationFrame(()=>{slotUpdateQueued=false;apply()});return;
-    }
+ window.TaskFlowAdsV50.refresh();
+ if (!adsPermitted()) {
+  for (const slot of bannerSlots()) window.TaskFlowAdsV50.render(slot, null);
+  bannerStatus.clear();
+  for (const placement of VERTICAL_PLACEMENTS) {
+   const api = verticalApi(placement);
+   const button = document.getElementById(placement === 'entry' ? 'tf56EntryContinue' : 'tf57TouchClose');
+   if (button && api.isRunning()) {
+    button.disabled = false;
+    api.close();
    }
+   api.setCreative(null);
+   activeVerticalAds[placement] = null;
   }
- });
- slotObserver.observe(document.documentElement,{childList:true,subtree:true});
+  return true;
+ }
+
+ for (const slot of bannerSlots()) queueBanner(slot);
+ for (const placement of VERTICAL_PLACEMENTS) {
+  const api = verticalApi(placement);
+  if (api.isRunning() || api.hasShown?.()) continue;
+  const ad = selectedCreatives(placement, placement, verticalFailures)[0];
+  const accepted = api.setCreative(ad ? {
+   type: ad.type, src: ad.src, destination: trackedDestination(ad), ctaLabel: ad.ctaLabel, sound: ad.sound,
+  } : null);
+  activeVerticalAds[placement] = accepted ? ad : null;
+  if (accepted) document.dispatchEvent(new Event('taskflow:' + placement + '-ad-creative-ready'));
+ }
+ return true;
 }
+
+function observeSlots(){
+ if (slotObserver || !document.documentElement || typeof MutationObserver !== 'function') return;
+ slotObserver = new MutationObserver(records => {
+  if (slotUpdateQueued || !adsPermitted() || !catalog.some(ad => ad.placement === 'banner')) return;
+  const changed = records.some(record => [...record.addedNodes].some(node =>
+   node.nodeType === 1 && node.matches('.tf50-ad-slot')));
+  if (!changed) return;
+  slotUpdateQueued = true;
+  requestAnimationFrame(() => {
+   slotUpdateQueued = false;
+   if (bannerSlots().some(id => document.getElementById(id) && !recommendations.has(id))) {
+    void refreshRecommendations();
+   }
+   apply();
+  });
+ });
+ slotObserver.observe(document.documentElement, {childList: true, subtree: true});
+}
+
+function finishVertical(placement, rejectedSrc) {
+ const ad = activeVerticalAds[placement];
+ if (!ad || (rejectedSrc && ad.src !== rejectedSrc)) return;
+ activeVerticalAds[placement] = null;
+ verticalApi(placement)?.setCreative(null);
+ completedSelections.add(ad.selectionToken);
+ if (completedSelections.size > 500) completedSelections.delete(completedSelections.values().next().value);
+ if (recommendations.get(placement)?.selectionToken === ad.selectionToken) recommendations.delete(placement);
+ if (rejectedSrc) verticalFailures.set(rejectedSrc, Date.now() + BANNER_RETRY_MS);
+ if (placement === 'interaction' || rejectedSrc) {
+  void Promise.resolve(impressionConfirmations.get(ad.selectionToken)).catch(() => {}).then(() => refreshRecommendations());
+ }
+}
+
+for (const placement of VERTICAL_PLACEMENTS) {
+ document.addEventListener('taskflow:' + placement + '-ad-complete', () => finishVertical(placement));
+}
+document.addEventListener('taskflow:entry-ad-reentered', () => { void refreshRecommendations(); });
+document.addEventListener('taskflow:ad-media-rejected', event => {
+ const {placement, src} = event.detail || {};
+ if (VERTICAL_PLACEMENTS.includes(placement) && src) finishVertical(placement, src);
+});
 let readinessTimer=0;
 function applyWhenReady(){
  observeSlots();
@@ -656,7 +689,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.4.1',
+ version:'3.4.2',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;

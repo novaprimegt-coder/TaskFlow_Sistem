@@ -28,6 +28,10 @@ body{min-height:100dvh}
 .tfSplashFallback{position:absolute;inset:0;z-index:0;display:none;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse,#103257,#030814);color:#72effa;font-weight:900;font-size:clamp(32px,10cqw,64px)}
 #tfSplash.fallback .tfSplashImage{visibility:hidden}
 #tfSplash.fallback .tfSplashFallback{display:flex}
+.tfSplashParticles{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+#tfSplash[data-phase="intro"] :is(.tfSplashImage,.tfSplashMeter){opacity:var(--tf-splash-reveal,0)}
+#tfSplash[data-phase="intro"] :is(.tfSplashTrack,#tfSplashPercent,#tfSplashSlats,.tfSplashWave){visibility:hidden}
+#tfSplash:not([data-phase="intro"]) .tfSplashParticles{display:none}
 /* Waves revive the previous tap animation without covering the HD image. */
 #tfSplashSlats{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;opacity:.07;mix-blend-mode:screen;transition:opacity .25s ease;mask-image:radial-gradient(ellipse 85% 83% at 50% 50%,transparent 37%,rgba(0,0,0,.3) 73%,#000 100%);-webkit-mask-image:radial-gradient(ellipse 85% 83% at 50% 50%,transparent 37%,rgba(0,0,0,.3) 73%,#000 100%)}
 #tfSplash.tf-slats-touched #tfSplashSlats{opacity:.33}
@@ -43,12 +47,13 @@ body{min-height:100dvh}
 </style>
 </head>
 <body>
-<div id="tfSplash" role="status" aria-label="Cargando TaskFlow">
+<div id="tfSplash" role="status" aria-label="Inicio de TaskFlow" data-phase="intro">
  <div class="tfSplashArt">
   <img class="tfSplashImage" src="./taskflow-loading-fhd-1080x1920.webp" alt="TaskFlow — Organiza · Avanza · Cumple" width="1080" height="1920" fetchpriority="high" decoding="async" onerror="document.getElementById('tfSplash').classList.add('fallback')">
   <div class="tfSplashFallback" aria-hidden="true">TaskFlow</div>
+  <canvas class="tfSplashParticles" aria-hidden="true"></canvas>
   <div id="tfSplashSlats" aria-hidden="true"></div>
-  <div class="tfSplashMeter" id="tfSplashMeter" role="progressbar" aria-label="Inicio de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="tfSplashMeter" id="tfSplashMeter" role="progressbar" aria-label="Inicio de TaskFlow" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-hidden="true">
    <span class="tfSplashTrack"><i id="tfSplashFill"></i></span><strong id="tfSplashPercent">0%</strong>
   </div>
  </div>
@@ -56,6 +61,7 @@ body{min-height:100dvh}
 <div id="tfBoot" role="alert" aria-live="assertive" hidden><div class="tfCard"><p class="tfErr" id="tfErr">No fue posible iniciar TaskFlow. Comprueba tu conexión y vuelve a intentarlo.</p><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 
 <script src="./taskflow-microslats.js?v=3-fhd-touch-20261107" defer></script>
+<script id="tfSplashParticleScript" src="./taskflow-splash-particles-v156.js" async></script>
 <script>
 (async function(){
 'use strict';
@@ -65,7 +71,8 @@ const splashFill=document.getElementById('tfSplashFill');
 const splashPct=document.getElementById('tfSplashPercent');
 const splashMeter=document.getElementById('tfSplashMeter');
 const SPLASH_MS=10000;
-const splashStart=performance.now();
+const introController=new AbortController();
+let splashStart=0;
 let splashDone=false,progressRaf=0;
 function showProgress(now){
  if(splashDone||!splash.isConnected)return;
@@ -75,8 +82,33 @@ function showProgress(now){
  if(splashMeter)splashMeter.setAttribute('aria-valuenow',String(value));
  if(value<100)progressRaf=requestAnimationFrame(showProgress);
 }
-progressRaf=requestAnimationFrame(showProgress);
+const particleScript=document.getElementById('tfSplashParticleScript');
+const particleReady=!window.TaskFlowSplashParticles
+ ? new Promise(resolve=>{
+   function finish(){
+     clearTimeout(timeout);
+     particleScript.removeEventListener('load',finish);
+     particleScript.removeEventListener('error',finish);
+     resolve();
+   }
+   const timeout=setTimeout(finish,900);
+   particleScript.addEventListener('load',finish,{once:true});
+   particleScript.addEventListener('error',finish,{once:true});
+ })
+ : Promise.resolve();
+const loadingClock=particleReady
+ .then(()=>window.TaskFlowSplashParticles?.(splash,introController.signal))
+ .catch(()=>{})
+ .then(()=>{
+   if(introController.signal.aborted)return;
+   splashStart=performance.now();
+   splash.dataset.phase='loading';
+   splash.setAttribute('aria-label','Cargando TaskFlow');
+   splashMeter.removeAttribute('aria-hidden');
+   showProgress(splashStart);
+ });
 function endSplash(){
+ introController.abort();
  try{window.TaskFlowMicroSlats&&window.TaskFlowMicroSlats.stop()}catch(_){}
  splashDone=true;
  if(progressRaf)cancelAnimationFrame(progressRaf);
@@ -95,7 +127,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=140-portrait-hero-headers-v155-20261109':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=92-ad-backend-recovery-20261108':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=157-ads-runtime-20261111':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=157-ads-bridge-20261111':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
@@ -122,7 +154,9 @@ try{
  await Promise.all(Array.from({length:Math.min(6,parts.length)},()=>worker()));
  const html=texts.join('');
  if(!html.toLowerCase().includes('<!doctype html>')||!html.includes('TF_T57')||!/<\/html>\s*$/i.test(html))throw new Error('INVALID');
+ await loadingClock;
  await keepSplashExactlyTenSeconds();
+ showProgress(splashStart+SPLASH_MS);
  endSplash();
  document.open();document.write(html);document.close();
 }catch(error){console.warn('TaskFlow: fallo de arranque',error&&error.message||error);endSplash();boot.hidden=false;boot.classList.add('error')}

@@ -39,6 +39,7 @@ jobs:
           const loader=read('taskflow-loader-v102.html');
           const sw=read('taskflow-offline-sw.js');
           const bridge=read('taskflow-ads-bridge.js');
+          const adsRuntime=read('taskflow-ads-runtime-v157.js');
           const parts=['p0.txt','p1.txt','p2.txt',...Array.from({length:14},(_,i)=>'q'+i+'.txt')];
           const payload=parts.map(p=>read('taskflow-v99-deploy/'+p).trim()).join('');
           const length=Number(loader.match(/const expectedLength=(\d+);/)?.[1]);
@@ -65,24 +66,28 @@ jobs:
           }
           const assets=JSON.parse(sw.match(/const APP_FILES=(\[[\s\S]*?\]);/)?.[1]||'[]');
           assert.ok(assets.length>40,'Lista offline incompleta');
+          assert.ok(assets.includes('taskflow-splash-particles-v156.js')&&root.includes('await loadingClock;\n await keepSplashExactlyTenSeconds()'),'La carga de 10 segundos debe empezar después de las partículas y conservarse sin conexión');
           const missing=assets.filter(p=>p!=='./'&&!exists(p.replace(/^\.\//,'')));
           assert.deepEqual(missing,[],'Recursos ausentes del modo offline');
-          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-v58-stability.js','payments/paypal/client.js']){
+          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-ads-runtime-v157.js','taskflow-v58-stability.js','payments/paypal/client.js']){
             assert.ok(assets.includes(asset),'Falta en caché '+asset);
           }
           const live=read('t57/runtime-24.txt');
-          assert.ok(live.includes('img.naturalWidth===WIDTH*2')&&live.includes('v.videoWidth===WIDTH*2'),'Anuncios HD 2x no admitidos');
+          assert.ok(adsRuntime.includes('img.naturalWidth === WIDTH*2')&&adsRuntime.includes('v.videoWidth === WIDTH*2'),'Anuncios HD 2x no admitidos');
           assert.ok(!live.includes("let stamp=Number(get('tf_audio_reset_device_t34'))"),'Reinicio diario confundido con reinicio manual');
           assert.ok(live.includes('taskflow-v58-stability.js'),'Protección diaria no cargada');
-          assert.ok(live.includes('function fixRequestedProgress(panel)')&&live.includes('fixRequestedProgress(panel);'),'Falta corrección de progreso de las tres rutinas');
+          assert.ok(live.includes('function installSharedRoutineLayout()')&&live.includes('tfSharedRoutineLayoutV156')&&live.includes('headExtras:headExtras+routineStyle'),'La vista común de rutinas debe inyectarse en el documento final');
           for(const k of ['tf21-legal','tf32-socrates','tf33-machiavelli'])assert.ok(live.includes(k),'Falta rutina '+k);
+          assert.ok(adsRuntime.includes('const REQUIRED_TAPS = 5;')&&adsRuntime.includes('taskflow_interaction_ad_count_v57'),'Los clics publicitarios deben acumularse en grupos de cinco');
+          assert.ok(!adsRuntime.includes('taskflow_entry_ad_completed_session')&&read('t57/runtime-19.txt').includes('taskflow-ads-runtime-v157.js'),'El anuncio de ingreso debe activarse en cada apertura');
+          for (const id of ['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter','tfAdBannerRoutine','tfAdBannerMenu','tfAdBannerHabits','tfAdBannerTasks']) assert.ok(adsRuntime.includes(id),'Falta espacio publicitario '+id);
           const startChunks=['00','01','02'].map(id=>read('t57/runtime-'+id+'.txt')).join('');
           assert.ok(!startChunks.includes('aria-label="Cargando TaskFlow"')&&!startChunks.includes('Preparando TaskFlow…'),'Se reintrodujo la pantalla de carga antigua');
           assert.ok(!startChunks.includes('filter:blur(24px) brightness(.46)')&&startChunks.includes('#boot.error'),'Recursos pesados de splash o recuperación ausente');
           assert.ok(root.includes('63-no-splash-assets-20261106'),'El cargador referencia fragmentos antiguos');
           assert.ok(bridge.includes('mediaWidth:width')&&bridge.includes('function queueBanner(slot)'),'Falta preferencia HD y carga diferida');
-          assert.ok(live.includes('.tf56-entry-continue.tf56-ready')&&live.includes("b.classList.toggle('tf56-ready',ready)"),'El botón Continuar no cambia a estilo brillante');
-          assert.ok(live.includes("v.preload='auto'")&&live.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
+          assert.ok(adsRuntime.includes('.tf56-entry-continue.tf56-ready')&&adsRuntime.includes("b.classList.toggle('tf56-ready',ready)"),'El botón Continuar no cambia a estilo brillante');
+          assert.ok(adsRuntime.includes("v.preload='auto'")&&adsRuntime.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
 
           assert.ok(root.includes('Math.min(6,parts.length)')&&root.includes('AbortController'),'Cargador T57 sin límite de concurrencia');
           assert.ok(root.includes("p==='t57/runtime-06.txt'"),'Falta versión de autenticación segura');
