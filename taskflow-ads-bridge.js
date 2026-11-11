@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.4.3
+/* TaskFlow ADS Bridge v3.4.4
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -503,7 +503,7 @@ function validBannerPixels(img){
 function testedBanner(ad){
  return new Promise(resolve=>{
   if(!ad||!ad.src){resolve(null);return}
-  const img=new Image();let finished=false;
+  const img=new Image();let finished=false,decoding=false;
   const timeout=setTimeout(()=>done(null),IMAGE_TIMEOUT_MS);
   function done(result){
    if(finished)return;
@@ -515,7 +515,15 @@ function testedBanner(ad){
   img.alt='';img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
   img.draggable=false;img.style.objectFit='contain';img.style.imageRendering='auto';
   try{img.fetchPriority='high'}catch(_){}
-  const verify=()=>done(validBannerPixels(img)&&img.naturalWidth===ad.mediaWidth&&img.naturalHeight===ad.mediaHeight?img:null);
+  const verify=async()=>{
+   if(finished||decoding)return;
+   if(!validBannerPixels(img)||img.naturalWidth!==ad.mediaWidth||img.naturalHeight!==ad.mediaHeight){done(null);return}
+   decoding=true;
+   try{
+    if(typeof img.decode==='function')await img.decode();
+    done(img);
+   }catch(_){done(null)}
+  };
   img.onload=verify;
   img.onerror=()=>done(null);
   img.src=ad.src;
@@ -597,11 +605,7 @@ function apply() {
   bannerStatus.clear();
   for (const placement of VERTICAL_PLACEMENTS) {
    const api = verticalApi(placement);
-   const button = document.getElementById(placement === 'entry' ? 'tf56EntryContinue' : 'tf57TouchClose');
-   if (button && api.isRunning()) {
-    button.disabled = false;
-    api.close();
-   }
+   if (!config.enabled || paidNoAds() || api.isSponsored?.()) api.close(true);
    api.setCreative(null);
    activeVerticalAds[placement] = null;
   }
@@ -615,6 +619,7 @@ function apply() {
   const ad = selectedCreatives(placement, placement, verticalFailures)[0];
   const accepted = api.setCreative(ad ? {
    type: ad.type, src: ad.src, destination: trackedDestination(ad), ctaLabel: ad.ctaLabel, sound: ad.sound,
+   mediaWidth: ad.mediaWidth, mediaHeight: ad.mediaHeight,
   } : null);
   activeVerticalAds[placement] = accepted ? ad : null;
   if (accepted) document.dispatchEvent(new Event('taskflow:' + placement + '-ad-creative-ready'));
@@ -643,7 +648,11 @@ function observeSlots(){
 
 function finishVertical(placement, rejectedSrc) {
  const ad = activeVerticalAds[placement];
- if (!ad || (rejectedSrc && ad.src !== rejectedSrc)) return;
+ if (!ad) {
+  if (!rejectedSrc && placement === 'interaction' && adsPermitted()) void refreshRecommendations();
+  return;
+ }
+ if (rejectedSrc && ad.src !== rejectedSrc) return;
  activeVerticalAds[placement] = null;
  verticalApi(placement)?.setCreative(null);
  completedSelections.add(ad.selectionToken);
@@ -710,7 +719,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.4.3',
+ version:'3.4.4',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;

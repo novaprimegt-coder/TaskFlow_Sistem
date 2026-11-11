@@ -84,143 +84,269 @@ const BANNER_CSS = `
 }
 `;
 const PROMO_CSS = `
-.tf50-ad-slot.tf158-has-promo::before { content:'ESPACIO PUBLICITARIO'; }
+.tf50-ad-slot.tf158-has-promo::before {content:'ESPACIO PUBLICITARIO';}
 .tf50-ad-slot > a.tf158-promo,
-:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo {
+.tf159-ad-stage > a.tf158-promo {
   display:grid !important;
-  color:#ecffff !important;
-  border:1px solid #4ba8cd !important;
+  isolation:isolate;
+  position:relative;
+  overflow:hidden;
+  color:#f2fcff !important;
+  border:1px solid #58adc9 !important;
   border-radius:inherit;
-  background:radial-gradient(ellipse at 11% 30%,#0e749382,transparent 62%),linear-gradient(112deg,#0b2744,#21184c 93%) !important;
+  background:
+    radial-gradient(ellipse at 92% 4%,#49387e 0,transparent 51%),
+    radial-gradient(ellipse at 6% 21%,#11566b,transparent 55%),
+    linear-gradient(135deg,#0b263e 12%,#10243e 56%,#1c1840);
   text-decoration:none !important;
   box-sizing:border-box;
 }
 .tf50-ad-slot > .tf158-promo {
   grid-template-columns:auto minmax(0,1fr) auto;
   align-items:center;
-  gap:clamp(5px,1.5vw,12px);
+  gap:clamp(6px,1.7vw,14px);
   padding:0 clamp(7px,2vw,19px) !important;
   container-type:inline-size;
 }
 .tf158-promo .tf158-promo-icon {
-  width:24px;
-  height:24px;
   display:grid;
   place-items:center;
-  color:#78fbf7;
+  width:27px;
+  height:27px;
   border-radius:8px;
-  background:#123e5c;
-  border:1px solid #4188a4;
+  color:#80fff6;
+  background:linear-gradient(135deg,#195670,#182d52);
+  box-shadow:inset 0 0 0 1px #62cfd767;
 }
-.tf158-promo .tf158-promo-icon svg {display:block;width:62%;height:62%}
-.tf158-promo .tf158-promo-copy {min-width:0;display:grid;gap:2px}
-.tf158-promo .tf158-promo-copy strong {color:#f2fbff;font:800 clamp(11px,3.5cqw,17px)/1.12 system-ui,sans-serif}
-.tf158-promo .tf158-promo-copy small {color:#b9d8ef;font:600 clamp(8px,2.6cqw,11px)/1.12 system-ui,sans-serif}
-.tf158-promo .tf158-promo-action {
+.tf158-promo .tf158-promo-icon svg {display:block;width:68%;height:68%;}
+.tf158-promo-copy {display:grid;gap:2px;min-width:0;}
+.tf158-promo-copy strong {color:#f2fcff;font:850 clamp(10px,3.4cqw,17px)/1.13 system-ui,sans-serif;}
+.tf158-promo-copy small {color:#cae2f1;font:650 clamp(8px,2.5cqw,11px)/1.2 system-ui,sans-serif;}
+.tf158-promo-action {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  gap:4px;
-  color:#cafffb;
-  border:1px solid #57b7cb;
-  border-radius:999px;
-  background:#123652;
+  gap:5px;
   padding:4px 7px;
-  font:750 clamp(9px,2.7cqw,12px)/1.15 system-ui,sans-serif;
+  color:#09223b;
+  background:linear-gradient(110deg,#81fff0,#b8cdff);
+  border:1px solid #bcfff1;
+  border-radius:999px;
+  font:800 clamp(8px,2.7cqw,12px)/1.15 system-ui,sans-serif;
   white-space:nowrap;
 }
-.tf158-promo-action svg {display:block;width:1em;height:1em;flex:none}
-:is(#tfEntryAdV56,#tfInteractionAdV57):focus {outline:none}
-:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo {
-  position:relative;
-  isolation:isolate;
-  overflow:hidden;
-  align-content:center;
-  justify-items:center;
-  gap:clamp(10px,4dvh,30px);
-  padding:clamp(10px,5vw,32px);
-  text-align:center;
+.tf158-promo-action svg {display:block;width:1em;height:1em;flex:none;}
+.tf159-ad-stage > .tf158-promo {
   width:100%;
   height:100%;
+  align-content:center;
+  justify-items:center;
+  gap:clamp(7px,5.3cqw,28px);
+  padding:clamp(8px,6cqw,30px);
+  text-align:center;
   container-type:inline-size;
 }
-:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo::before {
+.tf159-ad-stage > .tf158-promo::before {
   content:'';
   position:absolute;
-  width:110%;
-  aspect-ratio:1;
-  top:-28%;
-  right:-40%;
+  inset:0;
   z-index:-1;
-  border:1px solid #81ddfd26;
-  border-radius:50%;
-  box-shadow:0 0 0 28px #7b91ea14,0 0 0 56px #806fdb14,0 0 0 84px #48b9ff0b;
-  pointer-events:none;
+  opacity:.5;
+  background:
+    linear-gradient(#a0e5ff15 1px,transparent 1px) 50% 0/31px 31px,
+    linear-gradient(90deg,#a0e5ff15 1px,transparent 1px) 50% 0/31px 31px;
+  mask-image:linear-gradient(#000,transparent 78%);
 }
-:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-icon {width:min(37cqw,88px);height:min(37cqw,88px);border-radius:23%}
-:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy {gap:10px}
-:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy strong {font-size:clamp(14px,9cqw,34px)}
-:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy small {font-size:clamp(9px,5.6cqw,17px)}
-:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-action {padding:7px 13px;font-size:clamp(9px,5.3cqw,14px)}
+.tf159-promo-hero {
+  display:block;
+  width:72%;
+  max-width:225px;
+  height:auto;
+  overflow:visible;
+}
+.tf159-ad-stage .tf158-promo-copy {gap:9px;}
+.tf159-promo-brand {
+  color:#a5fbf9;
+  font:850 clamp(7px,3.3cqw,13px)/1.2 system-ui,sans-serif;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.tf159-ad-stage .tf158-promo-copy strong {
+  font-size:clamp(12px,9.9cqw,43px);
+  letter-spacing:-.025em;
+  text-wrap:balance;
+}
+.tf159-ad-stage .tf158-promo-copy small {
+  font-size:clamp(8px,4.7cqw,16px);
+  line-height:1.36;
+  text-wrap:balance;
+}
+.tf159-ad-stage .tf158-promo-action {
+  padding:clamp(3px,3cqw,10px) clamp(6px,5cqw,20px);
+  font-size:clamp(8px,4.5cqw,15px);
+}
 `;
 const VERTICAL_CSS = `
-#tfEntryAdV56{position:fixed;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:#03050b;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box;overflow:hidden;overscroll-behavior:none}
-#tfEntryAdV56.open{display:flex}
-.tf56-entry-shell{position:relative;width:min(100%,560px);height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;box-sizing:border-box}
-.tf56-entry-label{align-self:flex-start;display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(12,17,29,.78);color:#c7cfde;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
-.tf56-entry-stage{position:relative;flex:1 1 auto;min-height:0;width:auto;max-width:100%;max-height:calc(100dvh - 116px);aspect-ratio:9/16;border-radius:22px;overflow:hidden;background:linear-gradient(160deg,#071526,#111126 55%,#170d28);border:1px solid rgba(82,226,234,.25);box-shadow:0 24px 70px rgba(0,0,0,.58),0 0 34px rgba(51,214,228,.09);display:grid;place-items:center}
-.tf56-entry-stage>a,.tf56-entry-stage>.tf56-entry-media-wrap{display:block;width:100%;height:100%;text-decoration:none;color:inherit}
-.tf56-entry-stage img,.tf56-entry-stage video{display:block;width:100%;height:100%;object-fit:contain;object-position:center center;image-rendering:auto;background:#000;border:0;margin:0;padding:0;filter:none;opacity:1}
-.tf56-entry-footer{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
-.tf56-entry-time{min-width:0}.tf56-entry-time strong{display:block;font-size:12px;line-height:1.2}.tf56-entry-time span{display:block;margin-top:3px;color:#8996aa;font-size:9px;line-height:1.25}
-.tf56-entry-continue{position:relative;isolation:isolate;overflow:hidden;min-width:132px;height:48px;padding:0 19px;border-radius:14px;border:1px solid rgba(98,235,248,.66);background:linear-gradient(105deg,#086e91 0%,#1e72bf 52%,#6b3ee6 100%);color:#fff;font-size:13px;font-weight:950;letter-spacing:.012em;text-shadow:0 1px 2px rgba(0,0,0,.23);transition:background .18s ease,box-shadow .18s ease,transform .18s ease;touch-action:manipulation}
-#tfEntryAdV56 .tf56-entry-continue:not(:disabled){cursor:pointer;background:linear-gradient(112deg,#04fce1 0%,#04bfff 31%,#4c78ff 55%,#9b48ff 80%,#ef3fe9 100%)!important;border:2px solid #dcffff!important;color:#fff!important;font-weight:950;text-shadow:0 1px 3px rgba(4,15,50,.75);box-shadow:0 0 0 2px rgba(4,253,244,.35),0 5px 24px rgba(0,212,255,.56),0 0 36px rgba(187,58,255,.55)!important;opacity:1!important;filter:none!important}
-.tf56-entry-continue:not(:disabled)::before{content:'';position:absolute;inset:0;background:linear-gradient(116deg,transparent 18%,rgba(255,255,255,.28) 49%,transparent 81%);transform:translateX(-115%);animation:tf56ContinueShine 3.5s ease-in-out infinite;pointer-events:none}
-.tf56-entry-continue:not(:disabled):active{transform:scale(.97)}
-.tf56-entry-continue:focus-visible{outline:3px solid #fff;outline-offset:3px}
-.tf56-entry-continue:disabled{opacity:.42;filter:saturate(.55);cursor:not-allowed;box-shadow:none}
-#tfEntryAdV56 .tf56-entry-continue.tf56-ready{background:linear-gradient(112deg,#04fce1,#04bfff 31%,#4c78ff 55%,#9b48ff 80%,#ef3fe9)!important;color:#fff!important;opacity:1!important;border:2px solid #dcffff!important;box-shadow:0 0 0 2px #00fff448,0 5px 24px #00d4ff90,0 0 36px #ba3aff90!important}
-@keyframes tf56ContinueShine{0%,55%{transform:translateX(-115%)}82%,100%{transform:translateX(115%)}}
-@media(prefers-reduced-motion:reduce){.tf56-entry-continue:not(:disabled)::before{animation:none!important}}
-.tf56-entry-progress{grid-column:1/-1;height:5px;border-radius:999px;overflow:hidden;background:#111a2b;border:1px solid rgba(255,255,255,.05)}.tf56-entry-progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,#18e4e9,#477bff 58%,#a642ff);transition:width .08s linear}
-@media(max-width:520px){#tfEntryAdV56{padding-left:8px;padding-right:8px}.tf56-entry-shell{gap:9px}.tf56-entry-stage{max-height:calc(100dvh - 108px);border-radius:19px}.tf56-entry-footer{gap:8px}.tf56-entry-continue{min-width:116px;height:43px;padding:0 14px}}
-
-#tfInteractionAdV57{position:fixed;inset:0;z-index:2147483647;display:none;align-items:center;justify-content:center;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom));background:rgba(2,4,10,.965);color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box;overflow:hidden;overscroll-behavior:none}
-#tfInteractionAdV57.open{display:flex}
-.tf57-touch-shell{position:relative;width:min(100%,560px);height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;box-sizing:border-box}
-.tf57-touch-label{align-self:flex-start;display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(9,14,27,.82);color:#c9d3e4;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
-.tf57-touch-stage{position:relative;flex:1 1 auto;min-height:0;width:auto;max-width:100%;max-height:calc(100dvh - 112px);aspect-ratio:9/16;border-radius:22px;overflow:hidden;background:#05070d;border:1px solid rgba(68,224,230,.28);box-shadow:0 28px 80px rgba(0,0,0,.62),0 0 32px rgba(73,214,236,.08);display:grid;place-items:center}
-.tf57-touch-stage>a{display:block;width:100%;height:100%;text-decoration:none;color:inherit}.tf57-touch-stage img,.tf57-touch-stage video{display:block;width:100%;height:100%;object-fit:contain;object-position:center center;image-rendering:auto;filter:none;opacity:1;background:#000;border:0;margin:0;padding:0}
-.tf57-touch-footer{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center}.tf57-touch-copy strong{display:block;font-size:12px}.tf57-touch-copy span{display:block;margin-top:3px;color:#8996aa;font-size:9px;line-height:1.3}.tf57-touch-close{min-width:120px;height:45px;padding:0 17px;border-radius:14px;border:1px solid rgba(76,231,225,.40);background:linear-gradient(100deg,#087c88,#176c82 48%,#5734ca);color:#fff;font-size:12px;font-weight:950}.tf57-touch-close:disabled{opacity:.38;filter:saturate(.55);cursor:not-allowed}.tf57-touch-progress{grid-column:1/-1;height:5px;border-radius:999px;overflow:hidden;background:#111a2b;border:1px solid rgba(255,255,255,.05)}.tf57-touch-progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,#18e4e9,#477bff 58%,#a642ff);transition:width .08s linear}
-@media(max-width:520px){#tfInteractionAdV57{padding-left:8px;padding-right:8px}.tf57-touch-stage{max-height:calc(100dvh - 106px);border-radius:19px}.tf57-touch-close{min-width:112px;height:43px;padding:0 13px}}
-.tf56-entry-stage, .tf57-touch-stage {
-  flex: 0 0 auto;
-  width: min(100%, var(--tf-ad-native-width, 1080px), calc((100vh - var(--tf-ad-controls)) * .5625));
-  width: min(100%, var(--tf-ad-native-width, 1080px), calc((100dvh - var(--tf-ad-controls)) * .5625));
-  max-height: none;
-  box-sizing: border-box;
-  border: 0;
+:is(#tfEntryAdV56,#tfInteractionAdV57) {
+  position:fixed;
+  inset:0;
+  z-index:2147483647;
+  display:none;
+  width:100%;
+  height:100%;
+  max-width:none;
+  max-height:none;
+  margin:0;
+  padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  border:0;
+  overflow:hidden;
+  overscroll-behavior:contain;
+  box-sizing:border-box;
+  background:#050c18;
+  color:#eff8ff;
+  font-family:system-ui,sans-serif;
 }
-:is(#tfEntryAdV56,#tfInteractionAdV57) { --tf-ad-controls: 120px; }
-:is(#tfEntryAdV56,#tfInteractionAdV57).tf-ad-has-link { --tf-ad-controls: 178px; }
+:is(#tfEntryAdV56,#tfInteractionAdV57).open {display:grid;place-items:center;}
+:is(#tfEntryAdV56,#tfInteractionAdV57)[hidden] {display:none !important;}
+:is(#tfEntryAdV56,#tfInteractionAdV57)::backdrop {background:#050c18;}
+.tf159-ad-shell {
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  align-items:stretch;
+  gap:8px;
+  width:min(100%,540px);
+  height:100%;
+  min-height:0;
+}
+.tf159-ad-label {
+  justify-self:center;
+  width:max-content;
+  max-width:100%;
+  padding:3px 9px;
+  border:1px solid #416381;
+  border-radius:999px;
+  background:#0d2036;
+  color:#c2e3f5;
+  font:800 9px/1.3 system-ui,sans-serif;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.tf159-ad-viewport {
+  min-width:0;
+  min-height:0;
+  display:grid;
+  place-items:center;
+  container-type:size;
+}
+.tf159-ad-stage {
+  position:relative;
+  display:grid;
+  place-items:center;
+  width:min(100%,var(--tf-ad-native-width,1080px),max(24px,calc(56.25vh - 88px)));
+  width:min(100%,var(--tf-ad-native-width,1080px),56.25cqh);
+  min-width:0;
+  aspect-ratio:9/16;
+  background:#071324;
+  box-shadow:0 0 0 1px #527a9b9c;
+}
+.tf159-ad-promo .tf159-ad-stage {border-radius:18px;box-shadow:none;}
+.tf159-ad-stage > a,
+.tf159-ad-stage :is(img,video) {
+  display:block;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  object-fit:contain;
+  object-position:center;
+  image-rendering:auto;
+  filter:none !important;
+  opacity:1 !important;
+  border:0;
+  margin:0;
+  padding:0;
+}
+.tf159-ad-footer {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(132px,auto);
+  align-items:center;
+  gap:7px 10px;
+}
+.tf159-ad-timer {
+  grid-area:1 / 1;
+  min-width:0;
+  display:grid;
+  gap:7px;
+}
+.tf159-ad-timer[hidden],.tf-ad-goal-link[hidden] {display:none !important;}
+.tf159-ad-timer strong {color:#d4e8fa;font:750 12px/1.25 system-ui,sans-serif;}
+.tf159-ad-progress {
+  height:5px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#253950;
+}
+.tf159-ad-progress > i {
+  display:block;
+  width:0;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(95deg,#6af8ee,#8fa0ff);
+}
 .tf-ad-goal-link {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 43px;
-  padding: 8px 13px;
-  box-sizing: border-box;
-  border: 1px solid #46a2f58a;
-  border-radius: 11px;
-  background: #1857a23d;
-  color: #f5faff;
-  text-decoration: none;
-  font: 800 12px system-ui, sans-serif;
-  text-align: center;
-  overflow-wrap: anywhere;
+  grid-area:2 / 1 / auto / -1;
+  display:grid;
+  place-items:center;
+  min-height:40px;
+  padding:6px 10px;
+  box-sizing:border-box;
+  border:1px solid #578ab2;
+  border-radius:10px;
+  background:#122943;
+  color:#d9f3ff;
+  text-decoration:none;
+  font:750 12px/1.25 system-ui,sans-serif;
+  text-align:center;
+  overflow-wrap:anywhere;
 }
-.tf-ad-goal-link[hidden] { display: none; }
+:is(#tfEntryAdV56,#tfInteractionAdV57) .tf159-ad-continue {
+  grid-area:1 / 2;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-width:0;
+  min-height:51px;
+  padding:9px 14px;
+  border:1px solid #bafbf8;
+  border-radius:13px;
+  background:linear-gradient(112deg,#69ffec,#9adaff 65%,#c8b2ff);
+  color:#07192e;
+  font:900 clamp(14px,4vw,18px)/1.2 system-ui,sans-serif;
+  box-shadow:0 3px 16px #60e5f54a,inset 0 1px #f0fffed1;
+  touch-action:manipulation;
+  cursor:pointer;
+}
+.tf159-ad-continue > svg {width:18px;height:18px;flex:none;}
+:is(#tfEntryAdV56,#tfInteractionAdV57) .tf159-ad-continue:disabled {
+  color:#d5e8f7;
+  border-color:#587a9a;
+  background:#1a344e;
+  box-shadow:none;
+  cursor:default;
+}
+:is(#tfEntryAdV56,#tfInteractionAdV57).tf159-ad-promo .tf159-ad-continue {grid-column:1/-1;}
+:is(#tfEntryAdV56,#tfInteractionAdV57) :is(.tf159-ad-continue,.tf-ad-goal-link):focus-visible {
+  outline:2px solid #f0ffff;
+  outline-offset:-3px;
+}
+@media (max-height:455px) {
+  .tf159-ad-shell {gap:5px;}
+  :is(#tfEntryAdV56,#tfInteractionAdV57) .tf159-ad-continue {min-height:44px;}
+  .tf159-ad-stage > .tf158-promo {gap:4px;padding:3px;}
+  .tf159-promo-hero {width:62%;}
+  .tf159-ad-stage .tf158-promo-copy {gap:3px;}
+}
 `;
 
 function addStyle(id, css) {
@@ -233,17 +359,38 @@ function addStyle(id, css) {
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
 const nativeWidth = width => width / Math.max(1, window.devicePixelRatio || 1) + 'px';
 
+const PROMO_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M9 5h10v10"/></svg>';
+const PROMO_BANNER_ICON = `<span class="tf158-promo-icon" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 17v-4m5 4V9m5 8v-6m5 6V6M4 9l5-4 4 2 7-5m-5 0h5v5"/></svg>
+</span>`;
+const PROMO_HERO = `<svg class="tf159-promo-hero" viewBox="0 0 220 172" fill="none" aria-hidden="true">
+  <ellipse cx="111" cy="91" rx="101" ry="49" transform="rotate(-22 111 91)" stroke="#77f8f5" stroke-opacity=".23" stroke-width="1.3"/>
+  <ellipse cx="112" cy="89" rx="104" ry="51" transform="rotate(27 112 89)" stroke="#b3a3ff" stroke-opacity=".26" stroke-width="1.3"/>
+  <rect x="38" y="29" width="147" height="117" rx="23" fill="#0c1e37" stroke="#77b2e4" stroke-width="1.8"/>
+  <path d="M60 121h105M60 100h105M60 79h105M60 58h105" stroke="#86b9dd" stroke-opacity=".23"/>
+  <rect x="66" y="95" width="14" height="26" rx="4" fill="#4db4da"/>
+  <rect x="88" y="83" width="14" height="38" rx="4" fill="#63dbe4"/>
+  <rect x="110" y="88" width="14" height="33" rx="4" fill="#7ed7ff"/>
+  <rect x="132" y="71" width="14" height="50" rx="4" fill="#9abaff"/>
+  <rect x="154" y="54" width="14" height="67" rx="4" fill="#b7a5ff"/>
+  <path d="m65 83 24-17 21 6 42-29m-16 1 18-3-4 15" stroke="#b2fff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 52v14m-7-7h14M196 106v14m-7-7h14" stroke="#93fff2" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="186" cy="41" r="5" fill="#beabff"/>
+  <circle cx="33" cy="131" r="4" fill="#75f2ed"/>
+</svg>`;
+
 function promoLink(placement) {
   const banner = placement === 'banner';
   const link = sponsorLink(ADS_MANAGER_URL, 'Publicar un anuncio en TaskFlow ADS');
   link.className = 'tf158-promo';
   link.rel = 'noopener noreferrer';
-  link.innerHTML = `<span class="tf158-promo-icon" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 13-5v14L3 14v-4Zm3 5 2 5h3l-2-4m10-6 3-2m-3 6 3 2"/></svg>
-    </span><span class="tf158-promo-copy"><strong>${banner ? 'Anuncia aquí' : 'Anuncia tu marca'}</strong>
-    <small>${banner ? 'TaskFlow ADS' : 'Crea tu campaña en TaskFlow ADS.'}</small></span>
-    <span class="tf158-promo-action">${banner ? 'Publicar' : 'Crear campaña'}
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M9 5h10v10"/></svg></span>`;
+  link.innerHTML = `${banner ? PROMO_BANNER_ICON : PROMO_HERO}
+    <span class="tf158-promo-copy">
+      ${banner ? '' : '<span class="tf159-promo-brand">TaskFlow ADS</span>'}
+      <strong>${banner ? 'Anuncia en TaskFlow' : 'Anuncia tu marca'}</strong>
+      <small>${banner ? 'Crea tu campaña' : 'Publica y administra tus anuncios desde TaskFlow ADS.'}</small>
+    </span>
+    <span class="tf158-promo-action">${banner ? 'Publicar' : 'Crear campaña'}${PROMO_ARROW}</span>`;
   return link;
 }
 
@@ -387,20 +534,38 @@ function loadMedia(creative) {
     node.draggable = false;
   }
   return new Promise(resolve => {
+    let finished = false;
     const timeout = setTimeout(failed, 16000);
     function finish(valid) {
+      if (finished) return;
+      finished = true;
       clearTimeout(timeout);
       node.removeEventListener(readyEvent, ready);
       node.removeEventListener('error', failed);
       if (!valid) disposeMedia(node);
       resolve(valid ? node : null);
     }
-    function ready() { finish(video ? exactVideo(node) : exactImage(node)); }
+    async function ready() {
+      const width = video ? node.videoWidth : node.naturalWidth;
+      const height = video ? node.videoHeight : node.naturalHeight;
+      if (!(video ? exactVideo(node) : exactImage(node)) ||
+          (creative.mediaWidth && width !== creative.mediaWidth) ||
+          (creative.mediaHeight && height !== creative.mediaHeight)) {
+        finish(false);
+        return;
+      }
+      try {
+        if (!video && typeof node.decode === 'function') await node.decode();
+        finish(true);
+      } catch (_) {
+        finish(false);
+      }
+    }
     function failed() { finish(false); }
     node.addEventListener(readyEvent, ready);
     node.addEventListener('error', failed);
     node.src = creative.src;
-    if (!video && node.complete) ready();
+    if (!video && node.complete) queueMicrotask(ready);
   });
 }
 
@@ -436,15 +601,15 @@ function sponsorLink(url, label) {
 
 const permissionsOpen = () => Boolean(document.querySelector('#tfPermissionGateT52:not([hidden])'));
 
-function createVerticalAd(options) {
-  const {placement, id, prefix, part, action, text, readyText, subtitle} = options;
+function createVerticalAd({placement, id, part}) {
   let creative = null;
-  let root, stage, button, timeLabel, progress, destination;
+  let root, stage, button, timeLabel, progress, destination, timerBox, label;
   let media = null;
   let starting = false;
-  let frame = 0;
+  let timer = 0;
   let elapsed = 0;
   let lastTick = 0;
+  let clockActive = false;
   let reportedVisible = false;
   let showingPromo = false;
   let previousOverflow = '';
@@ -452,61 +617,78 @@ function createVerticalAd(options) {
 
   function build() {
     if (root) return;
-    root = document.createElement('div');
+    root = document.createElement('dialog');
     root.id = id;
     root.hidden = true;
-    root.tabIndex = -1;
-    root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.setAttribute('aria-label', placement === 'entry' ? 'Publicidad de ingreso' : 'Publicidad por interacción');
-    root.innerHTML = `<section class="${prefix}-shell">
-      <div class="${prefix}-label">Publicidad</div>
-      <div class="${prefix}-stage" id="${part}Stage"></div>
-      <div class="${prefix}-footer">
-        <div class="${prefix}-${placement === 'entry' ? 'time' : 'copy'}">
-          <strong id="${part}Countdown"></strong><span>${subtitle}</span>
+    root.innerHTML = `<section class="tf159-ad-shell">
+      <div class="tf159-ad-label" tabindex="-1">Publicidad</div>
+      <div class="tf159-ad-viewport"><div class="tf159-ad-stage" id="${part}Stage"></div></div>
+      <footer class="tf159-ad-footer">
+        <div class="tf159-ad-timer">
+          <strong id="${part}Countdown"></strong>
+          <div class="tf159-ad-progress" aria-hidden="true"><i id="${part}Progress"></i></div>
         </div>
-        <button id="${part}${placement === 'entry' ? 'Continue' : 'Close'}" class="${prefix}-${placement === 'entry' ? 'continue' : 'close'}" type="button" disabled>${action}</button>
-        <div class="${prefix}-progress"><i id="${part}Progress"></i></div>
-      </div>
+        <button id="${part}${placement === 'entry' ? 'Continue' : 'Close'}" class="tf159-ad-continue" type="button">
+          Continuar
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
+        </button>
+      </footer>
     </section>`;
     stage = root.querySelector('#' + part + 'Stage');
     button = root.querySelector('button');
     timeLabel = root.querySelector('#' + part + 'Countdown');
     progress = root.querySelector('#' + part + 'Progress');
+    timerBox = root.querySelector('.tf159-ad-timer');
+    label = root.querySelector('.tf159-ad-label');
     destination = sponsorLink('#', 'Abrir anuncio');
     destination.removeAttribute('href');
     destination.className = 'tf-ad-goal-link';
     destination.hidden = true;
     button.after(destination);
-    button.addEventListener('click', close);
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      close();
+    });
+    root.addEventListener('cancel', event => {
+      event.preventDefault();
+      close();
+    });
+    root.addEventListener('close', () => {
+      if (!root.open && media) close(true);
+    });
     document.body.append(root);
   }
 
   function updateClock() {
-    const ready = elapsed >= HOLD_MS;
-    const caption = ready ? readyText : text + Math.ceil((HOLD_MS - elapsed) / 1000) + ' s';
+    const ready = showingPromo || elapsed >= HOLD_MS;
+    button.disabled = !ready;
+    timerBox.hidden = showingPromo;
+    const caption = ready ? 'Ya puedes continuar' : 'Podrás continuar en ' + Math.ceil((HOLD_MS - elapsed) / 1000) + ' s';
     if (timeLabel.textContent !== caption) timeLabel.textContent = caption;
     progress.style.width = Math.min(100, elapsed * 100 / HOLD_MS) + '%';
-    const b = button;
-    if (b.disabled === ready) {
-      b.disabled = !ready;
-      if (placement === 'entry') b.classList.toggle('tf56-ready',ready);
-    }
   }
 
-  function tick(now) {
-    if (!media) return;
-    if (!document.hidden && !document.documentElement.classList.contains('tf-paypal-noads-checking')) {
-      if (reportedVisible) elapsed += Math.max(0, now - lastTick);
-      else {
-        reportedVisible = true;
-        if (!showingPromo) document.dispatchEvent(new CustomEvent('taskflow:ads-media-visible', {detail: {placement}}));
-      }
-    }
+  function advanceClock() {
+    clearTimeout(timer);
+    if (!media || showingPromo) return;
+    const now = performance.now();
+    const visible = !document.hidden && !document.documentElement.classList.contains('tf-paypal-noads-checking');
+    if (clockActive) elapsed += Math.max(0, now - lastTick);
+    clockActive = visible;
     lastTick = now;
+    if (visible && !reportedVisible) {
+      reportedVisible = true;
+      document.dispatchEvent(new CustomEvent('taskflow:ads-media-visible', {detail: {placement}}));
+    }
     updateClock();
-    if (elapsed < HOLD_MS) frame = requestAnimationFrame(tick);
+    if (elapsed < HOLD_MS && !document.hidden) timer = setTimeout(advanceClock, Math.min(120, HOLD_MS - elapsed));
+  }
+
+  function fitMedia() {
+    if (!media || showingPromo) return;
+    stage.style.setProperty('--tf-ad-native-width', nativeWidth(media.videoWidth || media.naturalWidth));
   }
 
   function showMedia(node, selected) {
@@ -514,30 +696,32 @@ function createVerticalAd(options) {
     showingPromo = Boolean(selected.promo);
     const url = selected.destination;
     const link = url && sponsorLink(url, selected.ctaLabel);
-    root.querySelector('.' + prefix + '-label').textContent = showingPromo ? 'Espacio publicitario' : 'Publicidad';
+    label.textContent = showingPromo ? 'Espacio publicitario' : 'Publicidad';
     if (link) link.append(node);
     destination.hidden = !url;
     if (url) destination.href = url;
     else destination.removeAttribute('href');
     destination.textContent = selected.ctaLabel;
     destination.setAttribute('aria-label', selected.ctaLabel);
-    root.classList.toggle('tf-ad-has-link', Boolean(url));
-    if (showingPromo) stage.style.removeProperty('--tf-ad-native-width');
-    else stage.style.setProperty('--tf-ad-native-width', nativeWidth(node.videoWidth || node.naturalWidth));
+    root.classList.toggle('tf159-ad-promo', showingPromo);
     stage.replaceChildren(link || node);
     media = node;
+    stage.style.removeProperty('--tf-ad-native-width');
+    fitMedia();
     previousFocus = document.activeElement;
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     elapsed = 0;
+    clockActive = false;
     reportedVisible = false;
     updateClock();
     root.hidden = false;
     root.classList.add('open');
-    root.focus({preventScroll: true});
-    lastTick = performance.now();
-    frame = requestAnimationFrame(tick);
+    if (typeof root.showModal === 'function') root.showModal();
+    else root.setAttribute('open', '');
+    (button.disabled ? label : button).focus({preventScroll: true});
     if (node instanceof HTMLVideoElement) playAdVideo(node, selected);
+    advanceClock();
   }
 
   async function start(canStart) {
@@ -556,15 +740,15 @@ function createVerticalAd(options) {
         return true;
       }
       const node = await loadMedia(selected);
+      if (creative !== selected || !canStart()) {
+        disposeMedia(node);
+        return false;
+      }
       if (!node) {
-        if (creative === selected) creative = null;
+        creative = null;
         document.dispatchEvent(new CustomEvent('taskflow:ad-media-rejected', {
           detail: {placement, src: selected.src},
         }));
-        return false;
-      }
-      if (creative !== selected || !canStart()) {
-        disposeMedia(node);
         return false;
       }
       showMedia(node, selected);
@@ -574,16 +758,21 @@ function createVerticalAd(options) {
     }
   }
 
-  function close() {
-    if (!media || button.disabled) return false;
-    cancelAnimationFrame(frame);
-    disposeMedia(media);
+  function close(force = false) {
+    if (!media || (button.disabled && force !== true)) return false;
+    const node = media;
     media = null;
+    clearTimeout(timer);
+    clockActive = false;
+    disposeMedia(node);
     stage.replaceChildren();
     root.classList.remove('open');
+    if (typeof root.close === 'function' && root.open) root.close();
+    else root.removeAttribute('open');
     root.hidden = true;
     document.body.style.overflow = previousOverflow;
     if (previousFocus?.isConnected) previousFocus.focus?.({preventScroll: true});
+    previousFocus = null;
     document.dispatchEvent(new Event('taskflow:' + placement + '-ad-complete'));
     return true;
   }
@@ -593,28 +782,23 @@ function createVerticalAd(options) {
     const src = adUrl(input?.src);
     creative = ['image', 'gif', 'video'].includes(type) && src ? {
       type, src, destination: adUrl(input.destination, true),
+      mediaWidth: Number(input.mediaWidth) || 0, mediaHeight: Number(input.mediaHeight) || 0,
       ctaLabel: String(input.ctaLabel || 'Conocer más').slice(0, 42), sound: type === 'video' && input.sound === true,
     } : null;
     return Boolean(creative);
   }
 
-  document.addEventListener('visibilitychange', () => { lastTick = performance.now(); });
+  document.addEventListener('visibilitychange', advanceClock);
+  window.addEventListener('resize', fitMedia, {passive: true});
   return {
     start, close, setCreative, isRunning: () => starting || Boolean(media),
-    isOpen: () => Boolean(media), getCreative: () => creative && {...creative},
+    isOpen: () => Boolean(media), isSponsored: () => Boolean(media && !showingPromo),
+    getCreative: () => creative && {...creative},
   };
 }
 
-const entry = createVerticalAd({
-  placement: 'entry', id: 'tfEntryAdV56', prefix: 'tf56-entry', part: 'tf56Entry',
-  action: 'Continuar', text: 'Podrás continuar en ', readyText: 'Ya puedes continuar',
-  subtitle: 'Este anuncio se muestra al ingresar a TaskFlow.',
-});
-const interaction = createVerticalAd({
-  placement: 'interaction', id: 'tfInteractionAdV57', prefix: 'tf57-touch', part: 'tf57Touch',
-  action: 'Cerrar', text: 'Podrás cerrar en ', readyText: 'Ya puedes cerrar el anuncio',
-  subtitle: 'Publicidad mostrada después de ' + REQUIRED_TAPS + ' clics.',
-});
+const entry = createVerticalAd({placement: 'entry', id: 'tfEntryAdV56', part: 'tf56Entry'});
+const interaction = createVerticalAd({placement: 'interaction', id: 'tfInteractionAdV57', part: 'tf57Touch'});
 const adSpec = {
   width: WIDTH, height: HEIGHT, hdWidth: WIDTH * 2, hdHeight: HEIGHT * 2, ratio: '9:16',
   videoDurationSeconds: HOLD_MS / 1000, videoMaxDurationSeconds: VIDEO_MAX_SECONDS,
@@ -622,7 +806,8 @@ const adSpec = {
 };
 
 let entryShown = false;
-let interacted = false;
+let interactionArmed = false;
+let showTimer = 0;
 let clickCount = 0;
 function readCount() {
   try {
@@ -643,7 +828,7 @@ function setPromoReady(placement, ready) {
   promoTimers.delete(placement);
   if (ready) {
     promoReady.add(placement);
-    queueMicrotask(tryVerticalAds);
+    scheduleVerticalAds();
   } else {
     promoReady.delete(placement);
     promoTimers.set(placement, setTimeout(() => setPromoReady(placement, true), PROMO_WAIT_MS));
@@ -651,65 +836,77 @@ function setPromoReady(placement, ready) {
 }
 
 const available = () => promosEnabled && !document.hidden && !permissionsOpen() && !paidNoAds();
-const canEnter = () => !entryShown && available() && !interaction.isOpen();
+const canPresent = () => available() && !document.documentElement.classList.contains('tf-paypal-noads-checking');
+const choosing = () => window.TaskFlowSelectsV159?.isOpen() ||
+  Boolean(document.querySelector('.tf-icon-picker.open,.tf-icon-sheet.tf-v102-detached-open'));
+const canEnter = () => !entryShown && canPresent() && !choosing() && !interaction.isOpen();
 async function showEntry() {
   if (!await entry.start(canEnter)) return false;
   entryShown = true;
   return true;
 }
 async function showInteraction() {
-  const canShow = () => available() && !entry.isRunning() && (entryShown || !entry.getCreative());
+  const canShow = () => interactionArmed && canPresent() && !choosing() && !entry.isRunning() && entryShown;
   if (readCount() < REQUIRED_TAPS || !await interaction.start(canShow)) return false;
+  interactionArmed = false;
   setCount(Math.max(0, readCount() - REQUIRED_TAPS));
   return true;
 }
-function tryVerticalAds() {
-  if (!entryShown) {
-    if (entry.getCreative() || promoReady.has('entry')) void showEntry();
-  } else if (interacted) void showInteraction();
+function scheduleVerticalAds() {
+  if (showTimer) return;
+  // Esperar a que termine la acción del toque antes de presentar el diálogo.
+  showTimer = setTimeout(() => {
+    showTimer = 0;
+    if (!entryShown) {
+      if (entry.getCreative() || promoReady.has('entry')) void showEntry();
+    } else if (interactionArmed) void showInteraction();
+  }, 0);
 }
 
 window.TaskFlowEntryAdV56 = {
   spec: Object.freeze({...adSpec, displaySeconds: HOLD_MS / 1000, imageFormats: ['jpg','jpeg','png','webp','gif']}),
   setCreative: entry.setCreative, show: showEntry, close: entry.close,
-  getCreative: entry.getCreative, isRunning: entry.isRunning, hasShown: () => entryShown,
+  getCreative: entry.getCreative, isRunning: entry.isRunning, isSponsored: entry.isSponsored, hasShown: () => entryShown,
 };
 window.TaskFlowInteractionAdV57 = {
   spec: Object.freeze({...adSpec, requiredInteractions: REQUIRED_TAPS, minimumDisplaySeconds: HOLD_MS / 1000,
     imageFormats: ['jpg','jpeg','png','webp'], gifFormat: 'gif'}),
   setCreative: interaction.setCreative, show: showInteraction, close: interaction.close,
-  getCreative: interaction.getCreative, isRunning: interaction.isRunning,
+  getCreative: interaction.getCreative, isRunning: interaction.isRunning, isSponsored: interaction.isSponsored,
   getCount: readCount, resetCount: () => setCount(0),
 };
 
 document.addEventListener('click', event => {
   if (!event.isTrusted || event.detail < 1 || !available() || entry.isOpen() || interaction.isOpen() ||
       event.target.closest?.('#tfPermissionGateT52,#tfEntryAdV56,#tfInteractionAdV57,.tf50-ad-slot')) return;
-  interacted = true;
+  interactionArmed = !event.target.closest?.('select,input:is([type="file"],[type="date"],[type="time"],[type="color"],[type="datetime-local"],[type="month"],[type="week"]),.date-field-premium,#tfProfilePhotoChange');
   setCount(readCount() + 1);
   document.dispatchEvent(new CustomEvent('taskflow:ad-interaction-count', {
     detail: {count: clickCount, required: REQUIRED_TAPS},
   }));
-  tryVerticalAds();
+  scheduleVerticalAds();
 }, true);
 
 for (const name of ['permissions-ready', 'entry-ad-creative-ready', 'interaction-ad-creative-ready',
-    'entry-ad-complete', 'interaction-ad-complete', 'ad-media-rejected']) {
-  document.addEventListener('taskflow:' + name, () => queueMicrotask(tryVerticalAds));
+    'entry-ad-complete', 'ad-media-rejected', 'picker-settled']) {
+  document.addEventListener('taskflow:' + name, scheduleVerticalAds);
 }
-document.addEventListener('visibilitychange', tryVerticalAds);
+document.addEventListener('visibilitychange', scheduleVerticalAds);
+new MutationObserver(scheduleVerticalAds).observe(document.documentElement, {
+  attributes: true, attributeFilter: ['class'],
+});
 window.addEventListener('pageshow', event => {
   if (event.persisted && !entry.isOpen()) {
     entryShown = false;
     setPromoReady('entry', false);
     document.dispatchEvent(new Event('taskflow:entry-ad-reentered'));
   }
-  tryVerticalAds();
+  scheduleVerticalAds();
 }, {passive: true});
 
 addStyle('tfAdSlotsT50Style', BANNER_CSS);
-addStyle('tfAdsPromoV158Style', PROMO_CSS);
-addStyle('tfVerticalAdsV157Style', VERTICAL_CSS);
+addStyle('tfAdsPromoV159Style', PROMO_CSS);
+addStyle('tfVerticalAdsV159Style', VERTICAL_CSS);
 for (const placement of ['entry', 'interaction']) setPromoReady(placement, false);
 mountBanners();
 const layout = new MutationObserver(queueMount);

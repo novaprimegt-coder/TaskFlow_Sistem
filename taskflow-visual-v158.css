@@ -348,7 +348,7 @@ html body .tf158-icon-catalog .tf-icon-catalog-head { padding: 0 0 3px !importan
 html body .tf158-icon-catalog .tf-icon-catalog-title strong {color:#f2f8ff !important;font-size:clamp(17px,4vw,24px) !important;}
 html body .tf158-icon-catalog .tf-icon-catalog-title span {color:#b8d2ee !important;font-size:11px !important;}
 html body .tf158-icon-catalog .tf-icon-catalog-close {display:grid !important;place-items:center;color:#f1f7ff !important;min-width:40px;min-height:40px;background:#233b5f !important;}
-html body .tf158-icon-catalog :is(.tf-icon-search,.tf158-icon-category) {
+html body .tf158-icon-catalog .tf-icon-search {
   width: 100% !important;
   height: 43px !important;
   box-sizing: border-box;
@@ -453,4 +453,121 @@ html body .tf158-icon-catalog .tf-icon-option > span {
 }
 @media (prefers-reduced-motion: reduce) {
   .tf158-streak-meter > i { transition: none; }
+}
+
+/* Selectores del catálogo y de los formularios. */
+select.tf159-select-source {display:none !important;}
+.tf159-picker {
+  --tf159-cyan:#7cefee;
+  position:relative;
+  min-width:0;
+  width:100%;
+}
+.tf159-picker[hidden],
+.tf159-picker-menu[hidden],
+.tf159-picker-mark[hidden] {display:none !important;}
+html body .tf159-picker .tf159-picker-toggle {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-height:47px;
+  padding:7px 11px;
+  border:1px solid #5078a1;
+  border-radius:12px;
+  color:#eaf7ff;
+  background:linear-gradient(112deg,#12314e,#161e3b 89%);
+  box-shadow:inset 0 1px #b7f4ff17;
+  font:700 14px/1.3 system-ui,sans-serif;
+  text-align:left;
+}
+.tf159-picker-toggle > span:nth-child(2) {
+  flex:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+html body .tf159-picker-toggle[aria-expanded="true"] {
+  border-color:#71e4e5;
+  background:linear-gradient(112deg,#17415d,#25325b);
+}
+.tf159-picker-toggle:disabled {opacity:.64;cursor:default;}
+.tf159-picker-arrow,.tf159-picker-check {
+  flex:0 0 17px;
+  display:grid;
+  place-items:center;
+  color:#a6deef;
+}
+.tf159-picker-arrow > svg,.tf159-picker-check > svg {
+  display:block;
+  width:17px;
+  height:17px;
+}
+.tf159-picker-toggle[aria-expanded="true"] .tf159-picker-arrow {
+  color:#89fff4;
+  transform:rotate(180deg);
+}
+html body .tf159-picker .tf159-picker-menu {
+  position:absolute;
+  z-index:12;
+  inset-inline:0;
+  top:calc(100% + 6px);
+  max-height:var(--tf159-menu-height, min(400px,48vh));
+  box-sizing:border-box;
+  display:grid;
+  grid-auto-rows:minmax(46px,max-content);
+  gap:5px;
+  padding:7px;
+  overflow:auto;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  background:radial-gradient(ellipse at 0 0,#173959,#0d1b32 68%);
+  border:1px solid #648bb8;
+  border-radius:15px;
+  box-shadow:0 16px 35px #030918db,inset 0 1px #dbf5ff24;
+  scrollbar-color:#598fb5 #102540;
+}
+html body .tf159-picker.tf159-picker-above .tf159-picker-menu {
+  top:auto;
+  bottom:calc(100% + 6px);
+}
+html body .tf159-picker .tf159-picker-option {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+  min-height:46px;
+  padding:7px 9px;
+  border:1px solid #345777;
+  border-radius:10px;
+  color:#e6f1ff;
+  background:#132946;
+  font:650 13px/1.24 system-ui,sans-serif;
+  text-align:left;
+}
+.tf159-picker-option-label {flex:1;min-width:0;overflow-wrap:anywhere;}
+html body .tf159-picker .tf159-picker-option[aria-selected="true"] {
+  color:#efffff;
+  background:linear-gradient(125deg,#144764,#2d2d57);
+  border-color:#76dbdf;
+}
+.tf159-picker-option:disabled {opacity:.55;}
+.tf159-picker-option:not([aria-selected="true"]) .tf159-picker-check {visibility:hidden;}
+.tf159-picker-option[aria-selected="true"] .tf159-picker-check {color:#92fff0;}
+.tf159-picker-mark {
+  flex:0 0 31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border:1px solid #3e6586;
+  border-radius:9px;
+  color:var(--tf158-tone,var(--tf159-cyan));
+  background:#0d2038;
+}
+.tf159-picker-mark > svg {width:17px;height:17px;margin:0;}
+html body .tf159-picker :is(.tf159-picker-toggle,.tf159-picker-option):focus-visible {
+  outline:2px solid #82f9ff;
+  outline-offset:-2px;
+}
+@media (min-width:660px) {
+  html body .tf159-category-picker .tf159-picker-menu {grid-template-columns:repeat(2,minmax(0,1fr));}
 }

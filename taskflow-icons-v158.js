@@ -130,22 +130,31 @@ function install(library, groups, renderSvg, nativePicker) {
     title.querySelector('span').textContent = tones.size + ' iconos · ' + groups.length + ' categorías';
     search.setAttribute('aria-label', 'Buscar iconos');
     search.placeholder = 'Buscar un icono';
-    const category = document.createElement('select');
-    category.className = 'tf158-icon-category';
-    category.setAttribute('aria-label', 'Categoría de iconos');
-    for (const group of groups) category.add(new Option(group.title));
-    nav.hidden = true;
-    nav.before(category);
+    const categoryOptions = groups.map((group, index) => ({
+      label: group.title, tone: accents[index], icon: svg(categoryMarks[index]),
+    }));
+    const category = window.TaskFlowSelectsV159?.create({
+      label: 'Categoría de iconos',
+      category: true,
+      onChoose(index) {
+        nav.children[index]?.onclick?.();
+        decorate();
+      },
+    });
+    if (category) {
+      nav.hidden = true;
+      nav.before(category.wrap);
+    }
 
     function decorate() {
-      const index = [...nav.children].findIndex(tab => tab.classList.contains('active'));
-      category.selectedIndex = Math.max(0, index);
+      const index = Math.max(0, [...nav.children].findIndex(tab => tab.classList.contains('active')));
+      category?.setState(categoryOptions, index);
       const heading = sheet.querySelector('.tf-icon-group-title');
       if (heading && !heading.querySelector('svg')) {
         const mark = document.createElement('span');
         mark.className = 'tf158-category-mark';
-        mark.dataset.tone = accents[category.selectedIndex];
-        mark.innerHTML = svg(search.value ? 'target' : categoryMarks[category.selectedIndex]);
+        mark.dataset.tone = accents[index];
+        mark.innerHTML = svg(search.value ? 'target' : categoryMarks[index]);
         heading.prepend(mark);
       }
       for (const option of sheet.querySelectorAll('.tf-icon-option')) {
@@ -154,17 +163,19 @@ function install(library, groups, renderSvg, nativePicker) {
       }
       button.setAttribute('aria-expanded', String(wrap.classList.contains('open')));
     }
-    category.addEventListener('change', () => {
-      nav.children[category.selectedIndex]?.click();
-      decorate();
-    });
     search.addEventListener('input', decorate);
     button.addEventListener('click', () => {
       decorate();
-      if (wrap.classList.contains('open')) category.focus({preventScroll: true});
+      if (wrap.classList.contains('open')) (category?.toggle || close).focus({preventScroll: true});
+      else settleCatalog();
     });
+    function settleCatalog() {
+      category?.close();
+      document.dispatchEvent(new Event('taskflow:picker-settled'));
+    }
     sheet.addEventListener('click', event => {
       if (!event.target.closest('.tf-icon-option,.tf-icon-catalog-close')) return;
+      settleCatalog();
       decorate();
       button.focus({preventScroll: true});
     });
@@ -172,6 +183,7 @@ function install(library, groups, renderSvg, nativePicker) {
       if (event.key !== 'Escape') return;
       event.stopPropagation();
       picker.close();
+      settleCatalog();
       decorate();
       button.focus({preventScroll: true});
     });

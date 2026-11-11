@@ -69,7 +69,7 @@ jobs:
           assert.ok(assets.includes('taskflow-splash-particles-v156.js')&&root.includes('await loadingClock;\n await keepSplashExactlyTenSeconds()'),'La carga de 10 segundos debe empezar después de las partículas y conservarse sin conexión');
           const missing=assets.filter(p=>p!=='./'&&!exists(p.replace(/^\.\//,'')));
           assert.deepEqual(missing,[],'Recursos ausentes del modo offline');
-          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-ads-runtime-v157.js','taskflow-visual-v158.css','taskflow-icons-v158.js','taskflow-v58-stability.js','payments/paypal/client.js']){
+          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-ads-runtime-v157.js','taskflow-visual-v158.css','taskflow-icons-v158.js','taskflow-selects-v159.js','taskflow-v58-stability.js','payments/paypal/client.js']){
             assert.ok(assets.includes(asset),'Falta en caché '+asset);
           }
           const live=read('t57/runtime-24.txt');
@@ -91,7 +91,7 @@ jobs:
           assert.ok(!startChunks.includes('filter:blur(24px) brightness(.46)')&&startChunks.includes('#boot.error'),'Recursos pesados de splash o recuperación ausente');
           assert.ok(root.includes('63-no-splash-assets-20261106'),'El cargador referencia fragmentos antiguos');
           assert.ok(bridge.includes('mediaWidth:width')&&bridge.includes('function queueBanner(slot)'),'Falta preferencia HD y carga diferida');
-          assert.ok(adsRuntime.includes('.tf56-entry-continue.tf56-ready')&&adsRuntime.includes("b.classList.toggle('tf56-ready',ready)"),'El botón Continuar no cambia a estilo brillante');
+          assert.ok(adsRuntime.includes('.tf159-ad-continue')&&adsRuntime.includes('button.disabled = !ready')&&adsRuntime.includes('root.showModal()')&&adsRuntime.includes('root.close()'),'Falta cierre seguro o acción Continuar');
           assert.ok(adsRuntime.includes("v.preload='auto'")&&adsRuntime.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
 
           assert.ok(root.includes('Math.min(6,parts.length)')&&root.includes('AbortController'),'Cargador T57 sin límite de concurrencia');
