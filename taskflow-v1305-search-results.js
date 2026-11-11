@@ -139,6 +139,7 @@ function disableLegacyPrompts(){
   const removeLegacyDialog=node=>{
     if(!(node instanceof Element))return;
     if(node.id==='tfSoundV1304'||node.id==='tfAudioGateV13057')return;
+    if(node.closest('.tf-icon-sheet,.tf-icon-picker'))return;
     const text=fold(node.textContent);
     const welcome=
       text.includes('BIENVENIDO A TASKFLOW')||

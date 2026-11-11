@@ -4,6 +4,10 @@
 
 if (window.TaskFlowAdsV50) return;
 
+const ADS_MANAGER_URL = 'https://novaprimegt-coder.github.io/TaskFlow_ADS_Manager/';
+const PROMO_WAIT_MS = 7500;
+let promosEnabled = true;
+
 const BANNER_PLACEMENTS = [
   ['tfAdBannerTimer', 'Reinicio diario y recompensas', '.wrap > .reset-countdown-card'],
   ['tfAdBannerHabitsTasks', 'Hábitos y tareas', '.wrap > .v27-habit-kpis'],
@@ -32,7 +36,7 @@ const BANNER_CSS = `
   background: #071728 !important;
   isolation: isolate;
 }
-.tf50-ad-slot:not(.tf50-has-ad) { display: none !important; }
+.tf50-ad-slot:not(.tf50-has-ad,.tf158-has-promo) { display: none !important; }
 #sideMenu > .tf50-ad-slot { width: calc(100% - 24px) !important; }
 .tf50-ad-slot::before {
   content: 'PUBLICIDAD';
@@ -78,6 +82,86 @@ const BANNER_CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
 }
+`;
+const PROMO_CSS = `
+.tf50-ad-slot.tf158-has-promo::before { content:'ESPACIO PUBLICITARIO'; }
+.tf50-ad-slot > a.tf158-promo,
+:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo {
+  display:grid !important;
+  color:#ecffff !important;
+  border:1px solid #4ba8cd !important;
+  border-radius:inherit;
+  background:radial-gradient(ellipse at 11% 30%,#0e749382,transparent 62%),linear-gradient(112deg,#0b2744,#21184c 93%) !important;
+  text-decoration:none !important;
+  box-sizing:border-box;
+}
+.tf50-ad-slot > .tf158-promo {
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:clamp(5px,1.5vw,12px);
+  padding:0 clamp(7px,2vw,19px) !important;
+  container-type:inline-size;
+}
+.tf158-promo .tf158-promo-icon {
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  color:#78fbf7;
+  border-radius:8px;
+  background:#123e5c;
+  border:1px solid #4188a4;
+}
+.tf158-promo .tf158-promo-icon svg {display:block;width:62%;height:62%}
+.tf158-promo .tf158-promo-copy {min-width:0;display:grid;gap:2px}
+.tf158-promo .tf158-promo-copy strong {color:#f2fbff;font:800 clamp(11px,3.5cqw,17px)/1.12 system-ui,sans-serif}
+.tf158-promo .tf158-promo-copy small {color:#b9d8ef;font:600 clamp(8px,2.6cqw,11px)/1.12 system-ui,sans-serif}
+.tf158-promo .tf158-promo-action {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  color:#cafffb;
+  border:1px solid #57b7cb;
+  border-radius:999px;
+  background:#123652;
+  padding:4px 7px;
+  font:750 clamp(9px,2.7cqw,12px)/1.15 system-ui,sans-serif;
+  white-space:nowrap;
+}
+.tf158-promo-action svg {display:block;width:1em;height:1em;flex:none}
+:is(#tfEntryAdV56,#tfInteractionAdV57):focus {outline:none}
+:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  align-content:center;
+  justify-items:center;
+  gap:clamp(10px,4dvh,30px);
+  padding:clamp(10px,5vw,32px);
+  text-align:center;
+  width:100%;
+  height:100%;
+  container-type:inline-size;
+}
+:is(#tf56EntryStage,#tf57TouchStage) > a.tf158-promo::before {
+  content:'';
+  position:absolute;
+  width:110%;
+  aspect-ratio:1;
+  top:-28%;
+  right:-40%;
+  z-index:-1;
+  border:1px solid #81ddfd26;
+  border-radius:50%;
+  box-shadow:0 0 0 28px #7b91ea14,0 0 0 56px #806fdb14,0 0 0 84px #48b9ff0b;
+  pointer-events:none;
+}
+:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-icon {width:min(37cqw,88px);height:min(37cqw,88px);border-radius:23%}
+:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy {gap:10px}
+:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy strong {font-size:clamp(14px,9cqw,34px)}
+:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-copy small {font-size:clamp(9px,5.6cqw,17px)}
+:is(#tf56EntryStage,#tf57TouchStage) .tf158-promo-action {padding:7px 13px;font-size:clamp(9px,5.3cqw,14px)}
 `;
 const VERTICAL_CSS = `
 #tfEntryAdV56{position:fixed;inset:0;z-index:2147483646;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:#03050b;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-sizing:border-box;overflow:hidden;overscroll-behavior:none}
@@ -148,6 +232,29 @@ function addStyle(id, css) {
 
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
 const nativeWidth = width => width / Math.max(1, window.devicePixelRatio || 1) + 'px';
+
+function promoLink(placement) {
+  const banner = placement === 'banner';
+  const link = sponsorLink(ADS_MANAGER_URL, 'Publicar un anuncio en TaskFlow ADS');
+  link.className = 'tf158-promo';
+  link.rel = 'noopener noreferrer';
+  link.innerHTML = `<span class="tf158-promo-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 13-5v14L3 14v-4Zm3 5 2 5h3l-2-4m10-6 3-2m-3 6 3 2"/></svg>
+    </span><span class="tf158-promo-copy"><strong>${banner ? 'Anuncia aquí' : 'Anuncia tu marca'}</strong>
+    <small>${banner ? 'TaskFlow ADS' : 'Crea tu campaña en TaskFlow ADS.'}</small></span>
+    <span class="tf158-promo-action">${banner ? 'Publicar' : 'Crear campaña'}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M9 5h10v10"/></svg></span>`;
+  return link;
+}
+
+function renderPromo(slot) {
+  if (slot.classList.contains('tf158-has-promo')) return;
+  slot.classList.remove('tf50-has-ad');
+  slot.style.removeProperty('--tf-ad-native-width');
+  slot.replaceChildren(promoLink('banner'));
+  slot.classList.add('tf158-has-promo');
+}
+
 function createBanner(id, label) {
   const slot = document.createElement('aside');
   slot.id = id;
@@ -164,12 +271,15 @@ function mountBanners() {
   const blocked = paidNoAds();
   for (const [id, label, selector, appendToPanel] of BANNER_PLACEMENTS) {
     let slot = document.getElementById(id);
-    const anchor = blocked ? null : document.querySelector(selector);
+    const anchor = blocked || !promosEnabled ? null : document.querySelector(selector);
     if (!anchor) {
       slot?.remove();
       continue;
     }
-    slot ||= createBanner(id, label);
+    if (!slot) {
+      slot = createBanner(id, label);
+      renderPromo(slot);
+    }
     if (appendToPanel && anchor !== slot) anchor.parentElement.append(slot);
     if (!appendToPanel && anchor.nextElementSibling !== slot) anchor.after(slot);
   }
@@ -179,8 +289,8 @@ function renderBanner(id, content) {
   const slot = BANNER_IDS.includes(id) && document.getElementById(id);
   if (!slot) return false;
   if (!content) {
-    slot.classList.remove('tf50-has-ad');
-    slot.replaceChildren();
+    if (paidNoAds() || !promosEnabled) slot.remove();
+    else renderPromo(slot);
     return true;
   }
   const img = content instanceof HTMLImageElement ? content : content.firstElementChild;
@@ -190,6 +300,7 @@ function renderBanner(id, content) {
       (img.naturalWidth === 2400 && img.naturalHeight === 360)) || paidNoAds()) return false;
   slot.style.setProperty('--tf-ad-native-width', nativeWidth(img.naturalWidth));
   slot.replaceChildren(content);
+  slot.classList.remove('tf158-has-promo');
   slot.classList.add('tf50-has-ad');
   return true;
 }
@@ -208,6 +319,8 @@ window.TaskFlowAdsV50 = {
   media: ['image', 'gif'], formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
   videoAllowed: false, audioAllowed: false, slots: BANNER_IDS.slice(),
   refresh: mountBanners, render: renderBanner,
+  setEnabled(enabled) { promosEnabled = enabled; },
+  setPromoReady,
 };
 
 const WIDTH = 1080;
@@ -333,6 +446,7 @@ function createVerticalAd(options) {
   let elapsed = 0;
   let lastTick = 0;
   let reportedVisible = false;
+  let showingPromo = false;
   let previousOverflow = '';
   let previousFocus = null;
 
@@ -387,7 +501,7 @@ function createVerticalAd(options) {
       if (reportedVisible) elapsed += Math.max(0, now - lastTick);
       else {
         reportedVisible = true;
-        document.dispatchEvent(new CustomEvent('taskflow:ads-media-visible', {detail: {placement}}));
+        if (!showingPromo) document.dispatchEvent(new CustomEvent('taskflow:ads-media-visible', {detail: {placement}}));
       }
     }
     lastTick = now;
@@ -397,8 +511,10 @@ function createVerticalAd(options) {
 
   function showMedia(node, selected) {
     build();
+    showingPromo = Boolean(selected.promo);
     const url = selected.destination;
     const link = url && sponsorLink(url, selected.ctaLabel);
+    root.querySelector('.' + prefix + '-label').textContent = showingPromo ? 'Espacio publicitario' : 'Publicidad';
     if (link) link.append(node);
     destination.hidden = !url;
     if (url) destination.href = url;
@@ -406,7 +522,8 @@ function createVerticalAd(options) {
     destination.textContent = selected.ctaLabel;
     destination.setAttribute('aria-label', selected.ctaLabel);
     root.classList.toggle('tf-ad-has-link', Boolean(url));
-    stage.style.setProperty('--tf-ad-native-width', nativeWidth(node.videoWidth || node.naturalWidth));
+    if (showingPromo) stage.style.removeProperty('--tf-ad-native-width');
+    else stage.style.setProperty('--tf-ad-native-width', nativeWidth(node.videoWidth || node.naturalWidth));
     stage.replaceChildren(link || node);
     media = node;
     previousFocus = document.activeElement;
@@ -424,14 +541,20 @@ function createVerticalAd(options) {
   }
 
   async function start(canStart) {
-    if (starting || media || !creative || !canStart()) return false;
+    const allowPromo = () => promosEnabled && promoReady.has(placement);
+    if (starting || media || (!creative && !allowPromo()) || !canStart()) return false;
     starting = true;
-    const selected = creative;
     try {
       if (placement === 'entry') {
         try { await window.TaskFlowNoAds?.waitForStatus?.(2500); } catch (_) {}
       }
-      if (creative !== selected || !canStart()) return false;
+      if (!canStart()) return false;
+      const selected = creative;
+      if (!selected) {
+        if (!allowPromo()) return false;
+        showMedia(promoLink(placement), {promo: true, ctaLabel: 'Crear campaña'});
+        return true;
+      }
       const node = await loadMedia(selected);
       if (!node) {
         if (creative === selected) creative = null;
@@ -513,7 +636,21 @@ function setCount(value) {
   try { localStorage.setItem(COUNT_KEY, String(value)); } catch (_) {}
 }
 
-const available = () => !document.hidden && !permissionsOpen() && !paidNoAds();
+const promoReady = new Set();
+const promoTimers = new Map();
+function setPromoReady(placement, ready) {
+  clearTimeout(promoTimers.get(placement));
+  promoTimers.delete(placement);
+  if (ready) {
+    promoReady.add(placement);
+    queueMicrotask(tryVerticalAds);
+  } else {
+    promoReady.delete(placement);
+    promoTimers.set(placement, setTimeout(() => setPromoReady(placement, true), PROMO_WAIT_MS));
+  }
+}
+
+const available = () => promosEnabled && !document.hidden && !permissionsOpen() && !paidNoAds();
 const canEnter = () => !entryShown && available() && !interaction.isOpen();
 async function showEntry() {
   if (!await entry.start(canEnter)) return false;
@@ -527,8 +664,9 @@ async function showInteraction() {
   return true;
 }
 function tryVerticalAds() {
-  if (!entryShown && entry.getCreative()) void showEntry();
-  else if (interacted) void showInteraction();
+  if (!entryShown) {
+    if (entry.getCreative() || promoReady.has('entry')) void showEntry();
+  } else if (interacted) void showInteraction();
 }
 
 window.TaskFlowEntryAdV56 = {
@@ -563,13 +701,16 @@ document.addEventListener('visibilitychange', tryVerticalAds);
 window.addEventListener('pageshow', event => {
   if (event.persisted && !entry.isOpen()) {
     entryShown = false;
+    setPromoReady('entry', false);
     document.dispatchEvent(new Event('taskflow:entry-ad-reentered'));
   }
   tryVerticalAds();
 }, {passive: true});
 
 addStyle('tfAdSlotsT50Style', BANNER_CSS);
+addStyle('tfAdsPromoV158Style', PROMO_CSS);
 addStyle('tfVerticalAdsV157Style', VERTICAL_CSS);
+for (const placement of ['entry', 'interaction']) setPromoReady(placement, false);
 mountBanners();
 const layout = new MutationObserver(queueMount);
 for (const selector of ['.wrap', '#sideMenu', '#windowContainer', '#windowContent']) {

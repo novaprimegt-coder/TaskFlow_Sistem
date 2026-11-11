@@ -69,7 +69,7 @@ jobs:
           assert.ok(assets.includes('taskflow-splash-particles-v156.js')&&root.includes('await loadingClock;\n await keepSplashExactlyTenSeconds()'),'La carga de 10 segundos debe empezar después de las partículas y conservarse sin conexión');
           const missing=assets.filter(p=>p!=='./'&&!exists(p.replace(/^\.\//,'')));
           assert.deepEqual(missing,[],'Recursos ausentes del modo offline');
-          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-ads-runtime-v157.js','taskflow-v58-stability.js','payments/paypal/client.js']){
+          for(const asset of ['taskflow-loader-v102.html','taskflow-v130120-settings-rewards.css','taskflow-v130114-profile-reference.css','taskflow-ads-bridge.js','taskflow-ads-runtime-v157.js','taskflow-visual-v158.css','taskflow-icons-v158.js','taskflow-v58-stability.js','payments/paypal/client.js']){
             assert.ok(assets.includes(asset),'Falta en caché '+asset);
           }
           const live=read('t57/runtime-24.txt');
@@ -81,6 +81,11 @@ jobs:
           assert.ok(adsRuntime.includes('const REQUIRED_TAPS = 5;')&&adsRuntime.includes('taskflow_interaction_ad_count_v57'),'Los clics publicitarios deben acumularse en grupos de cinco');
           assert.ok(!adsRuntime.includes('taskflow_entry_ad_completed_session')&&read('t57/runtime-19.txt').includes('taskflow-ads-runtime-v157.js'),'El anuncio de ingreso debe activarse en cada apertura');
           for (const id of ['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter','tfAdBannerRoutine','tfAdBannerMenu','tfAdBannerHabits','tfAdBannerTasks']) assert.ok(adsRuntime.includes(id),'Falta espacio publicitario '+id);
+          const activeParts=JSON.parse(root.match(/const parts=(\[[^;]+\]);/)?.[1]||'[]');
+          assert.ok(activeParts.length&&activeParts.every(exists),'Faltan fragmentos activos');
+          const runtimeSource=activeParts.map(read).join('');
+          assert.ok(!runtimeSource.includes('const TF_T38_ICON_LIBRARY_JS=')&&runtimeSource.includes('TaskFlowIconsV158.install'),'El selector debe utilizar vectores locales');
+          assert.ok(adsRuntime.includes('function promoLink(placement)')&&bridge.includes('enableUnfilledVerticalPromos'),'Falta la promoción de inventario disponible');
           const startChunks=['00','01','02'].map(id=>read('t57/runtime-'+id+'.txt')).join('');
           assert.ok(!startChunks.includes('aria-label="Cargando TaskFlow"')&&!startChunks.includes('Preparando TaskFlow…'),'Se reintrodujo la pantalla de carga antigua');
           assert.ok(!startChunks.includes('filter:blur(24px) brightness(.46)')&&startChunks.includes('#boot.error'),'Recursos pesados de splash o recuperación ausente');
@@ -133,7 +138,8 @@ jobs:
             vm.runInNewContext(js,{window,document,navigator:{},localStorage:{getItem(){return null}},console,Intl,Date,setTimeout,clearTimeout});
             assert.equal(new Date(window.TaskFlowRegionalClock.getCycle(Date.parse(at)).reset).toISOString(),new Date(expect).toISOString(),label);
           }
-          const runtime=Array.from({length:25},(_,i)=>fs.readFileSync('t57/runtime-'+String(i).padStart(2,'0')+'.txt','utf8')).join('');
+          const runtimeParts=JSON.parse(fs.readFileSync('index.html','utf8').match(/const parts=(\[[^;]+\]);/)[1]);
+          const runtime=runtimeParts.map(path=>fs.readFileSync(path,'utf8')).join('');
           const scripts=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
           assert.ok(scripts.length>=2,'Faltan scripts en el sistema reconstruido');
           for(const script of scripts)new vm.Script(script[1],{filename:'TaskFlow-T57.js'});

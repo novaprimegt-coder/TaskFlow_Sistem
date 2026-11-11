@@ -121,13 +121,13 @@ async function keepSplashExactlyTenSeconds(){
  // Nunca sustituir una app incompleta por una pantalla vacía.
 }
 
-const parts=["t57/runtime-00.txt","t57/runtime-01.txt","t57/runtime-02.txt","t57/runtime-03.txt","t57/runtime-04.txt","t57/runtime-05.txt","t57/runtime-06.txt","t57/runtime-07.txt","t57/runtime-08.txt","t57/runtime-09.txt","t57/runtime-10.txt","t57/runtime-11.txt","t57/runtime-12.txt","t57/runtime-13.txt","t57/runtime-14.txt","t57/runtime-15.txt","t57/runtime-16.txt","t57/runtime-17.txt","t57/runtime-18.txt","t57/runtime-19.txt","t57/runtime-20.txt","t57/runtime-21.txt","t57/runtime-22.txt","t57/runtime-23.txt","t57/runtime-24.txt"];
+const parts=["t57/runtime-00.txt","t57/runtime-01.txt","t57/runtime-02.txt","t57/runtime-03.txt","t57/runtime-04.txt","t57/runtime-05.txt","t57/runtime-06.txt","t57/runtime-07.txt","t57/runtime-08.txt","t57/runtime-09.txt","t57/runtime-19.txt","t57/runtime-20.txt","t57/runtime-21.txt","t57/runtime-22.txt","t57/runtime-23.txt","t57/runtime-24.txt"];
 try{
  // Limitar conexiones simultáneas evita saturar redes móviles y WebViews.
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=157-ads-runtime-20261111':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=157-ads-bridge-20261111':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=73-account-sync-20261108':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=158-icon-library-20261111':p==='t57/runtime-03.txt'?'?v=110-midnight-regional-20261108':p==='t57/runtime-19.txt'?'?v=158-visual-ads-20261111':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();

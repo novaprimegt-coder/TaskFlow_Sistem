@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.4.2
+/* TaskFlow ADS Bridge v3.4.3
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -79,6 +79,7 @@ async function loadRecommendations() {
  if (!adsPermitted() || !catalog.length) {
   recommendations.clear();
   applyWhenReady();
+  enableUnfilledVerticalPromos();
   return;
  }
  const sessionId = analyticsSessionId();
@@ -99,6 +100,7 @@ async function loadRecommendations() {
   if (!verticalApi(placement)?.hasShown?.()) slots.push({placement, slot: placement});
  }
  const next = new Map();
+ const checked = new Set();
  await Promise.all(slots.map(async ({placement, slot}) => {
   const candidates = catalog.filter(ad => ad.placement === placement);
   if (!candidates.length) return;
@@ -119,6 +121,7 @@ async function loadRecommendations() {
    });
    if (!response.ok) return;
    const {campaignId, adId, selectionToken} = await response.json();
+   checked.add(slot);
    if (typeof selectionToken === 'string' && /^[a-f0-9-]{36}$/i.test(selectionToken) &&
        candidates.some(ad => ad.campaignId === campaignId && ad.id === adId)) {
     next.set(slot, {campaignId, adId, selectionToken,
@@ -132,6 +135,7 @@ async function loadRecommendations() {
  }
  recommendations = next;
  applyWhenReady();
+ enableUnfilledVerticalPromos(checked);
  if (!next.size && catalog.length) retryRecommendations(12000);
  else clearRecommendationRetry();
 }
@@ -419,7 +423,7 @@ function bindAnalyticsTracking(){
  });
  document.addEventListener('click',e=>{
   const target=e.target?.closest?.('a');
-  if(!target||!target.href)return;
+  if(!target||!target.href||target.classList.contains('tf158-promo'))return;
   const banner=target.closest('.tf50-ad-slot');
   if(banner){
    const status=bannerStatus.get(banner.id),ad=status&&catalog.find(x=>x.id===status.id&&x.src===status.src&&x.placement==='banner');
@@ -573,9 +577,20 @@ function runtimeReady(){
  return !!(window.TaskFlowAdsV50?.render && VERTICAL_PLACEMENTS.every(slot => verticalApi(slot)?.setCreative));
 }
 
+function enableUnfilledVerticalPromos(checked = new Set()) {
+ if (!runtimeReady() || !lastRefresh || !config.enabled || paidNoAds()) return;
+ for (const placement of VERTICAL_PLACEMENTS) {
+  if (checked.has(placement) || !rawCampaigns.some(c =>
+      c.placement === placement && c.status === 'active' && c.approvalStatus === 'approved' && dateEligible(c))) {
+   window.TaskFlowAdsV50.setPromoReady?.(placement, true);
+  }
+ }
+}
+
 function apply() {
  if (!runtimeReady()) return false;
  bindAnalyticsTracking();
+ window.TaskFlowAdsV50.setEnabled?.(config.enabled);
  window.TaskFlowAdsV50.refresh();
  if (!adsPermitted()) {
   for (const slot of bannerSlots()) window.TaskFlowAdsV50.render(slot, null);
@@ -634,7 +649,12 @@ function finishVertical(placement, rejectedSrc) {
  completedSelections.add(ad.selectionToken);
  if (completedSelections.size > 500) completedSelections.delete(completedSelections.values().next().value);
  if (recommendations.get(placement)?.selectionToken === ad.selectionToken) recommendations.delete(placement);
- if (rejectedSrc) verticalFailures.set(rejectedSrc, Date.now() + BANNER_RETRY_MS);
+ if (rejectedSrc) {
+  verticalFailures.set(rejectedSrc, Date.now() + BANNER_RETRY_MS);
+  window.TaskFlowAdsV50?.setPromoReady?.(placement, true);
+ } else if (placement === 'interaction') {
+  window.TaskFlowAdsV50?.setPromoReady?.(placement, false);
+ }
  if (placement === 'interaction' || rejectedSrc) {
   void Promise.resolve(impressionConfirmations.get(ad.selectionToken)).catch(() => {}).then(() => refreshRecommendations());
  }
@@ -660,6 +680,7 @@ function applyWhenReady(){
 function rebuildCatalog(){
  catalog=rawCampaigns.flatMap(normalizeCampaign).slice(0,1200);
  applyWhenReady();
+ enableUnfilledVerticalPromos();
  void refreshRecommendations();
  try{document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated',{detail:{available:catalog.length}}))}catch(_){}
 }
@@ -689,7 +710,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.4.2',
+ version:'3.4.3',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
