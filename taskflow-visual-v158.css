@@ -601,33 +601,3 @@ html body.tf37-home.tf38-layout .wrap > .reset-countdown-card {
 .tf161-timer-form :is(input,button) { min-height: 42px; border-radius: 9px; border: 1px solid #5684a3; padding: 5px 9px; }
 .tf161-timer-form input { display: block; width: 100%; margin-top: 4px; color: #fff; background: #091f33; }
 .tf161-timer-form button { font-weight: 800; color: #0b2a38; background: #9bf1ed; }
-
-#tf161AdPreferencesButton { grid-column: 1 / -1; }
-#tf161AdPreferences {
-  position: fixed; inset: 0; margin: auto; box-sizing: border-box;
-  width: min(620px,calc(100% - 20px)); max-width: 100%;
-  max-height: calc(100dvh - 26px - env(safe-area-inset-bottom,0px));
-  padding: clamp(12px,3.4vw,20px); overflow: auto; overscroll-behavior: contain;
-  border: 1px solid #6489ad; border-radius: 17px; color: #edf8ff;
-  background: radial-gradient(ellipse at top left,#1d415d,transparent 60%),linear-gradient(150deg,#122941,#131e3b);
-}
-#tf161AdPreferences::backdrop { background: #020915d9; }
-#tf161AdPreferences form { display: grid; gap: 10px; }
-#tf161AdPreferences :is(header,footer) { display: flex; align-items: center; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-#tf161AdPreferences h2 { margin: 0; color: #f4faff; font-size: clamp(17px,4.8vw,23px); }
-#tf161AdPreferences :is(p,small) { margin: 0; color: #c2d6ec; font-size: 13px; line-height: 1.4; }
-#tf161AdPreferences fieldset { min-width: 0; padding: 9px; border: 1px solid #456783; border-radius: 10px; }
-#tf161AdPreferences legend { padding-inline: 6px; font-size: 14px; color: #b6f6f1; font-weight: 760; }
-#tf161AdPreferences .tf161-ad-topic-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
-.tf161-ad-topic-list label { display: flex; align-items: center; gap: 6px; padding: 7px 5px; min-width: 0; border-radius: 8px; background: #203c57; color: #eaf7ff; font-size: 12px; overflow-wrap: anywhere; }
-.tf161-ad-topic-list input { width: 17px; height: 17px; flex: none; accent-color: #91f4ec; }
-.tf161-ad-learning { display: flex; align-items: flex-start; gap: 8px; color: #eaf7ff; font-size: 13px; line-height: 1.4; }
-.tf161-ad-learning input { margin: 1px 0 0; width: 17px; height: 17px; flex: none; accent-color: #91f4ec; }
-.tf161-ad-learned:not([hidden]) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.tf161-ad-area { display: grid; gap: 7px; margin-top: 7px; }
-.tf161-ad-area label { display: grid; gap: 3px; font-size: 12px; color: #d9eaf9; }
-#tf161AdPreferences :is(select,button) { min-height: 42px; border: 1px solid #658aac; border-radius: 9px; color: #f2faff; background: #233955; padding: 5px 9px; font: 750 12px system-ui,sans-serif; }
-#tf161AdPreferences select { width: 100%; color-scheme: dark; }
-#tf161AdPreferences button[type="submit"] { background: #9af5ed; color: #092833; }
-#tf161AdPreferences .tf161-ad-pref-close { min-width: 42px; font-size: 21px; }
-#tf161AdPreferences :focus-visible { outline: 2px solid #a5f3ff; outline-offset: 2px; }

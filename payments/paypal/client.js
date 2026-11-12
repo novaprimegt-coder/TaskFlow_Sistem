@@ -5,10 +5,19 @@
 if(window.TaskFlowNoAds)return;
 const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).href;
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
-let settings=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,statusPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
-let noAdsExpiryTimer=0,lastServerVerification=0;
+let settings=null,settingsRequest=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
+let noAdsExpiryTimer=0,statusRequest=null,accountUid=null,accountEpoch=0,verified=false,lastAdAccess='';
+const currentUid=()=>String(window.TaskFlowFirebase?.getUser?.()?.uid||'');
+const isActive=()=>active&&accountUid===currentUid()&&Number(subscriptionStatus?.paidUntil)>Date.now();
+const canShowAds=()=>verified&&accountUid===currentUid()&&!active;
 function safeBase(value){
  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return '';return u.href.replace(/\/$/,'')}catch(_){return ''}
+}
+async function fetchWithin(url,options,ms){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),ms);
+ try{return await fetch(url,{...options,signal:controller.signal})}
+ finally{clearTimeout(timer)}
 }
 function style(){
  if(document.getElementById(CSS_ID))return;
@@ -78,57 +87,72 @@ function panel(){
 }
 function statusText(msg,tone='info'){const e=document.getElementById('tfPayPalStatus');if(e){e.textContent=msg||'';e.dataset.tone=tone}}
 function closeActiveAdWindows(){
- // Do not leave an interstitial active behind the paid interface.
- for(const [api,id] of [[window.TaskFlowEntryAdV56,'tf56EntryContinue'],[window.TaskFlowInteractionAdV57,'tf57TouchClose']]){
+ for(const api of [window.TaskFlowEntryAdV56,window.TaskFlowInteractionAdV57]){
   try{
-   if(api&&api.isRunning&&api.isRunning()){
-    const button=document.getElementById(id);
-    if(button)button.disabled=false;
-    if(api.close)api.close();
-   }
-   if(api&&api.setCreative)api.setCreative(null);
+   api?.close?.(true);
+   api?.setCreative?.(null);
   }catch(_){}
  }
+}
+function bindAccount(uid){
+ if(accountUid===uid)return;
+ accountUid=uid;
+ accountEpoch++;
+ verified=false;
+ subscriptionStatus=null;
+ pendingIntent=null;
+ pendingApproval=false;
+ setActive(false);
 }
 function setActive(next){
  // A payment plan being ACTIVE is not enough: only this user's server-issued
  // entitlement, with an unexpired paidUntil, suppresses advertisements.
  const end=Number(subscriptionStatus&&subscriptionStatus.paidUntil)||0;
- const verified=next===true&&subscriptionStatus?.active===true&&end>Date.now();
- const changed=active!==verified;
- active=verified;
+ active=next===true&&subscriptionStatus?.active===true&&end>Date.now()&&accountUid===currentUid();
+ if(active)verified=true;
  if(noAdsExpiryTimer){clearTimeout(noAdsExpiryTimer);noAdsExpiryTimer=0}
  if(active){
   pendingApproval=false;
   style(); // The style MUST load at startup, not only when checkout opens.
  }
  if(document.documentElement)document.documentElement.classList.toggle('tf-paypal-noads',active);
+ document.documentElement?.classList.toggle('tf-paypal-noads-checking',!active&&!canShowAds());
  if(document.body)document.body.classList.toggle('tf-paypal-noads',active);
+ if(!canShowAds())closeActiveAdWindows();
  if(active){
-  closeActiveAdWindows();
   // Restore all ads automatically when the verified period ends, including
   // after cancelling renewal (which preserves the remaining paid/trial days).
   noAdsExpiryTimer=setTimeout(()=>{
    noAdsExpiryTimer=0;
    if(!subscriptionStatus||Number(subscriptionStatus.paidUntil)<=Date.now()){
+    verified=false;
     setActive(false);
-    if(enabled)void verifyStatus();
+    void verifyStatus();
    }else setActive(true);
   },Math.max(50,Math.min(2147483647,end-Date.now()+30)));
  }
- if(changed){
-  try{document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active,paidUntil:active?end:null}}))}catch(_){}
+ const access=active?'active':canShowAds()?'free':'checking';
+ if(access!==lastAdAccess){
+  lastAdAccess=access;
+  document.dispatchEvent(new CustomEvent('taskflow:noads-status-updated',{detail:{active,canShowAds:access==='free',paidUntil:active?end:null}}));
  }
 }
+function loadSettings(){
+ if(settings)return Promise.resolve(settings);
+ if(settingsRequest)return settingsRequest;
+ settingsRequest=(async()=>{
+  const r=await fetchWithin(CFG_URL,{cache:'no-store',credentials:'omit'},5500);
+  if(!r.ok)throw new Error('PUBLIC_CONFIG_UNAVAILABLE');
+  const c=await r.json(),base=safeBase(c.apiBase);
+  settings={enabled:(c.enabled===true||c.enabled==='auto')&&!!base,apiBase:base};
+  return settings;
+ })().finally(()=>{settingsRequest=null});
+ return settingsRequest;
+}
 async function config(){
- if(settings!==null&&enabled)return settings;
- let r;
- try{r=await fetch(CFG_URL,{cache:'no-store',credentials:'omit'})}
- catch(_){throw new Error('PUBLIC_CONFIG_UNAVAILABLE')}
- if(!r.ok)throw new Error('PUBLIC_CONFIG_UNAVAILABLE');
- const c=await r.json();const base=safeBase(c.apiBase);
- settings={enabled:(c.enabled===true||c.enabled==='auto')&&!!base,apiBase:base};
- if(!settings.enabled)return settings;
+ if(enabled)return settings;
+ const {apiBase:base,enabled:configured}=await loadSettings();
+ if(!configured)return settings;
  // La URL pública no es una autorización de cobro. Solo el servidor PayPal Live
  // con un plan mensual y webhook verificados puede habilitar el checkout.
  const controller=new AbortController();
@@ -154,48 +178,59 @@ async function authToken(){
  return token;
 }
 async function request(method,path,payload){
+ const uid=currentUid(),epoch=accountEpoch;
+ if(!uid)throw new Error('LOGIN_REQUIRED');
  const token=await authToken();
- const r=await fetch(settings.apiBase+path,{
+ if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
+ const url=settings.apiBase+path;
+ const options={
   method,mode:'cors',cache:'no-store',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
   body:method==='POST'?JSON.stringify(payload||{}):undefined
- });
+ };
+ const r=method==='GET'?await fetchWithin(url,options,7500):await fetch(url,options);
  const data=await r.json().catch(()=>({}));
+ if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
  if(!r.ok)throw Object.assign(new Error(data.error||'PAYMENT_UNAVAILABLE'),{status:r.status});
  return data;
 }
 async function verifyStatus(){
- if(statusPromise)return statusPromise;
- // Hide ad surfaces while awaiting the server (the answer is never invented).
- style();
- document.documentElement?.classList.add('tf-paypal-noads-checking');
- statusPromise=(async()=>{
+ const auth=window.TaskFlowFirebase;
+ if(!auth?.initialize)return false;
+ try{await auth.initialize()}catch(_){return false}
+ const uid=currentUid();
+ bindAccount(uid);
+ if(!uid){verified=true;setActive(false);return false}
+ const epoch=accountEpoch;
+ if(statusRequest?.epoch===epoch)return statusRequest.promise;
+ const pending={epoch,promise:null};
+ statusRequest=pending;
+ pending.promise=(async()=>{
   try{
-   if(!enabled){await (ready||Promise.resolve());if(!enabled)return false}
+   if(!(await loadSettings()).enabled||epoch!==accountEpoch||uid!==currentUid())return false;
    const data=await request('GET','/status');
+   if(epoch!==accountEpoch||uid!==currentUid()||typeof data.active!=='boolean')return false;
+   const confirmedActive=data.active===true&&Number(data.paidUntil)>Date.now();
+   if(data.active&&!confirmedActive)return false;
    subscriptionStatus=data;
-   lastServerVerification=Date.now();
-   setActive(data.active===true);
-   return active;
+   verified=true;
+   setActive(confirmedActive);
+   return isActive();
   }catch(error){
-   // Preserve a freshly verified entitlement briefly on network failure,
-   // never beyond expiry or after an authentication failure.
-   const stillConfirmed=active&&error?.status!==401&&error?.status!==403&&
-     Date.now()-lastServerVerification<120000&&
-     Number(subscriptionStatus?.paidUntil)>Date.now();
-   if(!stillConfirmed)setActive(false);
-   return stillConfirmed;
+   if(epoch!==accountEpoch||uid!==currentUid())return false;
+   if(error?.status===401||error?.status===403){verified=false;subscriptionStatus=null;setActive(false)}
+   return isActive();
+  }finally{
+   if(statusRequest===pending)statusRequest=null;
   }
  })();
- try{return await statusPromise}finally{
-  statusPromise=null;
-  document.documentElement?.classList.remove('tf-paypal-noads-checking');
- }
+ return pending.promise;
 }
 async function waitForStatus(timeoutMs){
- await (ready||Promise.resolve());
- if(!enabled)return false;
+ if(isActive()||canShowAds())return isActive();
  const wait=Math.min(4000,Math.max(0,Number(timeoutMs)||2000));
- return Promise.race([verifyStatus(),new Promise(resolve=>setTimeout(()=>resolve(false),wait))]);
+ let timer;
+ try{return await Promise.race([verifyStatus(),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),wait)})])}
+ finally{clearTimeout(timer)}
 }
 function displayPeriod(){
  if(!plan)return '';
@@ -397,34 +432,21 @@ async function initialize(){
  style();
  document.documentElement?.classList.add('tf-paypal-noads-checking');
  document.addEventListener('click',onClick,true);
- window.addEventListener('focus',()=>{if(enabled)void verifyStatus()},{passive:true});
- window.addEventListener('pageshow',()=>{if(enabled)void verifyStatus()},{passive:true});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden&&enabled)void verifyStatus()});
- document.addEventListener('taskflow:account-state-updated',()=>{
-  // Logging out must revoke the old account's local display state immediately.
-  if(!window.TaskFlowFirebase?.getUser?.()){
-   subscriptionStatus=null;
-   lastServerVerification=0;
-   setActive(false);
-  }
-  if(enabled)void verifyStatus();
- });
- // Revalidate across devices and after renewal, cancellation, or expiration.
- setInterval(()=>{if(enabled&&!document.hidden)void verifyStatus()},60000);
- try{await config()}catch(_){
-  document.documentElement?.classList.remove('tf-paypal-noads-checking');
-  return false;
- }
- if(!enabled){
-  document.documentElement?.classList.remove('tf-paypal-noads-checking');
-  return false;
- }
+ window.addEventListener('focus',()=>void verifyStatus(),{passive:true});
+ window.addEventListener('pageshow',()=>void verifyStatus(),{passive:true});
+ window.addEventListener('online',()=>void verifyStatus(),{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void verifyStatus()});
+ const accountChanged=()=>{bindAccount(currentUid());void verifyStatus()};
+ document.addEventListener('taskflow:firebase-auth-changed',accountChanged);
+ document.addEventListener('taskflow:account-state-updated',accountChanged);
+ setInterval(()=>{if(!document.hidden)void verifyStatus()},20000);
  void verifyStatus();
- return true;
+ try{await config()}catch(_){return false}
+ return enabled;
 }
 ready=(document.readyState==='loading'
  ?new Promise(resolve=>document.addEventListener('DOMContentLoaded',()=>resolve(initialize()),{once:true}))
  :initialize());
-window.TaskFlowNoAds=Object.freeze({isActive:()=>active,refresh:verifyStatus,waitForStatus,showCheckout,
+window.TaskFlowNoAds=Object.freeze({isActive,canShowAds,refresh:verifyStatus,waitForStatus,showCheckout,
  ready:()=>ready});
 })();

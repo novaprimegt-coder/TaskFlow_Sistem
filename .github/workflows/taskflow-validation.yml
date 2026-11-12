@@ -94,7 +94,9 @@ jobs:
           assert.ok(adsRuntime.includes('.tf159-ad-continue')&&adsRuntime.includes('button.disabled = !ready')&&adsRuntime.includes('root.showModal()')&&adsRuntime.includes('root.close()'),'Falta cierre seguro o acción Continuar');
           assert.ok(adsRuntime.includes('const HOLD_MS = 10000;')&&adsRuntime.includes('button.hidden = !ready;')&&!adsRuntime.includes('showingPromo || elapsed'),'Continuar debe aparecer tras diez segundos también en promociones');
           assert.ok(bridge.includes('.onSnapshot(')&&bridge.includes('/choose/v161')&&!bridge.includes('/geo/presence')&&!bridge.includes('TaskFlowLocationV52'),'ADS debe escuchar el catálogo y respetar la ubicación local');
-          for(const name of ['taskflow-policies-v161.js','taskflow-onboarding-v161.css','taskflow-ads-preferences-v161.js'])assert.ok(assets.includes(name),'Recurso de ingreso o ADS ausente '+name);
+          for(const name of ['taskflow-policies-v161.js','taskflow-onboarding-v161.css'])assert.ok(assets.includes(name),'Recurso de ingreso ausente '+name);
+          assert.ok(!exists('taskflow-ads-preferences-v161.js')&&!bridge.includes('/audience/area')&&bridge.includes('sectionTopic()'),'Los anuncios usan el tema de la sección abierta');
+          assert.ok(live.includes('TaskFlowCloudViewV162')&&read('taskflow-firestore-sync-v110.js').includes("API+':commit'"),'La sincronización debe actualizar la vista con revisiones completas');
           assert.ok(root.indexOf('await window.TaskFlowPoliciesV161.requireAcceptance()')<root.indexOf('await Promise.all(Array.from({length:Math.min(6,parts.length)}')&&root.includes('await window.TaskFlowPoliciesV161.requireAcceptance()'),'Las políticas deben preceder la carga del sistema');
           assert.ok(adsRuntime.includes("v.preload='auto'")&&adsRuntime.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
 
@@ -109,6 +111,7 @@ jobs:
           assert.ok(sw.includes('async function freshStaticResource')&&sw.includes("cache:'no-cache'"),'Los JS/CSS deben actualizarse con respaldo offline');
           const paypalConfig=JSON.parse(read('payments/paypal/public-config.json'));
           const paypalClient=read('payments/paypal/client.js');
+          assert.ok(paypalClient.includes('canShowAds')&&paypalClient.includes('epoch!==accountEpoch'),'El permiso publicitario debe pertenecer a la cuenta actual');
           const paypalServer=read('payments/paypal/functions/index.js');
           assert.equal(paypalConfig.enabled,'auto','La conexión comercial utiliza modo de detección segura');
           assert.equal(new URL(paypalConfig.apiBase).protocol,'https:','El backend de pago debe tener HTTPS');

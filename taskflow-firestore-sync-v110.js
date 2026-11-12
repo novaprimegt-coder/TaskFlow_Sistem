@@ -22,8 +22,8 @@ const BOUND_KEY='taskflow_cloud_bound_uid_v1';
 const TOUCH_KEY='taskflow_cloud_local_touch_v1';
 const META_PREFIX='taskflow_cloud_sync_meta_v1_';
 const CHUNK_SIZE=120000;
-const SAVE_DELAY=950;
-const REST_POLL_MS=12000;
+const SAVE_DELAY=350;
+const REST_POLL_MS=4000;
 const SESSION_POLL_MS=2000;
 const LISTENER_SAFETY_POLL_MS=60000;
 
@@ -45,6 +45,10 @@ let prefUnsubscribe=null;
 let prefSaveTimer=0;
 let prefDirty=false;
 let lastRemotePollAt=0;
+let lastPhotoPollAt=0;
+let accountEpoch=0;
+let baseline=null;
+let profileUnsubscribe=null;
 
 let nativeSetItem=Storage.prototype.setItem;
 let nativeRemoveItem=Storage.prototype.removeItem;
@@ -59,7 +63,25 @@ function metaKey(uid){return META_PREFIX+uid}
 function readJson(k){try{return JSON.parse(safeGet(k)||'null')}catch(_){return null}}
 function writeJsonNative(k,v){return nativeSet(k,JSON.stringify(v))}
 function now(){return Date.now()}
-function loadScript(src){return new Promise((resolve,reject)=>{if([...document.scripts].some(s=>s.src===src))return resolve();const el=document.createElement('script');el.src=src;el.async=false;el.onload=resolve;el.onerror=()=>reject(new Error('SDK_LOAD_FAILED'));document.head.appendChild(el)})}
+function loadFirestore(){
+ if(window.firebase?.firestore)return Promise.resolve(window.firebase.firestore());
+ return new Promise((resolve,reject)=>{
+  const src='https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js';
+  const existing=[...document.scripts].find(script=>script.src===src);
+  const script=existing||document.createElement('script');
+  function finish(){
+   clearTimeout(timer);
+   script.removeEventListener('load',finish);
+   script.removeEventListener('error',finish);
+   try{resolve(window.firebase.firestore())}
+   catch(error){if(!existing)script.remove();reject(error)}
+  }
+  const timer=setTimeout(finish,8000);
+  script.addEventListener('load',finish,{once:true});
+  script.addEventListener('error',finish,{once:true});
+  if(!existing){script.src=src;document.head.appendChild(script)}
+ });
+}
 
 function fnv1a(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return ('00000000'+(h>>>0).toString(16)).slice(-8)}
 function capture(){const values={};let joined='';SOURCE_KEYS.forEach(k=>{const v=safeGet(k)||'';values[k]=v;joined+=k+'\u0000'+v+'\u0001'});return{values,hash:fnv1a(joined),updatedAt:localUpdatedAt()}}
@@ -77,30 +99,104 @@ function fromField(v){if(!v)return null;if('stringValue'in v)return v.stringValu
 function decodeFields(doc){const o={};const f=doc&&doc.fields||{};Object.keys(f).forEach(k=>o[k]=fromField(f[k]));return o}
 
 async function token(force){if(!window.TaskFlowFirebase||typeof window.TaskFlowFirebase.getIdToken!=='function')return null;return window.TaskFlowFirebase.getIdToken(!!force)}
-async function request(url,opt,retry=true){const idt=await token(false);if(!idt)throw new Error('AUTH_REQUIRED');const options=Object.assign({cache:'no-store'},opt||{});options.headers=Object.assign({'Authorization':'Bearer '+idt,'Content-Type':'application/json'},options.headers||{});let r=await fetch(url,options);if(r.status===401&&retry){const fresh=await token(true);if(fresh){options.headers.Authorization='Bearer '+fresh;r=await fetch(url,options)}}if(r.status===404)return null;const body=await r.json().catch(()=>({}));if(!r.ok){const msg=body&&body.error&&body.error.message||('HTTP '+r.status);throw new Error(msg)}return body}
-async function getDoc(path){return request(API+'/'+path,{method:'GET'})}
+function assertAccount(uid,epoch=accountEpoch){
+ if(!uid||uid!==currentUid||epoch!==accountEpoch||window.TaskFlowFirebase?.getUser?.()?.uid!==uid)throw new Error('ACCOUNT_CHANGED');
+}
+async function request(url,opt,uid=currentUid){
+ const epoch=accountEpoch;
+ assertAccount(uid,epoch);
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
+ try{
+  const idt=await token(false);
+  assertAccount(uid,epoch);
+  if(!idt)throw new Error('AUTH_REQUIRED');
+  const options={...opt,cache:'no-store',signal:controller.signal,headers:{Authorization:'Bearer '+idt,'Content-Type':'application/json'}};
+  let r=await fetch(url,options);
+  if(r.status===401){
+   const fresh=await token(true);
+   assertAccount(uid,epoch);
+   if(fresh){options.headers.Authorization='Bearer '+fresh;r=await fetch(url,options)}
+  }
+  assertAccount(uid,epoch);
+  if(r.status===404&&opt.method==='GET')return null;
+  const body=await r.json().catch(()=>({}));
+  assertAccount(uid,epoch);
+  if(!r.ok)throw Object.assign(new Error(body.error?.message||('HTTP '+r.status)),{code:body.error?.status,status:r.status});
+  return body;
+ }finally{clearTimeout(timeout)}
+}
+async function getDoc(path,uid){return request(API+'/'+path,{method:'GET'},uid)}
 async function putDoc(path,obj){const name='projects/'+PROJECT_ID+'/databases/'+DB+'/documents/'+path;return request(API+'/'+path,{method:'PATCH',body:JSON.stringify({name,fields:fields(obj)})})}
 
 function manifestPath(uid){return 'users/'+encodeURIComponent(uid)+'/sync/manifest'}
 function slotBase(uid,slot){return 'users/'+encodeURIComponent(uid)+'/syncSlots/'+slot}
-async function readManifest(uid){const d=await getDoc(manifestPath(uid));if(!d)return null;const x=decodeFields(d);if(!x.activeSlot||!x.revision)return null;return{activeSlot:String(x.activeSlot),revision:Number(x.revision)||0,hash:String(x.hash||''),clientUpdatedAt:Number(x.clientUpdatedAt)||0,schemaVersion:Number(x.schemaVersion)||1}}
+async function readManifest(uid){
+ const doc=await getDoc(manifestPath(uid),uid);
+ if(!doc)return null;
+ const x=decodeFields(doc);
+ if(!['a','b'].includes(x.activeSlot)||!Number(x.revision)||!doc.updateTime)throw new Error('SYNC_MANIFEST_INVALID');
+ return {activeSlot:x.activeSlot,revision:Number(x.revision),hash:String(x.hash||''),
+  clientUpdatedAt:Number(x.clientUpdatedAt)||0,updateTime:doc.updateTime};
+}
+function recordBaseline(uid,snapshot,manifest){
+ baseline={uid,snapshot};
+ writeMeta(uid,{lastRemoteRevision:manifest.revision,lastSyncedHash:snapshot.hash,lastSyncedAt:now(),
+  lastRemoteClientUpdatedAt:manifest.clientUpdatedAt||snapshot.updatedAt});
+ setBound(uid);
+}
+async function uploadSnapshot(uid,snapshot,remote,localHash=snapshot.hash){
+ const slot=remote?.activeSlot==='a'?'b':'a';
+ const revision=Math.max(remote?.revision||0,Number(readMeta(uid)?.lastRemoteRevision)||0)+1;
+ const base=slotBase(uid,slot),writes=[];
+ const put=(path,value)=>({update:{name:'projects/'+PROJECT_ID+'/databases/'+DB+'/documents/'+path,fields:fields(value)}});
+ for(const key of SOURCE_KEYS){
+  const raw=snapshot.values[key]||'',parts=chunks(raw),path=base+'/keys/'+encDocId(key);
+  parts.forEach((payload,index)=>{
+   writes.push(put(path+'/chunks/c'+String(index).padStart(5,'0'),{revision,index,payload}));
+  });
+  writes.push(put(path,{revision,key,chunkCount:parts.length,length:raw.length,hash:fnv1a(raw)}));
+ }
+ const manifest={activeSlot:slot,revision,hash:snapshot.hash,clientUpdatedAt:snapshot.updatedAt||now(),schemaVersion:1,appVersion:'162'};
+ writes.push({...put(manifestPath(uid),manifest),currentDocument:remote?{updateTime:remote.updateTime}:{exists:false}});
+ // Fragmentos y puntero se publican juntos. Un segundo dispositivo debe releer una revisión nueva.
+ await request(API+':commit',{method:'POST',body:JSON.stringify({writes})},uid);
+ window.TaskFlowCloudViewV162?.flush?.();
+ const latest=capture();
+ if(latest.hash===localHash&&localHash!==snapshot.hash)acceptSnapshot(uid,snapshot,manifest,latest);
+ else {
+  recordBaseline(uid,snapshot,manifest);
+  dirty=latest.hash!==snapshot.hash;
+  if(dirty)queueRecheck('changes-during-upload',200);
+ }
+ log('subida completada',revision);
+}
 
-async function uploadSnapshot(uid,snapshot,remote){const oldSlot=remote&&remote.activeSlot==='a'?'a':remote&&remote.activeSlot==='b'?'b':null;const slot=oldSlot==='a'?'b':'a';const rev=Math.max(Number(remote&&remote.revision)||0,Number(readMeta(uid)&&readMeta(uid).lastRemoteRevision)||0)+1;const base=slotBase(uid,slot);await Promise.all(SOURCE_KEYS.map(async key=>{
- const raw=snapshot.values[key]||'',parts=chunks(raw),kid=encDocId(key);
- for(let i=0;i<parts.length;i++)await putDoc(base+'/keys/'+kid+'/chunks/c'+String(i).padStart(5,'0'),{revision:rev,index:i,payload:parts[i]});
- await putDoc(base+'/keys/'+kid,{revision:rev,key:key,chunkCount:parts.length,length:raw.length,hash:fnv1a(raw)});
-}));
-await putDoc(manifestPath(uid),{activeSlot:slot,revision:rev,hash:snapshot.hash,clientUpdatedAt:snapshot.updatedAt||now(),schemaVersion:1,appVersion:'109'});
-const m={lastRemoteRevision:rev,lastSyncedHash:snapshot.hash,lastSyncedAt:now(),lastRemoteClientUpdatedAt:snapshot.updatedAt||now()};writeMeta(uid,m);setBound(uid);dirty=capture().hash!==snapshot.hash;
-if(dirty)queueRecheck('changes-during-upload',250);
-log('subida completada',rev);return m}
-
-async function downloadSnapshot(uid,manifest){const base=slotBase(uid,manifest.activeSlot);const values={};for(const key of SOURCE_KEYS){const kid=encDocId(key);const kd=await getDoc(base+'/keys/'+kid);if(!kd){values[key]='';continue}const km=decodeFields(kd),count=Math.max(0,Number(km.chunkCount)||0);const arr=[];
-for(let i=0;i<count;i++){const cd=await getDoc(base+'/keys/'+kid+'/chunks/c'+String(i).padStart(5,'0'));if(!cd)throw new Error('SYNC_CHUNK_MISSING');arr.push(String(decodeFields(cd).payload||''))}
-values[key]=arr.join('');
-if(values[key].length!==Number(km.length)||fnv1a(values[key])!==String(km.hash||''))throw new Error('SYNC_CHUNK_CORRUPTED')}const hash=hashValues(values);
-if(manifest.hash&&hash!==manifest.hash)throw new Error('SYNC_SNAPSHOT_HASH_MISMATCH');
-return{values,hash,updatedAt:manifest.clientUpdatedAt||now()}}
+async function downloadSnapshot(uid,manifest){
+ const base=slotBase(uid,manifest.activeSlot);
+ const values=Object.fromEntries(await Promise.all(SOURCE_KEYS.map(async key=>{
+  const path=base+'/keys/'+encDocId(key);
+  const doc=await getDoc(path,uid);
+  if(!doc)return [key,''];
+  const km=decodeFields(doc);
+  const count=Number(km.chunkCount);
+  if(km.revision!==manifest.revision||!Number.isInteger(count)||count<1||count>500)throw new Error('SYNC_KEY_REVISION');
+  const parts=[];
+  for(let i=0;i<count;i+=6){
+   parts.push(...await Promise.all(Array.from({length:Math.min(6,count-i)},async(_,offset)=>{
+    const index=i+offset;
+    const chunk=decodeFields(await getDoc(path+'/chunks/c'+String(index).padStart(5,'0'),uid));
+    if(chunk.revision!==manifest.revision||chunk.index!==index||typeof chunk.payload!=='string')throw new Error('SYNC_CHUNK_REVISION');
+    return chunk.payload;
+   })));
+  }
+  const raw=parts.join('');
+  if(raw.length!==Number(km.length)||fnv1a(raw)!==String(km.hash||''))throw new Error('SYNC_CHUNK_CORRUPTED');
+  return [key,raw];
+ })));
+ const hash=hashValues(values);
+ if(manifest.hash&&hash!==manifest.hash)throw new Error('SYNC_SNAPSHOT_HASH_MISMATCH');
+ return {values,hash,updatedAt:manifest.clientUpdatedAt||now()};
+}
 function hashValues(values){let joined='';SOURCE_KEYS.forEach(k=>joined+=k+'\u0000'+(values[k]||'')+'\u0001');return fnv1a(joined)}
 function prefHash(values){let joined='';PREF_KEYS.forEach(k=>joined+=k+'\u0000'+(values[k]||'')+'\u0001');return fnv1a(joined)}
 function capturePrefs(){const values={};PREF_KEYS.forEach(k=>values[k]=safeGet(k)||'');return{values,hash:prefHash(values),updatedAt:Number(safeGet(PREF_TOUCH))||now(),hasValues:PREF_KEYS.some(k=>!!values[k])}}
@@ -162,19 +258,38 @@ function queuePreference(){
  prefSaveTimer=setTimeout(()=>{prefSaveTimer=0;syncNow('preferences-change').catch(e=>warn('preferences',e))},700);
 }
 
-function applySnapshot(uid,snapshot,manifest){applying=true;try{const v=snapshot.values||{};const main=v[MAIN_KEY]||'';const fin=v[FIN_KEY]||'';if(main){nativeSet(MAIN_KEY,main);nativeSet(MAIN_BACKUP,main);nativeSet(MAIN_RECOVERY,main)}else{nativeRemove(MAIN_KEY);nativeRemove(MAIN_BACKUP);nativeRemove(MAIN_RECOVERY)}if(fin){nativeSet(FIN_KEY,fin);nativeSet(FIN_BACKUP,fin)}else{nativeRemove(FIN_KEY);nativeRemove(FIN_BACKUP)}for(const k of ['taskflow_share_reward_claimed_v1','taskflow_share_count_v1']){if(v[k])nativeSet(k,v[k]);else nativeRemove(k)}nativeSet(TOUCH_KEY,String(snapshot.updatedAt||now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:Number(manifest&&manifest.revision)||0,lastSyncedHash:snapshot.hash||hashValues(v),lastSyncedAt:now(),lastRemoteClientUpdatedAt:Number(manifest&&manifest.clientUpdatedAt)||snapshot.updatedAt||now()})}finally{applying=false;dirty=false}}
+function applySnapshot(snapshot,local){
+ const assign=(key,value)=>value?nativeSet(key,value):nativeRemove(key);
+ applying=true;
+ try{
+  const changed=[];
+  for(const key of SOURCE_KEYS){
+   if(snapshot.values[key]===local.values[key])continue;
+   if(!assign(key,snapshot.values[key])){
+    for(const applied of changed.reverse())assign(applied,local.values[applied]);
+    throw new Error('SYNC_LOCAL_STORAGE_UNAVAILABLE');
+   }
+   changed.push(key);
+  }
+  for(const [source,backups] of [[MAIN_KEY,[MAIN_BACKUP,MAIN_RECOVERY]],[FIN_KEY,[FIN_BACKUP]]]){
+   for(const key of backups){if(!assign(key,snapshot.values[source]))nativeRemove(key)}
+  }
+  nativeSet(TOUCH_KEY,String(snapshot.updatedAt||now()));
+  dirty=false;
+ }finally{applying=false}
+}
 
 // Refrescar la sesión existente sin repetir el arranque ni los anuncios.
-function notifySnapshotApplied(uid){
+function notifySnapshotApplied(uid,keys){
  try{
-  for(const key of [MAIN_KEY,FIN_KEY]){
+  for(const key of keys){
    const latest=safeGet(key);
    window.dispatchEvent(new StorageEvent('storage',{
     key,newValue:latest,storageArea:localStorage,url:location.href
    }));
   }
  }catch(e){warn('Notificación interna de almacenamiento no disponible',e)}
- try{document.dispatchEvent(new CustomEvent('taskflow:cloud-snapshot-applied',{detail:{uid}}))}catch(_){}
+ try{document.dispatchEvent(new CustomEvent('taskflow:cloud-snapshot-applied',{detail:{uid,keys}}))}catch(_){}
  for(const name of ['TaskFlowV117','TaskFlowV119']){
   try{const api=window[name];if(api&&typeof api.refresh==='function')api.refresh()}catch(_){}
  }
@@ -188,17 +303,58 @@ function backupConflict(uid,snapshot){
 }
 function clearLiveForNewAccount(uid){applying=true;try{[MAIN_KEY,MAIN_BACKUP,MAIN_RECOVERY,FIN_KEY,FIN_BACKUP,'taskflow_share_reward_claimed_v1','taskflow_share_count_v1'].forEach(nativeRemove);nativeSet(TOUCH_KEY,String(now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:0,lastSyncedHash:'',lastSyncedAt:0,lastRemoteClientUpdatedAt:0})}finally{applying=false}}
 
-async function reconcile(uid){if(!uid)return;const remote=await readManifest(uid);const local=capture();const bound=getBound();const meta=readMeta(uid);
-if(!remote){if(bound&&bound!==uid){log('cuenta nueva en dispositivo previamente vinculado; estado local limpio');clearLiveForNewAccount(uid);location.reload();return}await uploadSnapshot(uid,local,null);return}
-if(bound!==uid){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);log('restaurando cuenta en este dispositivo');if(bound)location.reload();else notifySnapshotApplied(uid);return}
-if(remote.hash===local.hash){writeMeta(uid,{lastRemoteRevision:remote.revision,lastSyncedHash:local.hash,lastSyncedAt:now(),lastRemoteClientUpdatedAt:remote.clientUpdatedAt||0});setBound(uid);dirty=false;return}
-if(!meta){if(remote.clientUpdatedAt>local.updatedAt){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}await uploadSnapshot(uid,local,remote);return}
-const localChanged=local.hash!==String(meta.lastSyncedHash||'');const remoteChanged=Number(remote.revision)>Number(meta.lastRemoteRevision||0)||remote.hash!==String(meta.lastSyncedHash||'');
-if(!localChanged&&!remoteChanged){writeMeta(uid,Object.assign({},meta,{lastRemoteRevision:remote.revision,lastSyncedHash:remote.hash||local.hash,lastRemoteClientUpdatedAt:remote.clientUpdatedAt||0}));dirty=false;return}
-if(!localChanged&&remoteChanged){const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}
-if(localChanged&&!remoteChanged){await uploadSnapshot(uid,local,remote);return}
-if((remote.clientUpdatedAt||0)>(local.updatedAt||0)){backupConflict(uid,local);const snap=await downloadSnapshot(uid,remote);applySnapshot(uid,snap,remote);notifySnapshotApplied(uid);return}
-await uploadSnapshot(uid,local,remote)
+function acceptSnapshot(uid,snapshot,manifest,local){
+ assertAccount(uid);
+ const keys=SOURCE_KEYS.filter(key=>local.values[key]!==snapshot.values[key]);
+ applySnapshot(snapshot,local);
+ recordBaseline(uid,snapshot,manifest);
+ if(keys.length)notifySnapshotApplied(uid,keys);
+}
+async function reconcile(uid){
+ assertAccount(uid);
+ const remote=await readManifest(uid);
+ const bound=getBound();
+ const switched=bound&&bound!==uid;
+ if(!switched)window.TaskFlowCloudViewV162?.flush?.();
+ const local=capture(),meta=readMeta(uid);
+ if(!remote){
+  if(switched){
+   clearLiveForNewAccount(uid);
+   notifySnapshotApplied(uid,SOURCE_KEYS);
+   queueRecheck('new-account',150);
+   return;
+  }
+  await uploadSnapshot(uid,local,null);
+  return;
+ }
+ if(remote.hash===local.hash&&!switched){
+  recordBaseline(uid,local,remote);
+  dirty=false;
+  return;
+ }
+ const preferRemote=remote.clientUpdatedAt>=local.updatedAt;
+ const sameAccount=bound===uid;
+ const localChanged=local.hash!==meta?.lastSyncedHash;
+ if(sameAccount&&((meta&&localChanged&&remote.hash===meta.lastSyncedHash)||(!meta&&!preferRemote))){
+  await uploadSnapshot(uid,local,remote);
+  return;
+ }
+ const incoming=await downloadSnapshot(uid,remote);
+ if(!switched)window.TaskFlowCloudViewV162?.flush?.();
+ const latest=capture();
+ if(!switched&&latest.hash!==local.hash){queueRecheck('local-during-download',130);return}
+ if(!sameAccount||!localChanged||!meta){acceptSnapshot(uid,incoming,remote,latest);return}
+ const base=baseline?.uid===uid&&baseline.snapshot.hash===meta.lastSyncedHash?baseline.snapshot.values:null;
+ const values={};
+ for(const key of SOURCE_KEYS){
+  if(base&&local.values[key]===base[key])values[key]=incoming.values[key];
+  else if(base&&incoming.values[key]===base[key])values[key]=local.values[key];
+  else values[key]=(preferRemote?incoming:local).values[key];
+ }
+ if(SOURCE_KEYS.some(key=>values[key]!==local.values[key]))backupConflict(uid,local);
+ const hash=hashValues(values);
+ if(hash===incoming.hash)acceptSnapshot(uid,incoming,remote,latest);
+ else await uploadSnapshot(uid,{values,hash,updatedAt:Math.max(local.updatedAt,incoming.updatedAt)},remote,latest.hash);
 }
 
 function queueRecheck(reason,delay){
@@ -237,6 +393,7 @@ async function syncNow(reason){
  if(!currentUid||navigator.onLine===false)return false;
  if(syncing){pendingSync=true;return syncing}
  const uid=currentUid;
+ const epoch=accountEpoch;
  syncing=(async()=>{
    try{
      await reconcile(uid);
@@ -244,14 +401,16 @@ async function syncNow(reason){
      retryDelay=2000;
      return true;
    }catch(e){
+     if(uid!==currentUid||epoch!==accountEpoch)return false;
      dirty=true;
      warn(reason||'sync',e);
-     queueRecheck('retry',retryDelay);
+     const conflict=['ABORTED','FAILED_PRECONDITION','ALREADY_EXISTS'].includes(e.code)||e.status===409||e.status===412;
+     queueRecheck('retry',conflict?180:retryDelay);
      retryDelay=Math.min(45000,Math.round(retryDelay*1.6));
      return false;
    }finally{
      syncing=null;
-     if(pendingSync&&uid===currentUid){
+     if(pendingSync&&currentUid){
        pendingSync=false;
        queueRecheck('pending',180);
      }
@@ -262,31 +421,44 @@ async function syncNow(reason){
 function listenForRemote(uid){
  if(remoteUnsubscribe){try{remoteUnsubscribe()}catch(_){}remoteUnsubscribe=null}
  if(prefUnsubscribe){try{prefUnsubscribe()}catch(_){}prefUnsubscribe=null}
+ if(profileUnsubscribe){try{profileUnsubscribe()}catch(_){}profileUnsubscribe=null}
  hasRemoteListener=false;
  if(!firestoreDb||!uid)return;
+ const epoch=accountEpoch;
+ const valid=()=>uid===currentUid&&epoch===accountEpoch;
  try{
-   remoteUnsubscribe=firestoreDb.doc('users/'+uid+'/sync/manifest').onSnapshot(snap=>{
-     if(currentUid!==uid||!snap.exists||snap.metadata&&snap.metadata.hasPendingWrites)return;
+   remoteUnsubscribe=firestoreDb.doc('users/'+uid+'/sync/manifest').onSnapshot({includeMetadataChanges:true},snap=>{
+     if(!valid()||snap.metadata?.hasPendingWrites)return;
+     hasRemoteListener=!snap.metadata?.fromCache;
+     if(!hasRemoteListener||!snap.exists)return;
      const remote=snap.data()||{},meta=readMeta(uid);
      const revision=Number(remote.revision)||0;
      if(meta&&revision===Number(meta.lastRemoteRevision)&&String(remote.hash||'')===String(meta.lastSyncedHash||'')&&!dirty)return;
      queueRecheck('remote-change',160);
-   },e=>{hasRemoteListener=false;warn('listener remoto',e)});
+   },e=>{if(valid()){hasRemoteListener=false;remoteUnsubscribe=null;warn('listener remoto',e)}});
+   profileUnsubscribe=firestoreDb.doc('users/'+uid+'/profile/avatar').onSnapshot(snap=>{
+     if(!valid()||snap.metadata?.fromCache||snap.metadata?.hasPendingWrites)return;
+     document.dispatchEvent(new CustomEvent('taskflow:cloud-avatar',{detail:{uid,photo:snap.exists?String(snap.data()?.photoData||''):''}}));
+   },e=>{if(valid()){profileUnsubscribe=null;warn('listener de foto',e)}});
    if(PREF_KEYS.length)prefUnsubscribe=firestoreDb.doc(prefPath(uid)).onSnapshot(snap=>{
      if(currentUid!==uid||!snap.exists||snap.metadata&&snap.metadata.hasPendingWrites)return;
      const remote=snap.data()||{},meta=readPrefMeta(uid);
      if(meta&&String(meta.hash||'')===String(remote.hash||'')&&!prefDirty)return;
      queueRecheck('remote-preferences',180);
    },e=>warn('listener preferencias',e));
-   hasRemoteListener=true;
  }catch(e){hasRemoteListener=false;warn('listener setup',e)}
 }
 async function changeAccount(uid){
  if(uid===currentUid)return;
  if(remoteUnsubscribe){try{remoteUnsubscribe()}catch(_){}remoteUnsubscribe=null}
  if(prefUnsubscribe){try{prefUnsubscribe()}catch(_){}prefUnsubscribe=null}
+ if(profileUnsubscribe){try{profileUnsubscribe()}catch(_){}profileUnsubscribe=null}
  hasRemoteListener=false;
  currentUid=uid;
+ accountEpoch++;
+ baseline=null;
+ lastRemotePollAt=0;
+ lastPhotoPollAt=0;
  clearTimeout(saveTimer);saveTimer=0;
  clearTimeout(prefSaveTimer);prefSaveTimer=0;
  clearTimeout(deferredSyncTimer);deferredSyncTimer=0;
@@ -294,8 +466,8 @@ async function changeAccount(uid){
  dirty=false;
  if(!uid){log('sin sesión; sincronización pausada');return}
  // La carga de datos y el listener no deben bloquear ni reconstruir la interfaz durante el inicio.
+ listenForRemote(uid);
  await syncNow('auth-state');
- if(currentUid===uid)listenForRemote(uid);
 }
 function scanCurrentAccount(){
  const user=window.TaskFlowFirebase&&window.TaskFlowFirebase.getUser&&window.TaskFlowFirebase.getUser();
@@ -305,6 +477,11 @@ function scanCurrentAccount(){
 function pollRemote(){
  if(!currentUid||navigator.onLine===false||document.hidden)return;
  const t=now();
+ if(firestoreDb&&!remoteUnsubscribe)listenForRemote(currentUid);
+ if(!profileUnsubscribe&&t-lastPhotoPollAt>=12000){
+  lastPhotoPollAt=t;
+  document.dispatchEvent(new CustomEvent('taskflow:cloud-avatar-refresh',{detail:{uid:currentUid}}));
+ }
  if(hasRemoteListener&&t-lastRemotePollAt<LISTENER_SAFETY_POLL_MS)return;
  lastRemotePollAt=t;
  syncNow('background-poll').catch(e=>warn('poll',e));
@@ -318,16 +495,15 @@ async function init(){
  }
  await window.TaskFlowFirebase.initialize();
  if(window.TaskFlowFirebase.getMode&&window.TaskFlowFirebase.getMode()==='sdk'&&window.firebase&&window.firebase.auth){
-   try{
-     await loadScript('https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js');
-     if(window.firebase&&window.firebase.firestore)firestoreDb=window.firebase.firestore();
-   }catch(e){warn('Firestore listener no disponible; se mantiene sincronización por eventos.',e)}
    window.firebase.auth().onAuthStateChanged(user=>changeAccount(user&&user.uid||null).catch(e=>warn('auth-state',e)));
+   loadFirestore().then(db=>{firestoreDb=db;if(currentUid)listenForRemote(currentUid)})
+    .catch(e=>warn('Firestore listener no disponible; se mantiene sincronización por eventos.',e));
  }else{
    // Cuando Firebase Auth funciona por REST también debe sincronizar todos los dispositivos.
    log('Autenticación REST activa: sincronización por comprobación periódica');
  }
  scanCurrentAccount();
+ document.addEventListener('taskflow:firebase-auth-changed',scanCurrentAccount);
  checkSessionTimer=setInterval(scanCurrentAccount,SESSION_POLL_MS);
  remotePollTimer=setInterval(pollRemote,REST_POLL_MS);
  window.addEventListener('online',()=>{scanCurrentAccount();queueRecheck('online',100)});

@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 if (window.TaskFlowPoliciesV161) return;
-const VERSION = '2026-11-12.v161';
+const VERSION = '2026-11-12.v162';
 const STORAGE_KEY = 'taskflow_policy_acceptance';
 const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="true" aria-label="Políticas de TaskFlow">
         <header class="policy-page-bar">
@@ -58,7 +58,7 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                         <a href="#pol-changes"><svg class="policy-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 8V4h4"/><path d="M5.5 5.5A8 8 0 1 1 4 14"/></svg>Cambios</a>
                         <a href="#pol-law"><svg class="policy-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v18M7 6h10M4 8l-3 6h6L4 8ZM20 8l-3 6h6l-3-6Z"/><path d="M7 21h10"/></svg>Marco aplicable</a>
                         <a href="#pol-contact"><svg class="policy-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M5.5 15c.6-1.8 1.5-2.7 2.5-2.7s1.9.9 2.5 2.7M13 9h5M13 12h5M13 15h3"/></svg>Responsable</a>
-                                            <a href="#pol-ads-topics">Preferencias de anuncios</a>
+                                            <a href="#pol-ads-topics">Publicidad en TaskFlow</a>
                         <a href="#pol-membership">Membresía Sin anuncios</a>
                     </nav>
 
@@ -93,7 +93,7 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                         <p>TaskFlow guarda información de progreso en el dispositivo para que las tareas, hábitos, rangos, recompensas y demás avances permanezcan disponibles entre usos.</p>
                         <ul>
                             <li>Los datos pueden perderse si se eliminan los datos de TaskFlow, se restaura el dispositivo, se reinstala la aplicación o se cambia de dispositivo sin una copia de respaldo.</li>
-                            <li>TaskFlow utiliza los temas publicitarios que el usuario elige en Preferencias de anuncios. Las tareas, notas, hábitos, datos financieros y contenido personal se reservan para las funciones de TaskFlow.</li>
+                            <li>TaskFlow relaciona los anuncios con el tema general de la sección abierta. Las tareas, notas, hábitos, datos financieros y contenido personal se reservan para las funciones de TaskFlow.</li>
                             <li>El usuario debe mantener copias de respaldo cuando la información acumulada sea importante para él.</li>
                         </ul>
                     </section>
@@ -250,11 +250,9 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                         <p>Esta copia de TaskFlow todavía no muestra públicamente un nombre legal, correo electrónico o dirección de contacto del responsable. Si se ofrece a otras personas, deberá añadirse un medio real de contacto y la identificación correspondiente del responsable.</p>
                     </section>
                     <section class="policy-section" id="pol-ads-topics">
-                        <h4>20. Preferencias de anuncios</h4>
-                        <p>Puedes elegir temas y una zona de anuncios en el menú de TaskFlow. Son preferencias voluntarias. La zona que seleccionas indica de dónde te interesa recibir anuncios. La ubicación del reloj permanece en el dispositivo.</p>
-                        <p>Si activas las sugerencias, TaskFlow deduce temas generales como deportes o educación a partir de las rutinas del sistema que abres y las categorías de los anuncios que decides pulsar. Solo conserva los temas resultantes en el dispositivo. Puedes borrarlos o desactivar las sugerencias.</p>
-                        <p>TaskFlow usa esas elecciones para decidir qué campañas son compatibles. Los temas se guardan en este dispositivo y el motor de anuncios los consulta al seleccionar campañas. Si eliges una zona, el servicio puede conservar una referencia seudónima de esa elección mientras esté activa para elaborar totales de audiencia. Los anunciantes reciben métricas agregadas, no las preferencias individuales.</p>
-                        <p>Puedes borrar o cambiar tus elecciones desde Preferencias de anuncios. La aceptación de las políticas y el permiso del reloj son independientes de esta elección.</p>
+                        <h4>20. Publicidad en TaskFlow</h4>
+                        <p>En el plan gratuito, TaskFlow puede mostrar anuncios relacionados con la sección abierta. Por ejemplo, una rutina de ejercicio puede mostrar anuncios de deportes. El motor de anuncios usa únicamente el tema general de la sección en ese momento. TaskFlow no conserva un perfil de intereses ni usa para publicidad el contenido de tus hábitos, tareas, presupuesto o ubicación del reloj.</p>
+                        <p>Los anunciantes reciben métricas agregadas de su campaña. Si tienes la membresía Sin anuncios activa, TaskFlow omite la publicidad.</p>
                     </section>
                     <section class="policy-section" id="pol-membership">
                         <h4>21. Membresía Sin anuncios</h4>
@@ -283,6 +281,10 @@ function install() {
   try {
     for (const obsolete of ['taskflow_personalizacion_v160','tf_ads_geo_gt_grid_v1','tf_ads_geo_world_grid_v1']) {
       localStorage.removeItem(obsolete);
+    }
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('taskflow_ads_preferences_v161:')) localStorage.removeItem(key);
     }
   } catch (_) {}
 }

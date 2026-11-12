@@ -62,7 +62,7 @@ body{min-height:100dvh}
 <div id="tfBoot" role="alert" aria-live="assertive" hidden><div class="tfCard"><p class="tfErr" id="tfErr">No fue posible iniciar TaskFlow. Comprueba tu conexión y vuelve a intentarlo.</p><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 
 <script src="./taskflow-microslats.js?v=3-fhd-touch-20261107" defer></script>
-<script src="./taskflow-policies-v161.js"></script>
+<script src="./taskflow-policies-v161.js?v=162"></script>
 <script id="tfSplashParticleScript" src="./taskflow-splash-particles-v156.js" async></script>
 <script>
 (async function(){
@@ -142,7 +142,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=161-budget-20261111':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=161-policies-timers-20261111':p==='t57/runtime-03.txt'?'?v=160-regional-clock-20261111':p==='t57/runtime-19.txt'?'?v=161-live-ads-20261111':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=162-assets-20261112':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=162-auth-listener-20261112':p==='t57/runtime-24.txt'?'?v=162-synced-views-20261112':p==='t57/runtime-03.txt'?'?v=162-routine-ad-close-20261112':p==='t57/runtime-19.txt'?'?v=162-context-ads-20261112':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();

@@ -355,6 +355,7 @@ function addStyle(id, css) {
 }
 
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
+const canShowAds = () => window.TaskFlowNoAds?.canShowAds?.() ?? !paidNoAds();
 const nativeWidth = width => width / Math.max(1, window.devicePixelRatio || 1) + 'px';
 
 const PROMO_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19 19 5M9 5h10v10"/></svg>';
@@ -413,7 +414,7 @@ function createBanner(id, label) {
 }
 
 function mountBanners() {
-  const blocked = paidNoAds();
+  const blocked = !canShowAds();
   for (const [id, label, selector, appendToPanel] of BANNER_PLACEMENTS) {
     let slot = document.getElementById(id);
     const anchor = blocked || !promosEnabled ? null : document.querySelector(selector);
@@ -431,7 +432,7 @@ function renderBanner(id, content, showPromo = true) {
   const slot = BANNER_IDS.includes(id) && document.getElementById(id);
   if (!slot) return false;
   if (!content) {
-    if (paidNoAds() || !promosEnabled) slot.remove();
+    if (!canShowAds() || !promosEnabled) slot.remove();
     else if (showPromo) renderPromo(slot);
     else if (slot.childElementCount) {
       slot.classList.remove('tf50-has-ad', 'tf158-has-promo');
@@ -444,7 +445,7 @@ function renderBanner(id, content, showPromo = true) {
   if (!(img instanceof HTMLImageElement) || (content !== img &&
       (!(content instanceof HTMLAnchorElement) || content.childElementCount !== 1))) return false;
   if (!img.complete || !((img.naturalWidth === 1200 && img.naturalHeight === 180) ||
-      (img.naturalWidth === 2400 && img.naturalHeight === 360)) || paidNoAds()) return false;
+      (img.naturalWidth === 2400 && img.naturalHeight === 360)) || !canShowAds()) return false;
   slot.style.setProperty('--tf-ad-native-width', nativeWidth(img.naturalWidth));
   slot.replaceChildren(content);
   slot.classList.remove('tf158-has-promo');
@@ -828,10 +829,10 @@ function setPromoReady(placement, ready) {
   } else promoReady.delete(placement);
 }
 
-const available = () => promosEnabled && !document.hidden && !permissionsOpen() && !paidNoAds();
+const available = () => promosEnabled && !document.hidden && !permissionsOpen() && canShowAds();
 const canPresent = () => available() && !document.documentElement.classList.contains('tf-paypal-noads-checking');
 const choosing = () => window.TaskFlowSelectsV159?.isOpen() ||
-  Boolean(document.querySelector('.tf-icon-picker.open,.tf-icon-sheet.tf-v102-detached-open,#tf161AdPreferences[open]'));
+  Boolean(document.querySelector('.tf-icon-picker.open,.tf-icon-sheet.tf-v102-detached-open'));
 const canEnter = () => !entryShown && canPresent() && !choosing() && !interaction.isOpen();
 async function showEntry() {
   if (!await entry.start(canEnter)) return false;
@@ -904,7 +905,7 @@ addStyle('tfAdsPromoV159Style', PROMO_CSS);
 addStyle('tfVerticalAdsV159Style', VERTICAL_CSS);
 // El puente decide si hay inventario. La promoción local sigue disponible si el módulo no cargó.
 setTimeout(() => {
-  if (window.TaskFlowADS || !promosEnabled || paidNoAds()) return;
+  if (window.TaskFlowADS || !promosEnabled || !canShowAds()) return;
   for (const id of BANNER_IDS) renderBanner(id, null);
   for (const placement of ['entry', 'interaction']) setPromoReady(placement, true);
 }, 15000);
@@ -914,7 +915,10 @@ for (const selector of ['.wrap', '#sideMenu', '#windowContainer', '#windowConten
   const area = document.querySelector(selector);
   if (area) layout.observe(area, {childList: true, attributes: true, attributeFilter: ['class', 'data-tf35-view']});
 }
-document.addEventListener('taskflow:noads-status-updated', queueMount);
+document.addEventListener('taskflow:noads-status-updated', () => {
+  queueMount();
+  scheduleVerticalAds();
+});
 window.addEventListener('resize', () => {
   for (const id of BANNER_IDS) {
     const slot = document.getElementById(id);

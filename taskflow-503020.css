@@ -99,7 +99,7 @@
 }
 .tf503020-content { display: grid; gap: 11px; padding: clamp(11px, 2.7vw, 19px); }
 #tf503020Overlay.tf503020-overlay.window-container.open .tf503020-content {
-  padding-block-end: calc(38px + env(safe-area-inset-bottom,0px)) !important;
+  padding-block-end: calc(54px + env(safe-area-inset-bottom,0px)) !important;
 }
 .tf503020-card {
   min-width: 0;
@@ -259,10 +259,18 @@
 .tf503020-detail dl > div { padding-inline-start: 10px; border-inline-start: 2px solid var(--tf-budget-accent); }
 .tf503020-detail dt { color: var(--tf-budget-accent); font-weight: 800; }
 .tf503020-detail dd, .tf503020-wealth p, .tf503020-wealth ul { margin: 0; }
-#tf503020Overlay.tf503020-overlay.window-container.open .tf503020-wealth-card {
-  padding-block-end: clamp(12px,2.6vw,18px) !important;
-  border-color: #476793;
-  background: radial-gradient(ellipse at top left,#224861 0%,transparent 58%),linear-gradient(145deg,#132f49,#111d39);
+#tf503020Overlay#tf503020Overlay .tf503020-content > .tf503020-detail {
+  box-sizing: border-box;
+  width: 100%;
+  padding: clamp(12px,2.6vw,18px) !important;
+}
+.tf503020-detail > summary {
+  width: 100%;
+  min-height: 38px;
+}
+.tf503020-detail > summary > span:nth-child(2) {
+  flex: 1;
+  overflow-wrap: anywhere;
 }
 .tf503020-wealth {
   width: min(100%,540px);

@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.6.0
+/* TaskFlow ADS Bridge v3.7.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -11,13 +11,16 @@ const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURICompone
 const bannerSlots = () => window.TaskFlowAdsV50?.slots || [];
 const VERTICAL_PLACEMENTS = ['entry', 'interaction'];
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
-const adsPermitted = () => config.enabled && !paidNoAds();
-const adPreferences = () => window.TaskFlowAdPreferencesV161?.get() || {interests: [], area: null};
+const adsPermitted = () => config.enabled && (window.TaskFlowNoAds?.canShowAds?.() ?? !paidNoAds());
+function sectionTopic() {
+ const routine = document.querySelector('#windowContainer.open #windowContent[data-tf-routine]')?.dataset.tfRoutine;
+ if (routine === 'sung') return 'sports';
+ return ['legal','socrates','machiavelli','mentalist'].includes(routine) ? 'education' : '';
+}
 const signedInAccount = () => String(window.TaskFlowFirebase?.getUser?.()?.uid || '');
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose/v161';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
-const AUDIENCE_AREA_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/audience/area';
 const GEO_WITHDRAW_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/withdraw';
 const OWNER_SYNC_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/sync/owned';
 let ownerRecoveryPending=null,ownerRecoveryUid='',ownerRecoveryAt=0,ownerRecoveryResult='pending';
@@ -86,7 +89,7 @@ async function loadRecommendations() {
  if (!sessionId) { settleUnavailable(); return; }
  const scope = audienceScope;
  const revision = catalogRevision;
- const preferences = adPreferences();
+ const topic = selectedTopic;
  const token = await deliveryToken();
  if (scope !== audienceScope || revision !== catalogRevision || !audienceIsCurrent()) return;
  if (!token) { settleUnavailable(); retryRecommendations(4000); return; }
@@ -109,8 +112,7 @@ async function loadRecommendations() {
     method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
     signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
     body: JSON.stringify({placement, slot, sessionId, audienceVersion: 1,
-     ...(preferences.area ? {area: preferences.area} : {}),
-     ...(preferences.interests.length ? {interests: preferences.interests} : {}),
+     ...(topic ? {interests: [topic]} : {}),
     }),
    });
    if (response.ok) {
@@ -144,12 +146,10 @@ const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','nati
 let config={enabled:true,adminUrl:null,refreshMs:10000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
 let slotObserver=null,slotUpdateQueued=false;
-const emptyContext = () => ({country: '', region: '', city: '', neighborhood: ''});
-let context = emptyContext();
-let selectedInterests = [];
+let selectedTopic = '';
 let audienceState = 'pending', audienceScope = '', authSettled = false;
 let catalogRevision = 0, catalogSignature = '', catalogChangedAt = 0;
-let syncedAreaKey = '', areaSyncRequest = null;
+let withdrawnUid = '', areaSyncRequest = null;
 const audienceDeadline = Date.now() + 16000;
 
 async function deliveryToken() {
@@ -162,9 +162,9 @@ async function deliveryToken() {
  } catch (_) { return null; } finally { clearTimeout(timer); }
 }
 
-const audienceKey = (account, preferences) => account ? JSON.stringify([account,preferences.area,preferences.interests]) : '';
+const audienceKey = (account, topic) => account ? JSON.stringify([account,topic]) : '';
 const audienceIsCurrent = () => adsPermitted() && navigator.onLine !== false && audienceState === 'available' &&
- audienceKey(signedInAccount(), adPreferences()) === audienceScope;
+ audienceKey(signedInAccount(), sectionTopic()) === audienceScope;
 
 function clearSelections() {
  recommendations.clear();
@@ -179,29 +179,32 @@ function clearSelections() {
  }
 }
 
-function syncDeclaredArea() {
+function withdrawPreviousArea() {
  const account = signedInAccount();
  if (!account || !config.enabled || areaSyncRequest || navigator.onLine === false) return;
- const {area} = adPreferences();
- const key = JSON.stringify([account, area]);
- if (key === syncedAreaKey) return;
+ const key = 'taskflow_ads_area_withdrawn_v162:' + account;
+ if (account === withdrawnUid) return;
+ try { if (localStorage.getItem(key) === '1') return; } catch (_) {}
  areaSyncRequest = (async () => {
   const token = await deliveryToken();
-  if (!token || account !== signedInAccount() || key !== JSON.stringify([account, adPreferences().area])) return;
+  if (!token || account !== signedInAccount()) return;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 9000);
   try {
-   const response = await fetch(area ? AUDIENCE_AREA_URL : GEO_WITHDRAW_URL, {
+   const response = await fetch(GEO_WITHDRAW_URL, {
     method:'POST', mode:'cors', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
     signal:controller.signal, headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-    body:JSON.stringify(area ? {consent:true, area} : {}),
+    body:'{}',
    });
-   if (response.ok) syncedAreaKey = key;
+   if (response.ok) {
+    withdrawnUid = account;
+    try { localStorage.setItem(key,'1'); } catch (_) {}
+   }
   } catch (_) {} finally { clearTimeout(timeout); }
  })().finally(() => {
   areaSyncRequest = null;
   const next = signedInAccount();
-  if (next && JSON.stringify([next, adPreferences().area]) !== key) syncDeclaredArea();
+  if (next && next !== account) withdrawPreviousArea();
  });
 }
 
@@ -247,22 +250,14 @@ function dateEligible(c){
  return (!c.start || /^\d{4}-\d{2}-\d{2}$/.test(c.start) && c.start <= today) &&
   (!c.end || /^\d{4}-\d{2}-\d{2}$/.test(c.end) && c.end >= today);
 }
-function comparableArea(value, kind) {
- const normalized = normText(value);
- if (kind === 'region') return normalized.replace(/^(?:departamento\s+de(?:l)?|departamento|depto\.?|provincia\s+de|provincia|estado\s+de|estado|region\s+de|region)\s+/, '').trim();
- if (kind === 'city') return normalized.replace(/^(?:municipio\s+de|municipio|ciudad\s+de|ciudad)\s+/, '').trim();
- return normalized;
-}
 function targetEligible(target) {
  const cc = countryCode(target.country);
- return (!cc || cc === 'ALL' || cc === context.country) &&
-  ['region', 'city', 'neighborhood'].every(kind => !target[kind] ||
-   Boolean(context[kind] && comparableArea(target[kind], kind) === comparableArea(context[kind], kind)));
+ return (!cc || cc === 'ALL') && !target.region && !target.city && !target.neighborhood;
 }
 
 function adEligible(ad) {
  return targetEligible(ad.target) && (!ad.interestTopics.length ||
-  ad.interestTopics.some(topic => selectedInterests.includes(topic)));
+  ad.interestTopics.includes(selectedTopic));
 }
 
 // Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
@@ -409,7 +404,6 @@ function bindAnalyticsTracking(){
    const media=banner.querySelector('img');
    if(media?.complete&&media.naturalWidth>0)recordVisibleAd(ad,banner.id,banner);
    recordAdEvent('click',ad,banner.id);
-   if(e.isTrusted)window.TaskFlowAdPreferencesV161?.learnTopics?.(ad.interestTopics);
   }
    return;
   }
@@ -422,7 +416,6 @@ function bindAnalyticsTracking(){
    const media=stage?.querySelector('img,video');
    if(media&&(media.tagName==='IMG'?media.complete&&media.naturalWidth>0:media.readyState>=1))recordVisibleAd(ad,placement,stage);
    recordAdEvent('click',ad,placement);
-   if(e.isTrusted)window.TaskFlowAdPreferencesV161?.learnTopics?.(ad.interestTopics);
   }
  },true);
  const checkBannerImpressions=()=>{
@@ -529,7 +522,7 @@ function bannerNode(ad,img){
  return a;
 }
 function canShowPromo(placement, slot) {
- if (!config.enabled || paidNoAds()) return false;
+ if (!adsPermitted()) return false;
  if (!lastRefresh && !lastError) return false;
  if (!adsPermitted()) return false;
  const inventory = catalog.filter(ad => ad.placement === placement);
@@ -604,7 +597,7 @@ function apply() {
    api.setCreative(null);
    if (api.isSponsored?.()) api.close(true);
   }
-  if (!config.enabled || paidNoAds()) api.close(true);
+  if (!adsPermitted()) api.close(true);
   if (api.isRunning() || api.hasShown?.()) continue;
   const ad = selectedCreatives(placement, placement, verticalFailures)[0];
   if (ad && activeVerticalAds[placement]?.selectionToken === ad.selectionToken) continue;
@@ -791,7 +784,7 @@ async function fetchCatalog(){
  return true;
 }
 async function refresh(){
- if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive())return false;
+ if(config.enabled&&!adsPermitted())return false;
  if(!config.enabled){stopLiveCatalog();catalog=[];rawCampaigns=[];catalogSignature='';clearSelections();applyWhenReady();return false}
  if(liveConnected){rebuildCatalog();return true}
  if(refreshing)return refreshing;
@@ -803,7 +796,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.6.0',
+ version:'3.7.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -815,8 +808,6 @@ const API={
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:liveConnected?'firestore-realtime':'firestore-rest'})},
  refresh,
  getCatalog(){return catalog.map(ad=>({...ad,target:{...ad.target},interestTopics:[...ad.interestTopics]}))},
- getAdAreas(){return rawCampaigns.filter(c=>c.status==='active'&&c.approvalStatus==='approved'&&/^[A-Z]{2}$/.test(countryCode(c.country)))
-  .map(c=>({country:countryCode(c.country),region:String(c.region||''),city:String(c.city||'')}));},
  mount(){return false},
  unmount(){}
 };
@@ -824,22 +815,30 @@ try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writabl
 
 function updateAudience() {
  const account = signedInAccount();
- const preferences = adPreferences();
- const scope = audienceKey(account, preferences);
+ const topic = sectionTopic();
+ const scope = audienceKey(account, topic);
  if (scope !== audienceScope) {
   audienceScope = scope;
-  context = preferences.area ? {...preferences.area, neighborhood: ''} : emptyContext();
-  selectedInterests = preferences.interests;
   clearSelections();
  }
+ selectedTopic = topic;
  audienceState = account ? 'available' : authSettled || Date.now() >= audienceDeadline ? 'unavailable' : 'pending';
  applyWhenReady();
  if (audienceIsCurrent()) void refreshRecommendations();
- syncDeclaredArea();
+ withdrawPreviousArea();
 }
 
 function boot() {
  observeSlots();
+ const frame = document.getElementById('windowContainer');
+ const panel = document.getElementById('windowContent');
+ if (frame && panel) {
+  const observer = new MutationObserver(() => {
+   if (sectionTopic() !== selectedTopic) updateAudience();
+  });
+  observer.observe(frame,{attributes:true,attributeFilter:['class']});
+  observer.observe(panel,{attributes:true,attributeFilter:['data-tf-routine']});
+ }
  void refresh();
  void connectLiveCatalog();
  updateAudience();
@@ -873,10 +872,9 @@ document.addEventListener('taskflow:firebase-auth-changed', () => {
  updateAudience();
  void recoverOwnedAds();
 });
-document.addEventListener('taskflow:ad-preferences-updated', updateAudience);
 document.addEventListener('taskflow:permissions-ready', applyWhenReady);
 document.addEventListener('taskflow:noads-status-updated', e => {
- if (e.detail?.active) { stopLiveCatalog(); apply(); }
+ if (!adsPermitted()) { stopLiveCatalog(); apply(); }
  else { void connectLiveCatalog(); void refresh(); }
 });
 document.addEventListener('visibilitychange', () => {
@@ -885,7 +883,7 @@ document.addEventListener('visibilitychange', () => {
  void connectLiveCatalog();
  if (Date.now() - lastRefresh > 8000) void refresh();
 });
-setInterval(syncDeclaredArea, 60000);
+setInterval(withdrawPreviousArea, 60000);
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){
