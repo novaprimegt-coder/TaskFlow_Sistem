@@ -98,6 +98,9 @@
   background: #1c2d48;
 }
 .tf503020-content { display: grid; gap: 11px; padding: clamp(11px, 2.7vw, 19px); }
+#tf503020Overlay.tf503020-overlay.window-container.open .tf503020-content {
+  padding-block-end: calc(38px + env(safe-area-inset-bottom,0px)) !important;
+}
 .tf503020-card {
   min-width: 0;
   padding: clamp(12px, 2.6vw, 18px);
@@ -256,6 +259,33 @@
 .tf503020-detail dl > div { padding-inline-start: 10px; border-inline-start: 2px solid var(--tf-budget-accent); }
 .tf503020-detail dt { color: var(--tf-budget-accent); font-weight: 800; }
 .tf503020-detail dd, .tf503020-wealth p, .tf503020-wealth ul { margin: 0; }
+#tf503020Overlay.tf503020-overlay.window-container.open .tf503020-wealth-card {
+  padding-block-end: clamp(12px,2.6vw,18px) !important;
+  border-color: #476793;
+  background: radial-gradient(ellipse at top left,#224861 0%,transparent 58%),linear-gradient(145deg,#132f49,#111d39);
+}
+.tf503020-wealth {
+  width: min(100%,540px);
+  min-width: 0;
+  gap: 12px;
+  margin: 14px auto 0;
+  padding: clamp(11px,3vw,18px);
+  border: 1px solid #4a6588;
+  border-radius: 12px;
+  background: #0b1d33;
+  overflow-wrap: anywhere;
+}
+.tf503020-wealth-intro { text-align: center; }
+.tf503020-wealth-intro strong { color: #a8fcf2; }
+.tf503020-wealth-split { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.tf503020-wealth-split > div { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; border: 1px solid #456783; border-radius: 10px; text-align: center; background: #17364e; }
+.tf503020-wealth-split > div:last-child { background: #232c50; }
+.tf503020-wealth-split strong { color: #90f5e7; font-size: clamp(16px,4.5vw,21px); }
+.tf503020-wealth-split > div:last-child strong { color: #d9cdff; }
+.tf503020-wealth-split span { font-size: 11px; }
+.tf503020-wealth-reading h4 { margin: 0 0 6px; color: #f1f7ff; font-size: 13px; }
+.tf503020-wealth-reading ul { display: grid; gap: 4px; padding-inline-start: 19px; list-style-position: outside; }
+.tf503020-wealth-reading li::marker { color: #87ebe7; }
 #tf503020Overlay :is(button,input,summary):focus-visible { outline: 2px solid #92f7ec; outline-offset: 3px; }
 @media(max-width: 470px) {
   .tf503020-chart { grid-template-columns: 1fr; }

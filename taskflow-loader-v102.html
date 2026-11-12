@@ -59,6 +59,8 @@ body{min-height:100dvh}
   </div>
 </div>
 <div class="boot" id="boot" role="alert" aria-live="assertive"><div class="card"><p class="msg" id="msg">No fue posible iniciar TaskFlow.</p><div class="detail" id="detail"></div><button class="retry" id="retry" type="button">Reintentar</button></div></div>
+<link rel="stylesheet" href="./taskflow-onboarding-v161.css">
+<script src="./taskflow-policies-v161.js"></script>
 <script src="./taskflow-microslats.js?v=2-touch-ripple" defer></script>
 <script>
 (()=>{
@@ -69,7 +71,8 @@ body{min-height:100dvh}
   const retryEl=document.getElementById('retry');
   // La pantalla oficial se presenta 10 segundos cuando se visita este cargador directamente.
   // Si la aplicación principal inyecta este script, no existe splash y no hay segundo retraso.
-  const splash=document.getElementById('tfSplash'),splashStart=performance.now(),SPLASH_MS=10000;
+  const splash=document.getElementById('tfSplash'),SPLASH_MS=10000;
+  let splashStart=0;
   let colorRaf=0,colorFinished=false;
   function tickSplash(now){
     if(!splash||colorFinished||!splash.isConnected)return;
@@ -80,7 +83,6 @@ body{min-height:100dvh}
     if(meter)meter.setAttribute('aria-valuenow',String(percent));
     if(percent<100)colorRaf=requestAnimationFrame(tickSplash);
   }
-  if(splash)colorRaf=requestAnimationFrame(tickSplash);
   async function waitForColorSplash(){
     if(!splash)return;
     const remaining=Math.max(0,SPLASH_MS-(performance.now()-splashStart));
@@ -148,6 +150,16 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
   async function boot(){
     bootEl.classList.remove('error');retryEl.disabled=true;detailEl.textContent='';msgEl.textContent='Descargando TaskFlow…';
     try{
+      if(splash){
+        if(!window.TaskFlowPoliciesV161.isAccepted()){
+          splash.hidden=true;
+          await window.TaskFlowPoliciesV161.requireAcceptance();
+          splash.hidden=false;
+        }
+        colorFinished=false;
+        splashStart=performance.now();
+        colorRaf=requestAnimationFrame(tickSplash);
+      }
       const responses=await Promise.all(parts.map(async name=>{const response=await fetch(base+name,{cache:'no-store',mode:'cors'});if(!response.ok)throw new Error('No se pudo obtener '+name+' ('+response.status+')');return (await response.text()).trim();}));
       const payload=responses.join('');
       if(payload.length!==expectedLength)throw new Error('Paquete incompleto: '+payload.length+' / '+expectedLength);
@@ -192,6 +204,7 @@ body>.tf-icon-sheet.tf-v102-detached-open .tf-icon-option-mark,body>.tf-icon-she
       if(!html.includes(iconPortalCloseOld)||!html.includes(iconPortalOpenOld))throw new Error('No se pudo activar el selector de iconos V102.');
       html=html.replace(iconPortalCloseOld,iconPortalCloseNew).replace(iconPortalOpenOld,iconPortalOpenNew);
       if(html.includes('</head>'))html=html.replace('</head>',injectedStyle+cleanupScript+scrollBridgeScript+iconPortalGuard+'</head>');
+      if(splash)html=html.replace('</body>', '<script>window.TaskFlowPoliciesV161?.install();<'+ '/script></body>');
       await waitForColorSplash();document.open();document.write(html);document.close();
     }catch(error){if(splash){colorFinished=true;try{window.TaskFlowMicroSlats&&window.TaskFlowMicroSlats.stop()}catch(_){}splash.hidden=true;if(colorRaf)cancelAnimationFrame(colorRaf)}console.error('TaskFlow boot error:',error);bootEl.classList.add('error');msgEl.textContent='No se pudo iniciar TaskFlow. Toca Reintentar.';detailEl.textContent=String(error&&error.message?error.message:error);retryEl.disabled=false;}
   }

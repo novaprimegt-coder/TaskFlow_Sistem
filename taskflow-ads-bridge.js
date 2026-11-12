@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.5.0
+/* TaskFlow ADS Bridge v3.6.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -11,17 +11,13 @@ const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURICompone
 const bannerSlots = () => window.TaskFlowAdsV50?.slots || [];
 const VERTICAL_PLACEMENTS = ['entry', 'interaction'];
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
-const LOCATION_DECISION = 'taskflow_location_decision_v52';
-const LOCATION_MAX_AGE = 15 * 60 * 1000;
-const locationConsent = () => {
- try { return localStorage.getItem(LOCATION_DECISION) === 'granted'; } catch (_) { return false; }
-};
-const adsPermitted = () => config.enabled && !paidNoAds() && locationConsent();
+const adsPermitted = () => config.enabled && !paidNoAds();
+const adPreferences = () => window.TaskFlowAdPreferencesV161?.get() || {interests: [], area: null};
 const signedInAccount = () => String(window.TaskFlowFirebase?.getUser?.()?.uid || '');
 // The client receives only campaign references, never commercial weighting or budget data.
-const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
+const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose/v161';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
-const GEO_PRESENCE_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/presence';
+const AUDIENCE_AREA_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/audience/area';
 const GEO_WITHDRAW_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/geo/withdraw';
 const OWNER_SYNC_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/sync/owned';
 let ownerRecoveryPending=null,ownerRecoveryUid='',ownerRecoveryAt=0,ownerRecoveryResult='pending';
@@ -90,6 +86,7 @@ async function loadRecommendations() {
  if (!sessionId) { settleUnavailable(); return; }
  const scope = audienceScope;
  const revision = catalogRevision;
+ const preferences = adPreferences();
  const token = await deliveryToken();
  if (scope !== audienceScope || revision !== catalogRevision || !audienceIsCurrent()) return;
  if (!token) { settleUnavailable(); retryRecommendations(4000); return; }
@@ -100,7 +97,7 @@ async function loadRecommendations() {
   if (!api?.hasShown?.() && !api?.isRunning?.()) slots.push({placement, slot: placement});
  }
  await Promise.all(slots.map(async ({placement, slot}) => {
-  const candidates = catalog.filter(ad => ad.placement === placement && targetEligible(ad.target));
+  const candidates = catalog.filter(ad => ad.placement === placement && adEligible(ad));
   if (!candidates.length) return;
   const previous = recommendations.get(slot);
   if (previous && previous.expiresAt > Date.now() && !completedSelections.has(previous.selectionToken)) return;
@@ -111,7 +108,10 @@ async function loadRecommendations() {
    const response = await fetch(SELECTION_URL, {
     method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
     signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
-    body: JSON.stringify({placement, slot, sessionId}),
+    body: JSON.stringify({placement, slot, sessionId, audienceVersion: 1,
+     ...(preferences.area ? {area: preferences.area} : {}),
+     ...(preferences.interests.length ? {interests: preferences.interests} : {}),
+    }),
    });
    if (response.ok) {
     const {campaignId, adId, selectionToken} = await response.json();
@@ -129,8 +129,10 @@ async function loadRecommendations() {
   applyWhenReady();
  }));
  applyWhenReady();
- if (!recommendations.size && catalog.length) retryRecommendations(12000);
- else clearRecommendationRetry();
+ if (slots.some(({slot,placement}) => !recommendations.has(slot) && catalog.some(ad => ad.placement === placement && adEligible(ad)))) {
+  const age = Date.now() - catalogChangedAt;
+  retryRecommendations(age < 2500 ? 1100 : age < 6500 ? 2600 : 12000);
+ } else clearRecommendationRetry();
 }
 
 function settleUnavailable() {
@@ -144,10 +146,10 @@ let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,last
 let slotObserver=null,slotUpdateQueued=false;
 const emptyContext = () => ({country: '', region: '', city: '', neighborhood: ''});
 let context = emptyContext();
-let audienceState = 'pending', audienceScope = '', locationRequest = null;
-let verifiedAt = 0, catalogRevision = 0, catalogSignature = '';
-let lastWithdrawal = '', presenceRecorded = false;
-let locationChecking = false, locationFailed = false, authSettled = false;
+let selectedInterests = [];
+let audienceState = 'pending', audienceScope = '', authSettled = false;
+let catalogRevision = 0, catalogSignature = '', catalogChangedAt = 0;
+let syncedAreaKey = '', areaSyncRequest = null;
 const audienceDeadline = Date.now() + 16000;
 
 async function deliveryToken() {
@@ -160,27 +162,9 @@ async function deliveryToken() {
  } catch (_) { return null; } finally { clearTimeout(timer); }
 }
 
-function lastAuthorizedPosition() {
- if (!locationConsent()) return null;
- try {
-  const pos = window.TaskFlowLocationV52?.getCached?.();
-  if (!pos || !Number.isFinite(pos.latitude) || !Number.isFinite(pos.longitude) ||
-      Math.abs(pos.latitude) > 90 || Math.abs(pos.longitude) > 180 ||
-      !Number.isFinite(pos.accuracy) || pos.accuracy <= 0 || pos.accuracy > 1000 ||
-      !Number.isFinite(pos.timestamp) || Date.now() - pos.timestamp > LOCATION_MAX_AGE ||
-      pos.timestamp > Date.now() + 30000) return null;
-  return pos;
- } catch (_) { return null; }
-}
-
-function audienceKey(position = lastAuthorizedPosition(), account = signedInAccount()) {
- return position && account ? account + '|' + position.latitude.toFixed(2) + ',' + position.longitude.toFixed(2) : '';
-}
-
-function audienceIsCurrent() {
- return adsPermitted() && audienceState === 'available' && Date.now() - verifiedAt < LOCATION_MAX_AGE &&
-  audienceKey() === audienceScope;
-}
+const audienceKey = (account, preferences) => account ? JSON.stringify([account,preferences.area,preferences.interests]) : '';
+const audienceIsCurrent = () => adsPermitted() && navigator.onLine !== false && audienceState === 'available' &&
+ audienceKey(signedInAccount(), adPreferences()) === audienceScope;
 
 function clearSelections() {
  recommendations.clear();
@@ -189,97 +173,36 @@ function clearSelections() {
  for (const slot of bannerSlots()) window.TaskFlowAdsV50?.render?.(slot, null, false);
  for (const placement of VERTICAL_PLACEMENTS) {
   const api = verticalApi(placement);
+  activeVerticalAds[placement] = null;
   api?.setCreative(null);
   if (api?.isSponsored?.()) api.close(true);
-  activeVerticalAds[placement] = null;
  }
 }
 
-function resetAudience(scope, state) {
- if (scope === audienceScope && state === audienceState) return;
- audienceScope = scope;
- audienceState = state;
- verifiedAt = 0;
- context = emptyContext();
- clearSelections();
-}
-
-async function reportAuthorizedGeoPresence() {
- if (!config.enabled || document.hidden) return false;
- const position = lastAuthorizedPosition();
+function syncDeclaredArea() {
  const account = signedInAccount();
- const scope = audienceKey(position, account);
- if (!scope) {
-  resetAudience('', !authSettled && Date.now() < audienceDeadline ? 'pending' : 'unavailable');
-  applyWhenReady();
-  return false;
- }
- if (scope === audienceScope && (audienceState === 'available' && Date.now() - verifiedAt < LOCATION_MAX_AGE ||
-     audienceState === 'unavailable' && Date.now() - verifiedAt < 30000)) return audienceState === 'available';
- if (scope !== audienceScope) resetAudience(scope, 'pending');
- if (locationRequest) return locationRequest;
- locationRequest = (async () => {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 14000);
-  try {
-   const token = await deliveryToken();
-   if (!token || scope !== audienceScope || scope !== audienceKey()) return false;
-   const response = await fetch(GEO_PRESENCE_URL, {
-    method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-    signal: ctrl.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
-    body: JSON.stringify({consent: true, latitude: Number(position.latitude.toFixed(2)),
-     longitude: Number(position.longitude.toFixed(2))}),
-   });
-   if (!response.ok) return false;
-   const {ok, location} = await response.json();
-   const country = countryCode(location?.country);
-   if (!ok || !/^[A-Z]{2}$/.test(country) || country === 'ZZ' ||
-       scope !== audienceScope || scope !== audienceKey()) return false;
-   const next = {country, region: String(location.region || ''), city: String(location.city || ''),
-    neighborhood: String(location.neighborhood || '')};
-   if (Object.keys(next).some(key => next[key] !== context[key])) clearSelections();
-   context = next;
-   audienceState = 'available';
-   verifiedAt = Date.now();
-   presenceRecorded = true;
-   lastWithdrawal = '';
-   return true;
-  } catch (_) { return false; } finally { clearTimeout(timer); }
- })().then(ok => {
-  if (!ok && scope === audienceScope) {
-   resetAudience(scope, 'unavailable');
-   verifiedAt = Date.now();
-  }
-  return ok;
- }).finally(() => {
-  locationRequest = null;
-  applyWhenReady();
-  if (scope !== audienceScope && audienceScope) void reportAuthorizedGeoPresence();
-  else if (audienceIsCurrent()) void refreshRecommendations();
- });
- return locationRequest;
-}
-
-async function withdrawAuthorizedGeoPresence() {
- const account = signedInAccount();
- if (!account || lastWithdrawal === account) return;
- lastWithdrawal = account;
- try {
-  await locationRequest;
+ if (!account || !config.enabled || areaSyncRequest || navigator.onLine === false) return;
+ const {area} = adPreferences();
+ const key = JSON.stringify([account, area]);
+ if (key === syncedAreaKey) return;
+ areaSyncRequest = (async () => {
   const token = await deliveryToken();
-  if (!token || locationConsent() || signedInAccount() !== account) { lastWithdrawal = ''; return; }
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 9000);
+  if (!token || account !== signedInAccount() || key !== JSON.stringify([account, adPreferences().area])) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
   try {
-   const response = await fetch(GEO_WITHDRAW_URL, {
-    method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-    headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
-    body: '{}', signal: ctrl.signal,
+   const response = await fetch(area ? AUDIENCE_AREA_URL : GEO_WITHDRAW_URL, {
+    method:'POST', mode:'cors', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
+    signal:controller.signal, headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify(area ? {consent:true, area} : {}),
    });
-   if (!response.ok) lastWithdrawal = '';
-   else presenceRecorded = false;
-  } finally { clearTimeout(timer); }
- } catch (_) { lastWithdrawal = ''; }
+   if (response.ok) syncedAreaKey = key;
+  } catch (_) {} finally { clearTimeout(timeout); }
+ })().finally(() => {
+  areaSyncRequest = null;
+  const next = signedInAccount();
+  if (next && JSON.stringify([next, adPreferences().area]) !== key) syncDeclaredArea();
+ });
 }
 
 function validHTTPS(value){
@@ -315,8 +238,12 @@ function documentData(doc){
  const out={id:String(doc&&doc.name||'').split('/').pop()||''},f=doc&&doc.fields||{};
  Object.keys(f).forEach(k=>out[k]=decode(f[k]));return out
 }
+const campaignDayFormatter = new Intl.DateTimeFormat('en-CA', {
+ timeZone:'America/Guatemala', year:'numeric',month:'2-digit',day:'2-digit',
+});
 function dateEligible(c){
- const today = new Date().toISOString().slice(0, 10);
+ const parts = campaignDayFormatter.formatToParts(new Date());
+ const today = ['year','month','day'].map(type => parts.find(part => part.type === type)?.value).join('-');
  return (!c.start || /^\d{4}-\d{2}-\d{2}$/.test(c.start) && c.start <= today) &&
   (!c.end || /^\d{4}-\d{2}-\d{2}$/.test(c.end) && c.end >= today);
 }
@@ -331,6 +258,11 @@ function targetEligible(target) {
  return (!cc || cc === 'ALL' || cc === context.country) &&
   ['region', 'city', 'neighborhood'].every(kind => !target[kind] ||
    Boolean(context[kind] && comparableArea(target[kind], kind) === comparableArea(context[kind], kind)));
+}
+
+function adEligible(ad) {
+ return targetEligible(ad.target) && (!ad.interestTopics.length ||
+  ad.interestTopics.some(topic => selectedInterests.includes(topic)));
 }
 
 // Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
@@ -477,6 +409,7 @@ function bindAnalyticsTracking(){
    const media=banner.querySelector('img');
    if(media?.complete&&media.naturalWidth>0)recordVisibleAd(ad,banner.id,banner);
    recordAdEvent('click',ad,banner.id);
+   if(e.isTrusted)window.TaskFlowAdPreferencesV161?.learnTopics?.(ad.interestTopics);
   }
    return;
   }
@@ -489,6 +422,7 @@ function bindAnalyticsTracking(){
    const media=stage?.querySelector('img,video');
    if(media&&(media.tagName==='IMG'?media.complete&&media.naturalWidth>0:media.readyState>=1))recordVisibleAd(ad,placement,stage);
    recordAdEvent('click',ad,placement);
+   if(e.isTrusted)window.TaskFlowAdPreferencesV161?.learnTopics?.(ad.interestTopics);
   }
  },true);
  const checkBannerImpressions=()=>{
@@ -510,6 +444,9 @@ function normalizeCampaign(c){
  if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c))return [];
  const placement=['banner','entry','interaction'].includes(c.placement)?c.placement:'';
  if(!placement||!Array.isArray(c.ads))return [];
+ const target={country:c.country,region:c.region,city:c.city,neighborhood:c.neighborhood};
+ const interestTopics=Array.isArray(c.interestTopics)?c.interestTopics.filter(t=>typeof t==='string').slice(0,10).sort():[];
+ const scopeRevision=JSON.stringify([target,interestTopics,c.start,c.end,c.ageMin,c.ageMax,c.radius]);
  return c.ads.map(a=>{
    if(!a||typeof a!=='object')return null;
    const src=validHTTPS(a.src),destination=a.destination?validHTTPS(a.destination):'';
@@ -520,7 +457,8 @@ function normalizeCampaign(c){
    if(placement==='banner'&&!((width===1200&&height===180)||(width===2400&&height===360)))return null;
    if((placement==='entry'||placement==='interaction')&&!((width===1080&&height===1920)||(width===2160&&height===3840)))return null;
    if(type==='video'&&(!Number.isFinite(duration)||duration<9.95||duration>180.05))return null;
-   return {target:{country:c.country,region:c.region,city:c.city,neighborhood:c.neighborhood},id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
+   const renderRevision=JSON.stringify([scopeRevision,src,destination,type,width,height,duration,a.sound,c.objective]);
+   return {target,interestTopics,renderRevision,id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
 }
 const bannerFailures = new Map(), bannerStatus = new Map(), bannerBusy = new Set();
@@ -532,7 +470,7 @@ function selectedCreatives(placement, slot, failures) {
  if (!audienceIsCurrent() || !selected || selected.expiresAt <= Date.now() ||
      completedSelections.has(selected.selectionToken)) return [];
  return catalog.filter(ad => ad.placement === placement && ad.campaignId === selected.campaignId &&
-  ad.id === selected.adId && targetEligible(ad.target) && (failures.get(ad.src) || 0) <= Date.now())
+  ad.id === selected.adId && adEligible(ad) && (failures.get(ad.src) || 0) <= Date.now())
   .sort((a, b) => b.mediaWidth - a.mediaWidth)
   .map(ad => ({...ad, selectionToken: selected.selectionToken}));
 }
@@ -593,11 +531,11 @@ function bannerNode(ad,img){
 function canShowPromo(placement, slot) {
  if (!config.enabled || paidNoAds()) return false;
  if (!lastRefresh && !lastError) return false;
- if (!adsPermitted()) return !window.TaskFlowPermissionsV53 || window.TaskFlowPermissionsV53.canEnter();
+ if (!adsPermitted()) return false;
  const inventory = catalog.filter(ad => ad.placement === placement);
- if (!inventory.length || audienceState === 'unavailable') return true;
+ if (!inventory.length || audienceState === 'unavailable' || navigator.onLine === false) return true;
  if (!audienceIsCurrent()) return false;
- return checkedSlots.has(slot) || !inventory.some(ad => targetEligible(ad.target));
+ return checkedSlots.has(slot) || !inventory.some(ad => adEligible(ad));
 }
 
 async function displayBanner(slot) {
@@ -608,9 +546,9 @@ async function displayBanner(slot) {
  const live = element.querySelector('img');
  const current = bannerStatus.get(slot);
  const approved = audienceIsCurrent() && current && catalog.some(ad => ad.placement === 'banner' &&
-  ad.campaignId === current.campaignId && ad.id === current.id && ad.src === current.src && targetEligible(ad.target));
+  ad.campaignId === current.campaignId && ad.id === current.id && ad.renderRevision === current.renderRevision && adEligible(ad));
  if (approved && live?.complete && validBannerPixels(live) &&
-     current.selectionToken === selected?.selectionToken) return;
+     current.selectionToken === selected?.selectionToken && selected.expiresAt > Date.now()) return;
  const candidates = bannerCandidates(slot);
  if (!candidates.length) {
   bannerStatus.delete(slot);
@@ -624,7 +562,7 @@ async function displayBanner(slot) {
    const img = await testedBanner(ad);
    if (!audienceIsCurrent() || recommendations.get(slot)?.selectionToken !== ad.selectionToken) return;
    if (!img || !catalog.some(item => item.placement === 'banner' && item.campaignId === ad.campaignId &&
-       item.id === ad.id && item.src === ad.src && targetEligible(item.target))) continue;
+       item.id === ad.id && item.renderRevision === ad.renderRevision && adEligible(item))) continue;
    const currentElement = document.getElementById(slot);
    if (!currentElement) return;
    if (window.TaskFlowAdsV50.render(slot, bannerNode(ad, img))) {
@@ -661,7 +599,7 @@ function apply() {
   const api = verticalApi(placement);
   const active = activeVerticalAds[placement];
   if (active && (!audienceIsCurrent() || !catalog.some(ad => ad.placement === placement &&
-      ad.campaignId === active.campaignId && ad.id === active.id && ad.src === active.src && targetEligible(ad.target)))) {
+      ad.campaignId === active.campaignId && ad.id === active.id && ad.renderRevision === active.renderRevision && adEligible(ad)))) {
    activeVerticalAds[placement] = null;
    api.setCreative(null);
    if (api.isSponsored?.()) api.close(true);
@@ -747,22 +685,95 @@ function rebuildCatalog() {
  if (signature !== catalogSignature) {
   catalogSignature = signature;
   catalogRevision++;
+  catalogChangedAt = Date.now();
+  const previous = catalog;
   catalog = next;
   checkedSlots.clear();
   for (const [slot, selected] of recommendations) {
-   if (!catalog.some(ad => ad.placement === (VERTICAL_PLACEMENTS.includes(slot) ? slot : 'banner') &&
-       ad.campaignId === selected.campaignId && ad.id === selected.adId && targetEligible(ad.target))) {
-    recommendations.delete(slot);
-   }
+   const placement = VERTICAL_PLACEMENTS.includes(slot) ? slot : 'banner';
+   const isSelected = ad => ad.placement === placement && ad.campaignId === selected.campaignId &&
+    ad.id === selected.adId && adEligible(ad);
+   const revisions = ads => ads.filter(isSelected).map(ad => ad.renderRevision).sort().join('|');
+   if (!catalog.some(isSelected) || revisions(previous) !== revisions(catalog)) recommendations.delete(slot);
   }
+  document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated', {detail: {available: catalog.length}}));
  }
  applyWhenReady();
  void refreshRecommendations();
- try {
-  document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated', {detail: {available: catalog.length}}));
- } catch (_) {}
 }
+
+const SDK_ROOT = 'https://www.gstatic.com/firebasejs/12.18.0/';
+let liveUnsubscribe = null, liveStarting = null, liveConnected = false;
+let liveEpoch = 0, liveSerial = 0, liveTimeout = 0, liveRetry = 0;
+function loadCatalogSdk(file, available) {
+ if (available()) return Promise.resolve();
+ return new Promise((resolve, reject) => {
+  const src = SDK_ROOT + file;
+  const present = [...document.scripts].find(tag => tag.src === src);
+  const script = present || document.createElement('script');
+  const done = () => {
+   clearTimeout(timer);
+   script.removeEventListener('load',done);
+   script.removeEventListener('error',done);
+   if (available()) resolve();
+   else {
+    if (!present) script.remove();
+    reject(new Error('SDK de catálogo no disponible'));
+   }
+  };
+  const timer = setTimeout(done,7000);
+  script.addEventListener('load',done,{once:true});
+  script.addEventListener('error',done,{once:true});
+  if (!present) {
+   script.src = src;
+   script.crossOrigin = 'anonymous';
+   document.head.appendChild(script);
+  }
+ });
+}
+function stopLiveCatalog() {
+ liveEpoch++;
+ liveConnected = false;
+ clearTimeout(liveTimeout);
+ clearTimeout(liveRetry);
+ liveRetry = 0;
+ liveUnsubscribe?.();
+ liveUnsubscribe = null;
+}
+function recoverLiveCatalog() {
+ stopLiveCatalog();
+ void refresh();
+ liveRetry = setTimeout(() => { liveRetry = 0; void connectLiveCatalog(); },30000);
+}
+function connectLiveCatalog() {
+ if (!adsPermitted() || navigator.onLine === false || liveUnsubscribe || liveStarting || liveRetry) return;
+ const epoch = ++liveEpoch;
+ liveStarting = (async () => {
+  await loadCatalogSdk('firebase-app-compat.js',() => Boolean(window.firebase?.initializeApp));
+  await loadCatalogSdk('firebase-firestore-compat.js',() => Boolean(window.firebase?.firestore));
+  if (epoch !== liveEpoch || !adsPermitted() || navigator.onLine === false) return;
+  const sdk = window.firebase;
+  // Aislar el catálogo público del SDK que sincroniza la cuenta y los datos privados.
+  const appName = 'taskflow-public-ads';
+  const app = sdk.apps.find(item => item.name === appName) || sdk.initializeApp({projectId:PROJECT_ID},appName);
+  liveTimeout = setTimeout(recoverLiveCatalog,9000);
+  liveUnsubscribe = app.firestore().collection(COLLECTION).limit(500).onSnapshot({includeMetadataChanges:true},snapshot => {
+   if (epoch !== liveEpoch) return;
+   if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) { liveConnected = false; return; }
+   clearTimeout(liveTimeout);
+   liveConnected = true;
+   liveSerial++;
+   rawCampaigns = snapshot.docs.map(doc => ({...doc.data(),id:doc.id}));
+   lastRefresh = Date.now();
+   lastError = '';
+   rebuildCatalog();
+  },() => { if (epoch === liveEpoch) recoverLiveCatalog(); });
+ })().catch(() => { if (epoch === liveEpoch) recoverLiveCatalog(); }).finally(() => { liveStarting = null; });
+ return liveStarting;
+}
+
 async function fetchCatalog(){
+ const epoch = liveSerial;
  const all=[];let token='',pages=0;
  do{
    const u=new URL(REST_BASE);u.searchParams.set('pageSize','100');if(token)u.searchParams.set('pageToken',token);
@@ -774,11 +785,15 @@ async function fetchCatalog(){
     data=await r.json();
    }finally{clearTimeout(timer)}(data.documents||[]).forEach(doc=>all.push(documentData(doc)));token=String(data.nextPageToken||'');pages++
  }while(token&&pages<5);
- rawCampaigns=all;lastRefresh=Date.now();lastError='';rebuildCatalog();return true
+ if (epoch === liveSerial && !liveConnected && adsPermitted()) {
+  rawCampaigns=all;lastRefresh=Date.now();lastError='';rebuildCatalog();
+ }
+ return true;
 }
 async function refresh(){
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive())return false;
- if(!config.enabled){catalog=[];rawCampaigns=[];catalogSignature='';clearSelections();applyWhenReady();return false}
+ if(!config.enabled){stopLiveCatalog();catalog=[];rawCampaigns=[];catalogSignature='';clearSelections();applyWhenReady();return false}
+ if(liveConnected){rebuildCatalog();return true}
  if(refreshing)return refreshing;
  refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);applyWhenReady();return false}).finally(()=>{refreshing=null});
  return refreshing;
@@ -788,43 +803,45 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.5.0',
+ version:'3.6.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
    if('enabled'in options)config.enabled=!!options.enabled;
    if('adminUrl'in options)config.adminUrl=validHTTPS(options.adminUrl)||null;
    if('refreshMs'in options)config.refreshMs=Math.max(10000,Number(options.refreshMs)||10000);
-   schedule();void refresh();if(config.enabled){updateAudience();void recoverOwnedAds()}return true
+   schedule();void refresh();if(config.enabled){void connectLiveCatalog();updateAudience();void recoverOwnedAds()}return true
  },
- connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
+ connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:liveConnected?'firestore-realtime':'firestore-rest'})},
  refresh,
- getCatalog(){return catalog.map(a=>Object.assign({},a))},
+ getCatalog(){return catalog.map(ad=>({...ad,target:{...ad.target},interestTopics:[...ad.interestTopics]}))},
+ getAdAreas(){return rawCampaigns.filter(c=>c.status==='active'&&c.approvalStatus==='approved'&&/^[A-Z]{2}$/.test(countryCode(c.country)))
+  .map(c=>({country:countryCode(c.country),region:String(c.region||''),city:String(c.city||'')}));},
  mount(){return false},
  unmount(){}
 };
 try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writable:false,configurable:false})}catch(_){window.TaskFlowADS=Object.freeze(API)}
 
 function updateAudience() {
- if (!locationConsent()) {
-  resetAudience('', 'unavailable');
-  applyWhenReady();
-  let denied = false;
-  try { denied = localStorage.getItem(LOCATION_DECISION) === 'denied'; } catch (_) {}
-  if (presenceRecorded || denied) void withdrawAuthorizedGeoPresence();
-  return;
+ const account = signedInAccount();
+ const preferences = adPreferences();
+ const scope = audienceKey(account, preferences);
+ if (scope !== audienceScope) {
+  audienceScope = scope;
+  context = preferences.area ? {...preferences.area, neighborhood: ''} : emptyContext();
+  selectedInterests = preferences.interests;
+  clearSelections();
  }
- if (locationChecking || locationFailed) {
-  resetAudience('', locationChecking ? 'pending' : 'unavailable');
-  applyWhenReady();
-  return;
- }
- void reportAuthorizedGeoPresence();
+ audienceState = account ? 'available' : authSettled || Date.now() >= audienceDeadline ? 'unavailable' : 'pending';
+ applyWhenReady();
+ if (audienceIsCurrent()) void refreshRecommendations();
+ syncDeclaredArea();
 }
 
 function boot() {
  observeSlots();
  void refresh();
+ void connectLiveCatalog();
  updateAudience();
  void Promise.resolve(window.TaskFlowFirebase?.initialize?.()).then(() => {
   authSettled = true;
@@ -840,34 +857,35 @@ window.addEventListener('pageshow', () => {
  updateAudience();
  if (Date.now() - lastRefresh > 8000) void refresh();
  else applyWhenReady();
+ void connectLiveCatalog();
  void recoverOwnedAds();
 }, {passive: true});
-window.addEventListener('online', () => { updateAudience(); void refresh(); void recoverOwnedAds(); }, {passive: true});
+window.addEventListener('online', () => { updateAudience(); void connectLiveCatalog(); void refresh(); void recoverOwnedAds(); }, {passive: true});
+window.addEventListener('offline', () => {
+ stopLiveCatalog();
+ clearSelections();
+ lastError = 'Sin conexión';
+ applyWhenReady();
+}, {passive: true});
 document.addEventListener('taskflow:account-state-updated', () => { updateAudience(); void recoverOwnedAds(); });
 document.addEventListener('taskflow:firebase-auth-changed', () => {
  ownerRecoveryAt = 0;
  updateAudience();
  void recoverOwnedAds();
 });
-document.addEventListener('taskflow:location-checking', () => {
- locationChecking = true;
- updateAudience();
+document.addEventListener('taskflow:ad-preferences-updated', updateAudience);
+document.addEventListener('taskflow:permissions-ready', applyWhenReady);
+document.addEventListener('taskflow:noads-status-updated', e => {
+ if (e.detail?.active) { stopLiveCatalog(); apply(); }
+ else { void connectLiveCatalog(); void refresh(); }
 });
-for (const name of ['permissions-ready', 'location-updated', 'location-unavailable']) {
- document.addEventListener('taskflow:' + name, () => {
-  locationChecking = false;
-  locationFailed = name === 'location-unavailable';
-  updateAudience();
- });
-}
-document.addEventListener('taskflow:noads-status-updated', e => { if (e.detail?.active) apply(); else void refresh(); });
 document.addEventListener('visibilitychange', () => {
  if (document.hidden) return;
  updateAudience();
+ void connectLiveCatalog();
  if (Date.now() - lastRefresh > 8000) void refresh();
 });
-setInterval(updateAudience, 60000);
-window.addEventListener('storage', e => { if (e.key === LOCATION_DECISION) updateAudience(); }, {passive: true});
+setInterval(syncDeclaredArea, 60000);
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){

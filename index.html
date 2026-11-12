@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#030917">
 <meta name="referrer" content="no-referrer">
 <title>TaskFlow</title>
+<link rel="stylesheet" href="./taskflow-onboarding-v161.css">
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -61,6 +62,7 @@ body{min-height:100dvh}
 <div id="tfBoot" role="alert" aria-live="assertive" hidden><div class="tfCard"><p class="tfErr" id="tfErr">No fue posible iniciar TaskFlow. Comprueba tu conexión y vuelve a intentarlo.</p><button class="tfRetry" type="button" onclick="location.reload()">Reintentar</button></div></div>
 
 <script src="./taskflow-microslats.js?v=3-fhd-touch-20261107" defer></script>
+<script src="./taskflow-policies-v161.js"></script>
 <script id="tfSplashParticleScript" src="./taskflow-splash-particles-v156.js" async></script>
 <script>
 (async function(){
@@ -71,6 +73,19 @@ const splashFill=document.getElementById('tfSplashFill');
 const splashPct=document.getElementById('tfSplashPercent');
 const splashMeter=document.getElementById('tfSplashMeter');
 const SPLASH_MS=10000;
+try {
+ if (!window.TaskFlowPoliciesV161.isAccepted()) {
+   splash.hidden=true;
+   await window.TaskFlowPoliciesV161.requireAcceptance();
+   splash.hidden=false;
+ }
+} catch (error) {
+ console.warn('TaskFlow: políticas no disponibles',error?.message);
+ splash.hidden=true;
+ boot.hidden=false;
+ boot.classList.add('error');
+ return;
+}
 const introController=new AbortController();
 let splashStart=0;
 let splashDone=false,progressRaf=0;
@@ -127,7 +142,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=160-store-budget-20261111':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=160-budget-store-20261111':p==='t57/runtime-03.txt'?'?v=160-regional-clock-20261111':p==='t57/runtime-19.txt'?'?v=160-ads-location-20261111':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=161-budget-20261111':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=59-auth-memory-20261106':p==='t57/runtime-24.txt'?'?v=161-policies-timers-20261111':p==='t57/runtime-03.txt'?'?v=160-regional-clock-20261111':p==='t57/runtime-19.txt'?'?v=161-live-ads-20261111':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();

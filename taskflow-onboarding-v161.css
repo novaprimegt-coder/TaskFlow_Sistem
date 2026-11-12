@@ -1,0 +1,52 @@
+#tf161PolicyGate, #tfPermissionGateT52:not([hidden]) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: grid !important;
+  grid-template-rows: minmax(0,1fr);
+  place-items: center;
+  padding: max(9px, env(safe-area-inset-top)) 10px max(9px, env(safe-area-inset-bottom));
+  color: #f0f8ff;
+  background: radial-gradient(ellipse at 20% 0%,#203b60,#071526 53%,#030916);
+  font-family: system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+#tf161PolicyGate *, #tfPermissionGateT52 * { box-sizing: border-box; }
+.tf161-onboarding-card {
+  display: grid;
+  grid-template-rows: auto minmax(0,1fr) auto;
+  width: min(100%,720px);
+  min-width: 0;
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid #57779c;
+  border-radius: 19px;
+  background: #101f35;
+  box-shadow: 0 18px 54px #0009;
+}
+.tf161-onboarding-head { display: flex; gap: 11px; align-items: center; padding: 13px 15px; border-bottom: 1px solid #375778; background: linear-gradient(120deg,#183a51,#1c2a4b); }
+.tf161-onboarding-symbol { flex: 0 0 42px; height: 42px; display: grid; place-items: center; border: 1px solid #5396a8; border-radius: 11px; color: #a0f8ee; background: #16465a; }
+.tf161-onboarding-symbol svg { display: block; width: 24px; height: 24px; }
+.tf161-onboarding-head :is(h1,h2) { margin: 0; color: #f1faff; font-size: clamp(17px,5vw,24px); line-height: 1.22; }
+.tf161-onboarding-head p, .tf161-location-copy { margin: 4px 0 0; color: #c4d9ef; font-size: 13px; line-height: 1.5; }
+.tf161-policy-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 13px; display: grid; gap: 9px; }
+.tf161-policy-scroll .policy-section { padding: 11px; border: 1px solid #325475; border-radius: 10px; background: #0d2137; overflow-wrap: anywhere; }
+.tf161-policy-scroll :is(h4,h5,p,li) { margin: 0; line-height: 1.48; }
+.tf161-policy-scroll h4 { font-size: 15px; margin-bottom: 7px; }
+.tf161-policy-scroll h4 svg { display: none; }
+.tf161-policy-scroll :is(h5,p,li) { color: #cdddf0; font-size: 13px; }
+.tf161-policy-scroll p + p { margin-top: 8px; }
+.tf161-policy-scroll ul { margin: 6px 0; padding-inline-start: 20px; }
+.tf161-policy-scroll a { color: #a2eeff; }
+.tf161-onboarding-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-top: 1px solid #375778; background: #12243c; }
+.tf161-onboarding-actions p { flex: 1 0 100%; margin: 0; color: #ffdea0; font-size: 12px; }
+.tf161-onboarding-actions button {
+  min-height: 44px; padding: 8px 11px; border: 1px solid #7295b1; border-radius: 10px;
+  font: 750 13px system-ui,sans-serif; cursor: pointer;
+}
+.tf161-onboarding-actions .tf161-secondary { color: #eff9ff; background: #243958; }
+.tf161-onboarding-actions .tf161-primary { color: #092936; background: #9cf1e9; border-color: #befcf0; }
+.tf161-onboarding-actions :focus-visible { outline: 2px solid #bafaff; outline-offset: 2px; }
+#tfPermissionGateT52[hidden] { display: none !important; }
+#tfPermissionGateT52 .tf161-onboarding-card { width: min(100%,490px); }
+#tfPermissionGateT52 .tf161-location-copy { padding: 10px 15px 15px; overflow: auto; }
+@media(max-width:360px) { .tf161-onboarding-actions button { flex: 1 1 auto; } }

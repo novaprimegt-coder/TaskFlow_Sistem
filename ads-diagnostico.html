@@ -77,7 +77,7 @@ async function scan(){
   const lines=[];
   if(records.length===0)lines.push("Firebase respondió correctamente, pero el catálogo público está vacío. Aprobar una campaña no basta: debe estar activa, con un creativo válido, y existir su documento en adsPublicCampaigns.");
   else if(valid===0)lines.push("Hay campañas publicadas con restricciones de entrega o creativos incompatibles.");
-  else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles con el catálogo. La entrega se decide en TaskFlow según la ubicación autorizada, la disponibilidad y el estado «Sin anuncios».");
+  else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles con el catálogo. La entrega se decide en TaskFlow según las preferencias publicitarias elegidas, la disponibilidad y el estado «Sin anuncios».");
   Object.entries(reasons).sort((a,b)=>b[1]-a[1]).forEach(([reason,count])=>lines.push("• "+reason+": "+count));
   $("report").textContent=lines.join("\n");$("status").textContent="Comprobación completada.";
   if(samples.length){$("samplesSection").hidden=false;for(const [i,src]of samples.entries()){let card=document.createElement("div"),label=document.createElement("small"),image=new Image();card.className="sample";label.textContent="Banner "+(i+1)+" · Comprobando archivo…";image.onload=()=>{label.textContent="Banner "+(i+1)+" · Imagen accesible"};image.onerror=()=>{label.textContent="Banner "+(i+1)+" · El archivo no se pudo descargar"};image.src=src;image.alt="Vista de prueba";card.append(label,image);$("samples").appendChild(card)}}

@@ -92,6 +92,10 @@ jobs:
           assert.ok(root.includes('63-no-splash-assets-20261106'),'El cargador referencia fragmentos antiguos');
           assert.ok(bridge.includes('mediaWidth:width')&&bridge.includes('function queueBanner(slot)'),'Falta preferencia HD y carga diferida');
           assert.ok(adsRuntime.includes('.tf159-ad-continue')&&adsRuntime.includes('button.disabled = !ready')&&adsRuntime.includes('root.showModal()')&&adsRuntime.includes('root.close()'),'Falta cierre seguro o acción Continuar');
+          assert.ok(adsRuntime.includes('const HOLD_MS = 10000;')&&adsRuntime.includes('button.hidden = !ready;')&&!adsRuntime.includes('showingPromo || elapsed'),'Continuar debe aparecer tras diez segundos también en promociones');
+          assert.ok(bridge.includes('.onSnapshot(')&&bridge.includes('/choose/v161')&&!bridge.includes('/geo/presence')&&!bridge.includes('TaskFlowLocationV52'),'ADS debe escuchar el catálogo y respetar la ubicación local');
+          for(const name of ['taskflow-policies-v161.js','taskflow-onboarding-v161.css','taskflow-ads-preferences-v161.js'])assert.ok(assets.includes(name),'Recurso de ingreso o ADS ausente '+name);
+          assert.ok(root.indexOf('await window.TaskFlowPoliciesV161.requireAcceptance()')<root.indexOf('await Promise.all(Array.from({length:Math.min(6,parts.length)}')&&root.includes('await window.TaskFlowPoliciesV161.requireAcceptance()'),'Las políticas deben preceder la carga del sistema');
           assert.ok(adsRuntime.includes("v.preload='auto'")&&adsRuntime.includes('v.setAttribute(\'webkit-playsinline\',\'\')'),'Vídeos publicitarios sin precarga de resolución original');
 
           assert.ok(root.includes('Math.min(6,parts.length)')&&root.includes('AbortController'),'Cargador T57 sin límite de concurrencia');

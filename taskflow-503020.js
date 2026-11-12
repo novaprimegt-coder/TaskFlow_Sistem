@@ -221,12 +221,13 @@
               <div class="savings"><dt>Ahorro</dt><dd>Emergencias, jubilación, inversiones y pago de deudas.</dd></div>
             </dl>
           </details>
-          <details class="tf503020-card tf503020-detail">
+          <details class="tf503020-card tf503020-detail tf503020-wealth-card">
             <summary><span class="tf503020-section-icon">${budgetIcon('trend')}</span><span>Ruta patrimonial</span>${budgetIcon('chevron')}</summary>
             <div class="tf503020-wealth">
-              <p>La referencia propone destinar los primeros Q1,000 a un fondo inmobiliario (Q700) y educación financiera (Q300).</p>
+              <p class="tf503020-wealth-intro">Ejemplo para los primeros <strong>Q1,000</strong> ahorrados.</p>
+              <div class="tf503020-wealth-split"><div><strong>Q700</strong><span>Fondo inmobiliario</span></div><div><strong>Q300</strong><span>Educación financiera</span></div></div>
               <p>Evalúa el costo de las compras recreativas frente al dinero que puedes dedicar al ahorro. Las inversiones pueden perder valor.</p>
-              <ul><li>Padre rico, padre pobre</li><li>El inversor inteligente</li><li>Piense y hágase rico</li><li>El efecto compuesto</li><li>El millonario de la puerta de al lado</li></ul>
+              <div class="tf503020-wealth-reading"><h4>Lecturas recomendadas</h4><ul><li>Padre rico, padre pobre</li><li>El inversor inteligente</li><li>Piense y hágase rico</li><li>El efecto compuesto</li><li>El millonario de la puerta de al lado</li></ul></div>
             </div>
           </details>
         </div>
@@ -289,7 +290,7 @@
     if(!result.persisted)setStatus('El cálculo funciona, pero el navegador no permitió guardar el historial local.','warn');
   }
   function openTool(){
-    previousFocus=document.activeElement;state=loadState();maintainRecords(true);var overlay=buildModal();renderState();overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');overlay.scrollTop=0;document.body.classList.add('tf503020-open');
+    previousFocus=document.activeElement;state=loadState();maintainRecords(true);var overlay=buildModal();renderState();overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');overlay.querySelector('.tf503020-shell').scrollTop=0;document.body.classList.add('tf503020-open');
     document.getElementById('tf503020Close').focus({preventScroll:true});
   }
   function closeTool(){var overlay=document.getElementById('tf503020Overlay');if(!overlay)return;overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.classList.remove('tf503020-open');if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});previousFocus=null;}

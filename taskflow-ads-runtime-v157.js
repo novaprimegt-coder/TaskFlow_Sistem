@@ -38,7 +38,7 @@ const BANNER_CSS = `
 .tf50-ad-slot:not(.tf50-has-ad,.tf158-has-promo) { display: none !important; }
 #sideMenu > .tf50-ad-slot { width: calc(100% - 24px) !important; }
 .tf50-ad-slot::before {
-  content: 'PUBLICIDAD';
+  content: 'Publicidad';
   position: absolute;
   bottom: calc(100% + 3px);
   left: 1px;
@@ -83,7 +83,6 @@ const BANNER_CSS = `
 }
 `;
 const PROMO_CSS = `
-.tf50-ad-slot.tf158-has-promo::before {content:'ESPACIO PUBLICITARIO';}
 .tf50-ad-slot > a.tf158-promo,
 .tf159-ad-stage > a.tf158-promo {
   display:grid !important;
@@ -228,7 +227,6 @@ const VERTICAL_CSS = `
   color:#c2e3f5;
   font:800 9px/1.3 system-ui,sans-serif;
   letter-spacing:.1em;
-  text-transform:uppercase;
 }
 .tf159-ad-viewport {
   min-width:0;
@@ -267,6 +265,7 @@ const VERTICAL_CSS = `
 }
 .tf159-ad-footer {
   display:grid;
+  grid-template-rows:minmax(51px,auto);
   grid-template-columns:minmax(0,1fr) minmax(132px,auto);
   align-items:center;
   gap:7px 10px;
@@ -277,7 +276,7 @@ const VERTICAL_CSS = `
   display:grid;
   gap:7px;
 }
-.tf159-ad-timer[hidden],.tf-ad-goal-link[hidden] {display:none !important;}
+.tf-ad-goal-link[hidden],:is(#tfEntryAdV56,#tfInteractionAdV57) .tf159-ad-continue[hidden] {display:none !important;}
 .tf159-ad-timer strong {color:#d4e8fa;font:750 12px/1.25 system-ui,sans-serif;}
 .tf159-ad-progress {
   height:5px;
@@ -334,13 +333,13 @@ const VERTICAL_CSS = `
   box-shadow:none;
   cursor:default;
 }
-:is(#tfEntryAdV56,#tfInteractionAdV57).tf159-ad-promo .tf159-ad-continue {grid-column:1/-1;}
 :is(#tfEntryAdV56,#tfInteractionAdV57) :is(.tf159-ad-continue,.tf-ad-goal-link):focus-visible {
   outline:2px solid #f0ffff;
   outline-offset:-3px;
 }
 @media (max-height:455px) {
   .tf159-ad-shell {gap:5px;}
+  .tf159-ad-footer {grid-template-rows:minmax(44px,auto);}
   :is(#tfEntryAdV56,#tfInteractionAdV57) .tf159-ad-continue {min-height:44px;}
   .tf159-ad-stage > .tf158-promo {gap:4px;padding:3px;}
   .tf159-promo-hero {width:62%;}
@@ -604,7 +603,7 @@ const permissionsOpen = () => Boolean(document.querySelector('#tfPermissionGateT
 
 function createVerticalAd({placement, id, part}) {
   let creative = null;
-  let root, stage, button, timeLabel, progress, destination, timerBox, label;
+  let root, stage, button, timeLabel, progress, destination, label;
   let media = null;
   let starting = false;
   let timer = 0;
@@ -631,7 +630,7 @@ function createVerticalAd({placement, id, part}) {
           <strong id="${part}Countdown"></strong>
           <div class="tf159-ad-progress" aria-hidden="true"><i id="${part}Progress"></i></div>
         </div>
-        <button id="${part}${placement === 'entry' ? 'Continue' : 'Close'}" class="tf159-ad-continue" type="button">
+        <button id="${part}${placement === 'entry' ? 'Continue' : 'Close'}" class="tf159-ad-continue" type="button" hidden disabled>
           Continuar
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
         </button>
@@ -641,7 +640,6 @@ function createVerticalAd({placement, id, part}) {
     button = root.querySelector('button');
     timeLabel = root.querySelector('#' + part + 'Countdown');
     progress = root.querySelector('#' + part + 'Progress');
-    timerBox = root.querySelector('.tf159-ad-timer');
     label = root.querySelector('.tf159-ad-label');
     destination = sponsorLink('#', 'Abrir anuncio');
     destination.removeAttribute('href');
@@ -663,9 +661,9 @@ function createVerticalAd({placement, id, part}) {
   }
 
   function updateClock() {
-    const ready = showingPromo || elapsed >= HOLD_MS;
+    const ready = elapsed >= HOLD_MS;
     button.disabled = !ready;
-    timerBox.hidden = showingPromo;
+    button.hidden = !ready;
     const caption = ready ? 'Ya puedes continuar' : 'Podrás continuar en ' + Math.ceil((HOLD_MS - elapsed) / 1000) + ' s';
     if (timeLabel.textContent !== caption) timeLabel.textContent = caption;
     progress.style.width = Math.min(100, elapsed * 100 / HOLD_MS) + '%';
@@ -673,13 +671,13 @@ function createVerticalAd({placement, id, part}) {
 
   function advanceClock() {
     clearTimeout(timer);
-    if (!media || showingPromo) return;
+    if (!media) return;
     const now = performance.now();
     const visible = !document.hidden && !document.documentElement.classList.contains('tf-paypal-noads-checking');
     if (clockActive) elapsed += Math.max(0, now - lastTick);
     clockActive = visible;
     lastTick = now;
-    if (visible && !reportedVisible) {
+    if (visible && !showingPromo && !reportedVisible) {
       reportedVisible = true;
       document.dispatchEvent(new CustomEvent('taskflow:ads-media-visible', {detail: {placement}}));
     }
@@ -697,7 +695,7 @@ function createVerticalAd({placement, id, part}) {
     showingPromo = Boolean(selected.promo);
     const url = selected.destination;
     const link = url && sponsorLink(url, selected.ctaLabel);
-    label.textContent = showingPromo ? 'Espacio publicitario' : 'Publicidad';
+    label.textContent = 'Publicidad';
     if (link) link.append(node);
     destination.hidden = !url;
     if (url) destination.href = url;
@@ -833,7 +831,7 @@ function setPromoReady(placement, ready) {
 const available = () => promosEnabled && !document.hidden && !permissionsOpen() && !paidNoAds();
 const canPresent = () => available() && !document.documentElement.classList.contains('tf-paypal-noads-checking');
 const choosing = () => window.TaskFlowSelectsV159?.isOpen() ||
-  Boolean(document.querySelector('.tf-icon-picker.open,.tf-icon-sheet.tf-v102-detached-open'));
+  Boolean(document.querySelector('.tf-icon-picker.open,.tf-icon-sheet.tf-v102-detached-open,#tf161AdPreferences[open]'));
 const canEnter = () => !entryShown && canPresent() && !choosing() && !interaction.isOpen();
 async function showEntry() {
   if (!await entry.start(canEnter)) return false;

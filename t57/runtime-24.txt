@@ -12,6 +12,7 @@ const TF_T57_AD_AUDIO_JS="(function(){\n'use strict';\nif(window.__tfAdAudioV57)
 const TF_CLOCK_RESCUE_T58_JS="/* T58 · Contador autónomo con recuperación, sin cambiar hábitos ni otras vistas. */\n(function(){\n 'use strict';\n if(window.__tfRegionalCountdownT58)return;\n window.__tfRegionalCountdownT58=true;\n const ID='resetCountdownTime';\n const pad=n=>String(n).padStart(2,'0');\n const locationNames={'Guatemala':'Guatemala','Mexico_City':'Ciudad de México','New_York':'Nueva York','Los_Angeles':'Los Ángeles','Tokyo':'Tokio','London':'Londres','Sao_Paulo':'São Paulo','Bogota':'Bogotá','Lima':'Lima','Havana':'La Habana','Buenos_Aires':'Buenos Aires','Santo_Domingo':'Santo Domingo','Hong_Kong':'Hong Kong'};\n function getState(now){\n  try{\n   const api=window.TaskFlowRegionalClock;\n   if(api&&typeof api.getCycle==='function'){\n    const state=api.getCycle(now);\n    if(state&&Number.isFinite(state.remaining)&&state.remaining>0)\n     return {seconds:Math.ceil(state.remaining),progress:Math.max(0,Math.min(1,Number(state.progress)||0)),zone:state.timeZone||api.getTimeZone&&api.getTimeZone()};\n   }\n  }catch(e){console.warn('TaskFlow: sincronizando reloj regional',e)}\n  const date=new Date(now),begin=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),end=new Date(date.getFullYear(),date.getMonth(),date.getDate()+1).getTime();\n  let zone='UTC';try{zone=Intl.DateTimeFormat().resolvedOptions().timeZone||zone}catch(_){}\n  return {seconds:Math.max(1,Math.ceil((end-now)/1000)),progress:Math.max(0,Math.min(1,(now-begin)/Math.max(1000,end-begin))),zone};\n }\n function place(z){\n  z=String(z||'UTC');\n  const city=z.split('/').pop();\n  if(z==='UTC'||z==='Etc/UTC'||z==='Etc/GMT')return 'UTC';\n  return locationNames[city]||city.replace(/_/g,' ');\n }\n\n /* Barra real de progreso; no depende del pseudoelemento ::after. */\n function ensureDailyBar(clock){\n  if(!clock)return null;\n  let bar=document.getElementById('tf59DailyProgress');\n  try{\n   if(!document.getElementById('tf59DailyProgressStyle')&&document.head){\n    const style=document.createElement('style');\n    style.id='tf59DailyProgressStyle';\n    style.textContent='#resetCountdownTime::after{display:none!important}'+\n    '#tf59DailyProgress{display:block!important;position:relative!important;z-index:5!important;box-sizing:border-box!important;width:72%!important;max-width:420px!important;min-width:0!important;height:10px!important;min-height:10px!important;margin:-3px 0 14px!important;padding:0!important;overflow:hidden!important;border-radius:999px!important;border:1px solid rgba(35,220,251,.4)!important;background:rgba(10,25,57,.95)!important;box-shadow:0 0 10px rgba(7,222,250,.25),inset 0 1px 3px rgba(0,0,0,.3)!important;visibility:visible!important;opacity:1!important;transform:none!important;}'+\n    '#tf59DailyProgress>.tf59DailyFill{display:block!important;position:absolute!important;inset:0 auto 0 0!important;height:100%!important;width:0%;border-radius:999px!important;background:linear-gradient(90deg,#08eff3 0%,#37c8ff 42%,#ba42ed 74%,#ef73ea 100%)!important;box-shadow:0 0 11px rgba(14,236,254,.56)!important;transition:width .45s linear!important;visibility:visible!important;opacity:1!important;}'+\n    '@media(max-width:480px){#tf59DailyProgress{height:9px!important;min-height:9px!important;width:72%!important;margin:-2px 0 12px!important}}';\n    document.head.appendChild(style);\n   }\n   if(!bar||!bar.isConnected||bar.previousElementSibling!==clock){\n    if(bar&&bar.parentNode)bar.parentNode.removeChild(bar);\n    bar=document.createElement('div');\n    bar.id='tf59DailyProgress';bar.setAttribute('role','progressbar');\n    bar.setAttribute('aria-label','Progreso del ciclo diario');\n    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');\n    const fill=document.createElement('span');fill.className='tf59DailyFill';\n    fill.setAttribute('aria-hidden','true');bar.appendChild(fill);\n    clock.insertAdjacentElement('afterend',bar);\n   }\n  }catch(error){console.warn('TaskFlow: barra de progreso',error);return null}\n  return bar;\n }\n\n function render(){\n  const clock=document.getElementById(ID);\n  const subtitle=document.querySelector('.reset-countdown-subtitle');\n  if(!clock&&!subtitle)return;\n  try{\n   const current=getState(Date.now());\n   const seconds=current.seconds;\n   const value=pad(Math.floor(seconds/3600))+':'+pad(Math.floor((seconds%3600)/60))+':'+pad(seconds%60);\n   if(clock){\n    if(clock.textContent!==value)clock.textContent=value;\n    // La barra de colores debe avanzar con el reloj, aun si el temporizador previo se detiene.\n    if(clock.style&&typeof clock.style.setProperty==='function'){\n     const fill=(Math.max(0,Math.min(1,Number(current.progress)||0))*100).toFixed(7)+'%';\n     if(clock.style.getPropertyValue('--tf36-cycle-fill')!==fill)clock.style.setProperty('--tf36-cycle-fill',fill);\n    }\n    const bar=ensureDailyBar(clock);\n    if(bar){\n     const value=Math.max(0,Math.min(100,(Number(current.progress)||0)*100));\n     const fill=bar.querySelector('.tf59DailyFill');\n     if(fill)fill.style.width=value.toFixed(5)+'%';\n     bar.setAttribute('aria-valuenow',String(Math.round(value)));\n    }\n   }\n   if(subtitle){\n    const copy='Hábitos se reinician a las 12:00 AM · '+place(current.zone);\n    if(subtitle.textContent!==copy)subtitle.textContent=copy;\n   }\n  }catch(error){console.warn('TaskFlow: no se pudo actualizar el contador',error)}\n }\n function safeRender(){render()}\n const interval=setInterval(render,1000);\n document.addEventListener('visibilitychange',safeRender,{passive:true});\n document.addEventListener('DOMContentLoaded',safeRender,{once:true});\n document.addEventListener('taskflow:location-updated',safeRender);\n document.addEventListener('taskflow:permissions-ready',safeRender);\n window.addEventListener('pageshow',safeRender,{passive:true});\n window.addEventListener('focus',safeRender,{passive:true});\n render();\n setTimeout(render,250);\n window.TaskFlowCountdownT58=Object.freeze({refresh:render,getState:()=>getState(Date.now()),getInterval:()=>interval});\n})();";
 const bodyExtras='<script id="tfBootDefaultsT49">'+TF_T49_BOOT_DEFAULTS_JS+'<'+'/script>'+JS_FILES.map(name=>name==='taskflow-v119.js'?'<script id="tfRoutineManagerStableT40">'+TF_T40_ROUTINE_MANAGER_JS+'<'+'/script>':name==='taskflow-v122-habit-visual.js'?'<script id="tfHabitVisualStableT40">'+TF_T40_HABIT_VISUAL_JS+'<'+'/script>':name==='taskflow-firebase-v108.js'?'<script id="tfProfileAuthT36">'+TF_PROFILE_AUTH_T36_JS+'<'+'/script>':name==='taskflow-v1304-sound.js'?'<script id="tfAudioStorageT34">'+TF_AUDIO_STORAGE_T34_JS+'<'+'/script>':name==='taskflow-v1303-routine-guard-restore.js'?'<script id="tfRoutineGuardRestoreT49">'+TF_T49_ROUTINE_GUARD_RESTORE_JS+'<'+'/script>':'<script src="'+htmlAttr(assetUrl(name)+(name==='taskflow-v1305-search-results.js'?'&ui=158':''))+'"><'+'/script>').join('')+
  '<script id="tfPayPalNoAdsClient" src="'+htmlAttr(PAGES+'payments/paypal/client.js?revision=11-noads-entitlement-20261107')+'"><'+'/script>'+
+ '<script id="tfPolicyV161">window.TaskFlowPoliciesV161?.install();<'+'/script>'+
  '<script id="tfProtocolLockT12">'+TF_PROTOCOL_T12_JS+'<'+'/script>'+
  '<script id="tfClockSmoothT18">'+TF_CLOCK_T13_JS+'<'+'/script>'+
  '<script id="tfHomeEnhanceT14">'+TF_HOME_T14_JS+'<'+'/script>'+
@@ -35,13 +36,13 @@ function installSharedRoutineLayout(){
    scroll:'.v85-sung-list',row:'.v32-mission-item',icon:'.v32-mission-icon',copy:'.v32-mission-info',check:'.v32-check',
    subtitle:'Disciplina · Cuerpo · Mente · Hábitos',
    rule:['Regla Sung Jin-Woo','Completa todas las tareas en el orden propuesto. La constancia es clave para ver resultados reales.'],
-   start:'Comenzar protocolo Sung Jin-Woo', progressLabel:'Disciplina', time:'~90–120 min',
+   start:'Comenzar protocolo Sung Jin-Woo', progressLabel:'Disciplina', duration:[90,120],
   },
   legal:{
    scroll:'.v83-legal-list',row:'.v83-legal-step',icon:'.v83-legal-step-icon',copy:'.v83-legal-step-copy',check:'.v83-legal-check',
    subtitle:'Norma · Caso · Argumento · Defensa · Escritura',
    rule:['Regla jurídica','Razona con estructura, sustento y claridad. Cada prueba fortalece tu criterio.'],
-   start:'Comenzar protocolo jurídico',progressLabel:'Dominio jurídico',time:'~30–45 min',
+   start:'Comenzar protocolo jurídico',progressLabel:'Dominio jurídico',duration:[30,45],
   },
   socrates:{
    scroll:'.v69-routine-modal:has(.v69-routine-card.socrates)',row:'.v69-routine-item',icon:'.v69-routine-check',copy:'.v69-routine-copy',
@@ -57,7 +58,7 @@ function installSharedRoutineLayout(){
   },
   mentalist:{
    scroll:'.v96-mentalist-scroll',row:'.v94-mentalist-step',icon:'.v94-mentalist-step-icon',copy:'.v94-mentalist-step-copy',check:'.v94-mentalist-check',
-   title:'Mentalista',start:'Comenzar protocolo Mentalista',progressLabel:'Precisión actual',time:'~25–35 min',
+   title:'Mentalista',start:'Comenzar protocolo Mentalista',progressLabel:'Precisión actual',duration:[25,35],
   },
  };
  const glyphs={
@@ -66,6 +67,7 @@ function installSharedRoutineLayout(){
   chart:'<rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/>',
   info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6m0-10h.01"/>',
   play:'<path d="m8 5 11 7-11 7V5Z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
   close:'<path d="m6 6 12 12M18 6 6 18"/>',
  };
@@ -84,6 +86,82 @@ function installSharedRoutineLayout(){
   card.append(badge,element('strong','',value),element('span','',label),element('small','',note));
   return card;
  }
+
+ const timerKey='taskflow_protocol_timers_v161';
+ let timers={};
+ try {
+  const saved=JSON.parse(sessionStorage.getItem(timerKey)||'{}');
+  if(saved&&typeof saved==='object'&&!Array.isArray(saved))timers=saved;
+ } catch (_) {}
+ let timerFrame=0;
+ let visibleTimer=null;
+ function drawTimer(){
+  clearTimeout(timerFrame);
+  if(!visibleTimer?.card.isConnected)return;
+  const {card,key,clock,status}=visibleTimer;
+  const run=timers[key];
+  if(!run||!Number.isFinite(run.end))return;
+  const seconds=Math.max(0,Math.ceil((run.end-Date.now())/1000));
+  clock.textContent=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60]
+   .map(value=>String(value).padStart(2,'0')).join(':');
+  card.hidden=false;
+  if(!seconds){
+   if(status.textContent!=='Tiempo cumplido')status.textContent='Tiempo cumplido';
+   return;
+  }
+  if(status.textContent!=='Tiempo restante')status.textContent='Tiempo restante';
+  if(!document.hidden)timerFrame=setTimeout(drawTimer,Math.max(80,(run.end-Date.now())%1000+20));
+ }
+ function timerCard(key,profile){
+  const card=element('section','tf161-routine-timer');
+  card.hidden=true;
+  card.tabIndex=-1;
+  card.setAttribute('aria-label','Cronómetro del protocolo');
+  card.innerHTML='<div class="tf161-timer-heading"><span aria-hidden="true">'+svg('clock')+'</span><div><strong>Cronómetro del protocolo</strong><small role="status"></small></div><time role="timer" aria-live="off" hidden></time></div>';
+  const clock=card.querySelector('time');
+  const status=card.querySelector('small');
+  const form=element('form','tf161-timer-form');
+  form.hidden=true;
+  form.innerHTML='<label>Minutos de la sesión<input type="number" inputmode="numeric" min="1" max="1440" step="1" required></label><button type="submit">Iniciar</button>';
+  card.append(form);
+  visibleTimer={card,key,clock,status};
+  const start=minutes=>{
+   if(!Number.isInteger(minutes)||minutes<1||minutes>1440)return;
+   if(!(timers[key]?.end>Date.now())){
+    timers[key]={end:Date.now()+minutes*60000};
+    try { sessionStorage.setItem(timerKey,JSON.stringify(timers)); } catch (_) {}
+   }
+   clock.hidden=false;
+   form.hidden=true;
+   drawTimer();
+  };
+  form.addEventListener('submit',event=>{
+   event.preventDefault();
+   start(Number(form.querySelector('input').value));
+   card.focus({preventScroll:true});
+  });
+  const open=()=>{
+   if(timers[key]?.end>Date.now()||profile.duration){
+    start(profile.duration?.at(-1)||1);
+    card.focus({preventScroll:true});
+   }else{
+    card.hidden=false;
+    clock.hidden=true;
+    status.textContent='Elige la duración';
+    form.hidden=false;
+    form.querySelector('input').focus({preventScroll:true});
+   }
+   card.scrollIntoView({behavior:'auto',block:'center'});
+  };
+  if(timers[key]?.end>Date.now()){
+   card.hidden=false;
+   clock.hidden=false;
+   queueMicrotask(drawTimer);
+  }
+  return {card,open};
+ }
+ document.addEventListener('visibilitychange',drawTimer,{passive:true});
+ window.addEventListener('pageshow',drawTimer,{passive:true});
 
  function progressSection(key,profile,title,rows){
   const total=rows.length;
@@ -109,7 +187,7 @@ function installSharedRoutineLayout(){
   progress.querySelector('.tf15-stats').append(
    stat('flame',String(done),'Completadas','de '+total+(mentalist?' pruebas':' tareas')),
    stat('target',mentalist?(done?'—':'0%'):percent,profile.progressLabel,mentalist?'Mínimo: 90%':'Progreso actual'),
-   profile.time?stat('chart',profile.time,'Tiempo estimado','Completo'):stat('chart','Diaria','Frecuencia','Lunes a lunes'),
+   profile.duration?stat('chart','~'+profile.duration.join('–')+' min','Tiempo estimado','Completo'):stat('chart','Diaria','Frecuencia','Lunes a lunes'),
   );
   return progress;
  }
@@ -159,6 +237,19 @@ function installSharedRoutineLayout(){
 
  let renderedHead=null;
  let restore=null;
+ function missionButton(row){return row?.tagName==='BUTTON'?row:row?.querySelector('button.tf156-check');}
+ function followMission(action,rows){
+  const marked=rows[action.index];
+  if(action.advance&&marked?.classList.contains('done')){
+   const next=rows.slice(action.index+1).find(row=>!row.classList.contains('done'));
+   if(next){
+    next.closest('.tf15-mission')?.scrollIntoView({behavior:'auto',block:'center'});
+    missionButton(next)?.focus({preventScroll:true});
+    return;
+   }
+  }
+  if(action.focus)missionButton(marked)?.focus({preventScroll:true});
+ }
  function render(){
   const head=frame.classList.contains('open')?panel.querySelector(':scope > .v85-routine-modal-head'):null;
   if(head===renderedHead)return;
@@ -166,7 +257,7 @@ function installSharedRoutineLayout(){
   const kind=head&&Object.keys(profiles).find(key=>panel.querySelector(':scope > '+profiles[key].scroll));
   panel.classList.toggle('tf15-sung',kind==='sung');
   panel.classList.toggle('tf156-routine',!!kind&&kind!=='sung');
-  if(!kind){delete panel.dataset.tfRoutine;restore=null;return;}
+  if(!kind){delete panel.dataset.tfRoutine;restore=null;visibleTimer=null;clearTimeout(timerFrame);return;}
 
   const profile=profiles[kind];
   const scroll=panel.querySelector(':scope > '+profile.scroll);
@@ -184,42 +275,57 @@ function installSharedRoutineLayout(){
   head.querySelector('.v85-routine-progress-pill').setAttribute('aria-hidden','true');
   head.querySelector('.window-close').innerHTML=svg('close');
 
-  head.after(progressSection(kind,profile,heading.textContent,rows),ruleSection(scroll,profile));
+  const countdown=timerCard(kind,profile);
+  head.after(progressSection(kind,profile,heading.textContent,rows),ruleSection(scroll,profile),countdown.card);
   const lineIcons=window.__tfRoutineLineIconsV156?.[kind]||[];
   rows.forEach((row,index)=>styleMission(row,profile,index,lineIcons[index]));
   const launch=element('button','tf15-launch');
   launch.type='button';
   launch.innerHTML=svg('play')+'<span></span>'+svg('arrow');
   launch.querySelector('span').textContent=profile.start;
-  launch.addEventListener('click',()=>{
-   const first=rows.find(row=>!row.classList.contains('done'))||rows[0];
-   first.scrollIntoView({behavior:'auto',block:'center'});
-   first.parentElement.querySelector('summary')?.focus({preventScroll:true});
-  });
+  launch.addEventListener('click',countdown.open);
   scroll.append(launch);
 
   if(restore?.kind===kind){
    frame.scrollTop=restore.frameTop;
    panel.scrollTop=restore.panelTop;
    scroll.scrollTop=restore.listTop;
-   if(restore.focus){
-    const row=rows[restore.index];
-    const button=row?.tagName==='BUTTON'?row:row?.querySelector('button.tf156-check');
-    button?.focus({preventScroll:true});
-   }
+   followMission(restore,rows);
   }
   restore=null;
  }
 
  panel.addEventListener('click',event=>{
   const button=event.target.closest?.('button.tf156-row,button.tf156-check');
-  if(!button)return;
-  restore={
-   kind:panel.dataset.tfRoutine,frameTop:frame.scrollTop,panelTop:panel.scrollTop,
-   listTop:panel.querySelector('.tf156-routine-list').scrollTop,
-   index:Number(button.closest('[data-tf-mission]').dataset.tfMission),focus:document.activeElement===button,
-  };
-  queueMicrotask(()=>{if(panel.contains(button))restore=null;});
+  if(button){
+   const row=button.closest('.tf156-row');
+   const list=panel.querySelector('.tf156-routine-list');
+   const action={
+    kind:panel.dataset.tfRoutine,frameTop:frame.scrollTop,panelTop:panel.scrollTop,listTop:list.scrollTop,
+    index:Number(row.closest('[data-tf-mission]').dataset.tfMission),focus:document.activeElement===button,
+    advance:!row.classList.contains('done'),
+   };
+   restore=action;
+   requestAnimationFrame(()=>{
+    if(restore!==action||!panel.contains(button))return;
+    restore=null;
+    followMission(action,[...list.querySelectorAll('.tf156-row')]);
+   });
+   return;
+  }
+  const check=event.target.closest?.('.task-check,.list-item-check');
+  const habit=check?.closest('[data-tf-habit-id]');
+  if(!habit||!check.onclick||habit.classList.contains('done'))return;
+  const rows=[...panel.querySelectorAll('[data-tf-habit-id]')];
+  const nextIds=rows.slice(rows.indexOf(habit)+1).filter(row=>!row.classList.contains('done')).map(row=>row.dataset.tfHabitId);
+  requestAnimationFrame(()=>{
+   if(!frame.classList.contains('open'))return;
+   const current=[...panel.querySelectorAll('[data-tf-habit-id]')];
+   const marked=current.find(row=>row.dataset.tfHabitId===habit.dataset.tfHabitId);
+   if(marked&&!marked.classList.contains('done'))return;
+   const next=current.find(row=>nextIds.includes(row.dataset.tfHabitId)&&!row.classList.contains('done')&&row.querySelector('.task-check,.list-item-check')?.onclick);
+   next?.scrollIntoView({behavior:'auto',block:'center'});
+  });
  },true);
 
  const observer=new MutationObserver(render);
@@ -320,6 +426,11 @@ function protectStoreMarkup(source){
  * Cada vista se intenta de manera independiente; los fallos se mantienen en consola.
  * NO borra almacenamiento, no ignora excepciones críticas ni modifica las misiones. */
 function tf20StabilizeCore(html){
+ const habitRows=[
+  "const item = SafeDOM.createElement('div', `list-item v27-habit-item ${habit.completed ? 'done' : ''}`);",
+  "const item=SafeDOM.createElement('div',`task-item v27-habit-item ${habit.completed?'done':''}`);",
+ ];
+ for(const row of habitRows)html=html.replace(row,row+'\n                item.dataset.tfHabitId=String(habit.id);');
  const a='const renderAllV31Final=renderAll;';
  const b='const updateStatsV31Final=updateStats;';
  const start=html.indexOf(a),stop=start<0?-1:html.indexOf(b,start);
