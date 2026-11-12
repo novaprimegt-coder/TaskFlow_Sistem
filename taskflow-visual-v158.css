@@ -571,3 +571,34 @@ html body .tf159-picker :is(.tf159-picker-toggle,.tf159-picker-option):focus-vis
 @media (min-width:660px) {
   html body .tf159-category-picker .tf159-picker-menu {grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+html body.tf37-home.tf38-layout .wrap > .reset-countdown-card {
+  margin-block-start: clamp(10px, 3.4vw, 22px) !important;
+}
+
+#tfProfileOverlay .tf160-preferences {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px solid #477a93;
+  border-radius: 13px;
+  color: #ecf8ff;
+  background: linear-gradient(135deg,#163a51,#142442);
+}
+.tf160-preferences label { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+.tf160-preferences input { width: 19px; height: 19px; accent-color: #8ff4ec; }
+.tf160-preferences p, .tf160-preferences [role="status"] { margin: 0; color: #c3d9ef; font-size: 12px; line-height: 1.4; }
+.tf160-preferences [role="status"]:empty { display: none; }
+.tf160-preferences button {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid #588baf;
+  border-radius: 9px;
+  color: #f0fbff;
+  background: #274969;
+  font-size: 12px;
+  font-weight: 750;
+}
+.tf160-preferences button[hidden] { display: none !important; }

@@ -5,7 +5,6 @@
 if (window.TaskFlowAdsV50) return;
 
 const ADS_MANAGER_URL = 'https://novaprimegt-coder.github.io/TaskFlow_ADS_Manager/';
-const PROMO_WAIT_MS = 7500;
 let promosEnabled = true;
 
 const BANNER_PLACEMENTS = [
@@ -423,21 +422,23 @@ function mountBanners() {
       slot?.remove();
       continue;
     }
-    if (!slot) {
-      slot = createBanner(id, label);
-      renderPromo(slot);
-    }
+    if (!slot) slot = createBanner(id, label);
     if (appendToPanel && anchor !== slot) anchor.parentElement.append(slot);
     if (!appendToPanel && anchor.nextElementSibling !== slot) anchor.after(slot);
   }
 }
 
-function renderBanner(id, content) {
+function renderBanner(id, content, showPromo = true) {
   const slot = BANNER_IDS.includes(id) && document.getElementById(id);
   if (!slot) return false;
   if (!content) {
     if (paidNoAds() || !promosEnabled) slot.remove();
-    else renderPromo(slot);
+    else if (showPromo) renderPromo(slot);
+    else if (slot.childElementCount) {
+      slot.classList.remove('tf50-has-ad', 'tf158-has-promo');
+      slot.style.removeProperty('--tf-ad-native-width');
+      slot.replaceChildren();
+    }
     return true;
   }
   const img = content instanceof HTMLImageElement ? content : content.firstElementChild;
@@ -475,8 +476,8 @@ const HEIGHT = 1920;
 const HOLD_MS = 10000;
 const VIDEO_MAX_SECONDS = 180;
 const VIDEO_TOLERANCE = .05;
-const REQUIRED_TAPS = 5;
-const COUNT_KEY = 'taskflow_interaction_ad_count_v57';
+const REQUIRED_TAPS = 10;
+const COUNT_KEY = 'taskflow_interaction_ad_count_v160';
 
 function adUrl(value, destination = false) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -806,13 +807,12 @@ const adSpec = {
 };
 
 let entryShown = false;
-let interactionArmed = false;
 let showTimer = 0;
 let clickCount = 0;
 function readCount() {
   try {
     const value = Number(localStorage.getItem(COUNT_KEY));
-    if (Number.isSafeInteger(value) && value >= 0) clickCount = value;
+    if (Number.isSafeInteger(value) && value >= 0) clickCount = Math.min(value, REQUIRED_TAPS);
   } catch (_) {}
   return clickCount;
 }
@@ -820,19 +820,14 @@ function setCount(value) {
   clickCount = value;
   try { localStorage.setItem(COUNT_KEY, String(value)); } catch (_) {}
 }
+let interactionArmed = readCount() === REQUIRED_TAPS;
 
 const promoReady = new Set();
-const promoTimers = new Map();
 function setPromoReady(placement, ready) {
-  clearTimeout(promoTimers.get(placement));
-  promoTimers.delete(placement);
   if (ready) {
     promoReady.add(placement);
     scheduleVerticalAds();
-  } else {
-    promoReady.delete(placement);
-    promoTimers.set(placement, setTimeout(() => setPromoReady(placement, true), PROMO_WAIT_MS));
-  }
+  } else promoReady.delete(placement);
 }
 
 const available = () => promosEnabled && !document.hidden && !permissionsOpen() && !paidNoAds();
@@ -849,7 +844,7 @@ async function showInteraction() {
   const canShow = () => interactionArmed && canPresent() && !choosing() && !entry.isRunning() && entryShown;
   if (readCount() < REQUIRED_TAPS || !await interaction.start(canShow)) return false;
   interactionArmed = false;
-  setCount(Math.max(0, readCount() - REQUIRED_TAPS));
+  setCount(0);
   return true;
 }
 function scheduleVerticalAds() {
@@ -873,19 +868,21 @@ window.TaskFlowInteractionAdV57 = {
     imageFormats: ['jpg','jpeg','png','webp'], gifFormat: 'gif'}),
   setCreative: interaction.setCreative, show: showInteraction, close: interaction.close,
   getCreative: interaction.getCreative, isRunning: interaction.isRunning, isSponsored: interaction.isSponsored,
-  getCount: readCount, resetCount: () => setCount(0),
+  getCount: readCount, resetCount: () => setCount(0), captureTap,
 };
 
-document.addEventListener('click', event => {
+function captureTap(event) {
+  const target = event.composedPath?.()[0] || event.target;
   if (!event.isTrusted || event.detail < 1 || !available() || entry.isOpen() || interaction.isOpen() ||
-      event.target.closest?.('#tfPermissionGateT52,#tfEntryAdV56,#tfInteractionAdV57,.tf50-ad-slot')) return;
-  interactionArmed = !event.target.closest?.('select,input:is([type="file"],[type="date"],[type="time"],[type="color"],[type="datetime-local"],[type="month"],[type="week"]),.date-field-premium,#tfProfilePhotoChange');
-  setCount(readCount() + 1);
+      target?.closest?.('#tfPermissionGateT52,#tfEntryAdV56,#tfInteractionAdV57,.tf50-ad-slot')) return;
+  interactionArmed = !target?.closest?.('select,input:is([type="file"],[type="date"],[type="time"],[type="color"],[type="datetime-local"],[type="month"],[type="week"]),.date-field-premium,#tfProfilePhotoChange');
+  setCount(Math.min(readCount() + 1, REQUIRED_TAPS));
   document.dispatchEvent(new CustomEvent('taskflow:ad-interaction-count', {
     detail: {count: clickCount, required: REQUIRED_TAPS},
   }));
   scheduleVerticalAds();
-}, true);
+}
+window.addEventListener('click', captureTap, true);
 
 for (const name of ['permissions-ready', 'entry-ad-creative-ready', 'interaction-ad-creative-ready',
     'entry-ad-complete', 'ad-media-rejected', 'picker-settled']) {
@@ -907,7 +904,12 @@ window.addEventListener('pageshow', event => {
 addStyle('tfAdSlotsT50Style', BANNER_CSS);
 addStyle('tfAdsPromoV159Style', PROMO_CSS);
 addStyle('tfVerticalAdsV159Style', VERTICAL_CSS);
-for (const placement of ['entry', 'interaction']) setPromoReady(placement, false);
+// El puente decide si hay inventario. La promoción local sigue disponible si el módulo no cargó.
+setTimeout(() => {
+  if (window.TaskFlowADS || !promosEnabled || paidNoAds()) return;
+  for (const id of BANNER_IDS) renderBanner(id, null);
+  for (const placement of ['entry', 'interaction']) setPromoReady(placement, true);
+}, 15000);
 mountBanners();
 const layout = new MutationObserver(queueMount);
 for (const selector of ['.wrap', '#sideMenu', '#windowContainer', '#windowContent']) {

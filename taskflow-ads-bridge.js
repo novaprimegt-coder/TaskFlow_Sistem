@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.4.4
+/* TaskFlow ADS Bridge v3.5.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -11,8 +11,13 @@ const REST_BASE='https://firestore.googleapis.com/v1/projects/'+encodeURICompone
 const bannerSlots = () => window.TaskFlowAdsV50?.slots || [];
 const VERTICAL_PLACEMENTS = ['entry', 'interaction'];
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
-const adsPermitted = () => config.enabled && !paidNoAds() &&
- localStorage.getItem('taskflow_location_decision_v52') === 'granted';
+const LOCATION_DECISION = 'taskflow_location_decision_v52';
+const LOCATION_MAX_AGE = 15 * 60 * 1000;
+const locationConsent = () => {
+ try { return localStorage.getItem(LOCATION_DECISION) === 'granted'; } catch (_) { return false; }
+};
+const adsPermitted = () => config.enabled && !paidNoAds() && locationConsent();
+const signedInAccount = () => String(window.TaskFlowFirebase?.getUser?.()?.uid || '');
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
@@ -50,6 +55,7 @@ async function recoverOwnedAds(force=false){
 let recommendations = new Map();
 let recommendationRequest = null, recommendationQueued = false, recommendationRetry = 0;
 const completedSelections = new Set();
+const checkedSlots = new Set();
 function retryRecommendations(ms){
  if(recommendationRetry)clearTimeout(recommendationRetry);
  recommendationRetry=setTimeout(()=>{recommendationRetry=0;if(config.enabled&&catalog.length)void refreshRecommendations()},Math.max(250,Number(ms)||4000));
@@ -76,153 +82,204 @@ function verticalApi(placement) {
 }
 
 async function loadRecommendations() {
- if (!adsPermitted() || !catalog.length) {
-  recommendations.clear();
+ if (!adsPermitted() || !audienceIsCurrent() || !catalog.length) {
   applyWhenReady();
-  enableUnfilledVerticalPromos();
   return;
  }
  const sessionId = analyticsSessionId();
- if (!sessionId) { retryRecommendations(5000); return; }
- const auth = window.TaskFlowFirebase;
- const uid = auth?.getUser?.()?.uid;
- let token = null;
- try { token = await auth?.getIdToken?.(); } catch (_) {}
- if (!token) {
-  recommendations.clear();
-  applyWhenReady();
-  retryRecommendations(4000);
-  return;
- }
+ if (!sessionId) { settleUnavailable(); return; }
+ const scope = audienceScope;
+ const revision = catalogRevision;
+ const token = await deliveryToken();
+ if (scope !== audienceScope || revision !== catalogRevision || !audienceIsCurrent()) return;
+ if (!token) { settleUnavailable(); retryRecommendations(4000); return; }
  const slots = bannerSlots().filter(slot => document.getElementById(slot))
   .map(slot => ({placement: 'banner', slot}));
  for (const placement of VERTICAL_PLACEMENTS) {
-  if (!verticalApi(placement)?.hasShown?.()) slots.push({placement, slot: placement});
+  const api = verticalApi(placement);
+  if (!api?.hasShown?.() && !api?.isRunning?.()) slots.push({placement, slot: placement});
  }
- const next = new Map();
- const checked = new Set();
  await Promise.all(slots.map(async ({placement, slot}) => {
-  const candidates = catalog.filter(ad => ad.placement === placement);
+  const candidates = catalog.filter(ad => ad.placement === placement && targetEligible(ad.target));
   if (!candidates.length) return;
   const previous = recommendations.get(slot);
-  if (previous && previous.expiresAt > Date.now() && !completedSelections.has(previous.selectionToken) &&
-      candidates.some(ad => ad.campaignId === previous.campaignId && ad.id === previous.adId)) {
-   next.set(slot, previous);
-   return;
-  }
-  if (placement !== 'banner' && verticalApi(placement)?.isRunning?.()) return;
+  if (previous && previous.expiresAt > Date.now() && !completedSelections.has(previous.selectionToken)) return;
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 6500);
+  let selected = null;
   try {
    const response = await fetch(SELECTION_URL, {
-    method: 'POST', mode: 'cors', credentials:'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
     signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
     body: JSON.stringify({placement, slot, sessionId}),
    });
-   if (!response.ok) return;
-   const {campaignId, adId, selectionToken} = await response.json();
-   checked.add(slot);
-   if (typeof selectionToken === 'string' && /^[a-f0-9-]{36}$/i.test(selectionToken) &&
-       candidates.some(ad => ad.campaignId === campaignId && ad.id === adId)) {
-    next.set(slot, {campaignId, adId, selectionToken,
-     expiresAt: Date.now() + (placement === 'banner' ? 30000 : 900000)});
+   if (response.ok) {
+    const {campaignId, adId, selectionToken} = await response.json();
+    if (typeof selectionToken === 'string' && /^[a-f0-9-]{36}$/i.test(selectionToken) &&
+        candidates.some(ad => ad.campaignId === campaignId && ad.id === adId)) {
+     selected = {campaignId, adId, selectionToken,
+      expiresAt: Date.now() + (placement === 'banner' ? 30000 : 900000)};
+    }
    }
   } catch (_) {} finally { clearTimeout(timer); }
+  if (scope !== audienceScope || revision !== catalogRevision || !audienceIsCurrent()) return;
+  checkedSlots.add(slot);
+  if (selected && !completedSelections.has(selected.selectionToken)) recommendations.set(slot, selected);
+  else recommendations.delete(slot);
+  applyWhenReady();
  }));
- if (!adsPermitted() || window.TaskFlowFirebase?.getUser?.()?.uid !== uid) next.clear();
- for (const [slot, selected] of next) {
-  if (completedSelections.has(selected.selectionToken)) next.delete(slot);
- }
- recommendations = next;
  applyWhenReady();
- enableUnfilledVerticalPromos(checked);
- if (!next.size && catalog.length) retryRecommendations(12000);
+ if (!recommendations.size && catalog.length) retryRecommendations(12000);
  else clearRecommendationRetry();
 }
+
+function settleUnavailable() {
+ for (const slot of [...bannerSlots(), ...VERTICAL_PLACEMENTS]) checkedSlots.add(slot);
+ applyWhenReady();
+}
+
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
 let config={enabled:true,adminUrl:null,refreshMs:10000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
 let slotObserver=null,slotUpdateQueued=false;
-let geoPending=null,lastGeoGrid='',lastGeoAt=0;
-const GEO_GRID_CACHE='tf_ads_geo_gt_grid_v1';
-const GEO_API='https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_guatemala/FeatureServer/0/query';
-// Geocodificación de país/ciudad a partir de ubicación autorizada y coordenadas reducidas; sin enviar ID ni datos personales.
-const WORLD_GEO_URL='https://api.bigdatacloud.net/data/reverse-geocode-client';
-const WORLD_GEO_CACHE='tf_ads_geo_world_grid_v1';
-let context={country:'',region:'',city:'',neighborhood:''};
+const emptyContext = () => ({country: '', region: '', city: '', neighborhood: ''});
+let context = emptyContext();
+let audienceState = 'pending', audienceScope = '', locationRequest = null;
+let verifiedAt = 0, catalogRevision = 0, catalogSignature = '';
+let lastWithdrawal = '', presenceRecorded = false;
+let locationChecking = false, locationFailed = false, authSettled = false;
+const audienceDeadline = Date.now() + 16000;
 
+async function deliveryToken() {
+ let timer;
+ try {
+  return await Promise.race([
+   window.TaskFlowFirebase?.getIdToken?.(),
+   new Promise(resolve => { timer = setTimeout(() => resolve(null), 5000); }),
+  ]);
+ } catch (_) { return null; } finally { clearTimeout(timer); }
+}
 
-let lastPresenceAt=0,lastPresenceGrid='',lastPresenceAccount='',presenceBusy=false,presencePresent=false,withdrawConfirmed=false,lastGeoProbeAt=0;
-async function reportAuthorizedGeoPresence(position){
- if(!position||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||presenceBusy||document.hidden)return false;
- // Registrar presencia solamente desde una posición reciente y consentimiento vigente.
- let permissionState='unknown';
- if(navigator.permissions?.query){
-  try{permissionState=(await navigator.permissions.query({name:'geolocation'})).state||'unknown'}
-  catch(_){permissionState='unknown'}
+function lastAuthorizedPosition() {
+ if (!locationConsent()) return null;
+ try {
+  const pos = window.TaskFlowLocationV52?.getCached?.();
+  if (!pos || !Number.isFinite(pos.latitude) || !Number.isFinite(pos.longitude) ||
+      Math.abs(pos.latitude) > 90 || Math.abs(pos.longitude) > 180 ||
+      !Number.isFinite(pos.accuracy) || pos.accuracy <= 0 || pos.accuracy > 1000 ||
+      !Number.isFinite(pos.timestamp) || Date.now() - pos.timestamp > LOCATION_MAX_AGE ||
+      pos.timestamp > Date.now() + 30000) return null;
+  return pos;
+ } catch (_) { return null; }
+}
+
+function audienceKey(position = lastAuthorizedPosition(), account = signedInAccount()) {
+ return position && account ? account + '|' + position.latitude.toFixed(2) + ',' + position.longitude.toFixed(2) : '';
+}
+
+function audienceIsCurrent() {
+ return adsPermitted() && audienceState === 'available' && Date.now() - verifiedAt < LOCATION_MAX_AGE &&
+  audienceKey() === audienceScope;
+}
+
+function clearSelections() {
+ recommendations.clear();
+ checkedSlots.clear();
+ bannerStatus.clear();
+ for (const slot of bannerSlots()) window.TaskFlowAdsV50?.render?.(slot, null, false);
+ for (const placement of VERTICAL_PLACEMENTS) {
+  const api = verticalApi(placement);
+  api?.setCreative(null);
+  if (api?.isSponsored?.()) api.close(true);
+  activeVerticalAds[placement] = null;
  }
- if(permissionState==='denied'){void withdrawAuthorizedGeoPresence();return false}
- const timestamp=Number(position.timestamp||position.updatedAt||0);
- const needsFresh=permissionState!=='granted'||!timestamp||Date.now()-timestamp>15*60*1000;
- if(needsFresh){
-  if(!navigator.geolocation?.getCurrentPosition||Date.now()-lastGeoProbeAt<30000)return false;
-  lastGeoProbeAt=Date.now();
-  try{
-   const fresh=await new Promise((ok,bad)=>navigator.geolocation.getCurrentPosition(ok,bad,
-    {enableHighAccuracy:false,timeout:10000,maximumAge:300000}));
-   position={latitude:fresh.coords.latitude,longitude:fresh.coords.longitude,timestamp:Number(fresh.timestamp)||Date.now()};
-  }catch(error){
-   if(Number(error?.code)===1)void withdrawAuthorizedGeoPresence();
-   return false;
+}
+
+function resetAudience(scope, state) {
+ if (scope === audienceScope && state === audienceState) return;
+ audienceScope = scope;
+ audienceState = state;
+ verifiedAt = 0;
+ context = emptyContext();
+ clearSelections();
+}
+
+async function reportAuthorizedGeoPresence() {
+ if (!config.enabled || document.hidden) return false;
+ const position = lastAuthorizedPosition();
+ const account = signedInAccount();
+ const scope = audienceKey(position, account);
+ if (!scope) {
+  resetAudience('', !authSettled && Date.now() < audienceDeadline ? 'pending' : 'unavailable');
+  applyWhenReady();
+  return false;
+ }
+ if (scope === audienceScope && (audienceState === 'available' && Date.now() - verifiedAt < LOCATION_MAX_AGE ||
+     audienceState === 'unavailable' && Date.now() - verifiedAt < 30000)) return audienceState === 'available';
+ if (scope !== audienceScope) resetAudience(scope, 'pending');
+ if (locationRequest) return locationRequest;
+ locationRequest = (async () => {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 14000);
+  try {
+   const token = await deliveryToken();
+   if (!token || scope !== audienceScope || scope !== audienceKey()) return false;
+   const response = await fetch(GEO_PRESENCE_URL, {
+    method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    signal: ctrl.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
+    body: JSON.stringify({consent: true, latitude: Number(position.latitude.toFixed(2)),
+     longitude: Number(position.longitude.toFixed(2))}),
+   });
+   if (!response.ok) return false;
+   const {ok, location} = await response.json();
+   const country = countryCode(location?.country);
+   if (!ok || !/^[A-Z]{2}$/.test(country) || country === 'ZZ' ||
+       scope !== audienceScope || scope !== audienceKey()) return false;
+   const next = {country, region: String(location.region || ''), city: String(location.city || ''),
+    neighborhood: String(location.neighborhood || '')};
+   if (Object.keys(next).some(key => next[key] !== context[key])) clearSelections();
+   context = next;
+   audienceState = 'available';
+   verifiedAt = Date.now();
+   presenceRecorded = true;
+   lastWithdrawal = '';
+   return true;
+  } catch (_) { return false; } finally { clearTimeout(timer); }
+ })().then(ok => {
+  if (!ok && scope === audienceScope) {
+   resetAudience(scope, 'unavailable');
+   verifiedAt = Date.now();
   }
- }
- const lat=Number(position.latitude),lng=Number(position.longitude);
- if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
- const grid=Number(lat.toFixed(2))+','+Number(lng.toFixed(2));
- const user=window.TaskFlowFirebase?.getUser?.();
- const account=String(user?.uid||user?.localId||'');
- if(lastPresenceGrid===grid&&lastPresenceAccount===account&&Date.now()-lastPresenceAt<6*60*60*1000)return true;
- presenceBusy=true;withdrawConfirmed=false;
- try{
-  const token=await window.TaskFlowFirebase?.getIdToken?.();
-  if(!token)return false;
-  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),20000);
-  let response;
-  try{
-   response=await fetch(GEO_PRESENCE_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:ctrl.signal,
-    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-    body:JSON.stringify({consent:true,latitude:Number(lat.toFixed(2)),longitude:Number(lng.toFixed(2))})});
-  }finally{clearTimeout(timer)}
-  if(!response.ok)return false;
-  const payload=await response.json(),loc=payload?.location;
-  if(!payload.ok||!loc||!/^[A-Z]{2}$/.test(loc.country))return false;
-  lastPresenceGrid=grid;lastPresenceAccount=account;lastPresenceAt=Date.now();presencePresent=true;
-  API.setContext({country:loc.country,region:loc.region||'',city:loc.city||'',neighborhood:loc.neighborhood||''});
-  if(catalog.length)retryRecommendations(350);
-  return true;
- }catch(_){return false}
- finally{presenceBusy=false}
+  return ok;
+ }).finally(() => {
+  locationRequest = null;
+  applyWhenReady();
+  if (scope !== audienceScope && audienceScope) void reportAuthorizedGeoPresence();
+  else if (audienceIsCurrent()) void refreshRecommendations();
+ });
+ return locationRequest;
 }
-async function withdrawAuthorizedGeoPresence(){
- if(withdrawConfirmed)return true;
- lastPresenceAt=0;lastPresenceGrid='';lastPresenceAccount='';
- const token=await window.TaskFlowFirebase?.getIdToken?.().catch(()=>null);
- if(!token)return false;
- try{
-  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
-  try{
-   const response=await fetch(GEO_WITHDRAW_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
-    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}',signal:ctrl.signal});
-   if(response.ok){presencePresent=false;withdrawConfirmed=true;return true}
-   return false;
-  }finally{clearTimeout(timer)}
- }catch(_){return false}
-}
-function lastAuthorizedPosition(){
- try{
-  const p=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
-  return p&&Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude))?p:null;
- }catch(_){return null}
+
+async function withdrawAuthorizedGeoPresence() {
+ const account = signedInAccount();
+ if (!account || lastWithdrawal === account) return;
+ lastWithdrawal = account;
+ try {
+  await locationRequest;
+  const token = await deliveryToken();
+  if (!token || locationConsent() || signedInAccount() !== account) { lastWithdrawal = ''; return; }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
+  try {
+   const response = await fetch(GEO_WITHDRAW_URL, {
+    method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
+    body: '{}', signal: ctrl.signal,
+   });
+   if (!response.ok) lastWithdrawal = '';
+   else presenceRecorded = false;
+  } finally { clearTimeout(timer); }
+ } catch (_) { lastWithdrawal = ''; }
 }
 
 function validHTTPS(value){
@@ -242,19 +299,6 @@ function trackedDestination(ad){
 }
 function normText(v){return String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es')}
 function countryCode(v){const c=normText(v);return c==='guatemala'||c==='gt'?'GT':c.toUpperCase()}
-// Los idiomas (p. ej., es-US) no prueban dónde está el usuario.
-// Polígono simplificado de Guatemala (GeoJSON público; johan/world.geo.json, GTM).
-const GT_BOUNDARY=[[-90.095555,13.735338],[-90.608624,13.909771],[-91.23241,13.927832],[-91.689747,14.126218],[-92.22775,14.538829],[-92.20323,14.830103],[-92.087216,15.064585],[-92.229249,15.251447],[-91.74796,16.066565],[-90.464473,16.069562],[-90.438867,16.41011],[-90.600847,16.470778],[-90.711822,16.687483],[-91.08167,16.918477],[-91.453921,17.252177],[-91.002269,17.254658],[-91.00152,17.817595],[-90.067934,17.819326],[-89.14308,17.808319],[-89.150806,17.015577],[-89.229122,15.886938],[-88.930613,15.887273],[-88.604586,15.70638],[-88.518364,15.855389],[-88.225023,15.727722],[-88.68068,15.346247],[-89.154811,15.066419],[-89.22522,14.874286],[-89.145535,14.678019],[-89.353326,14.424133],[-89.587343,14.362586],[-89.534219,14.244816],[-89.721934,14.134228],[-90.064678,13.88197],[-90.095555,13.735338]];
-function verifiedCountryFromLocation(position){
- const lat=Number(position&&position.latitude),lng=Number(position&&position.longitude);
- if(!Number.isFinite(lat)||!Number.isFinite(lng)||!lat||!lng)return '';
- let inside=false;
- for(let i=0,j=GT_BOUNDARY.length-1;i<GT_BOUNDARY.length;j=i++){
-  const a=GT_BOUNDARY[i],b=GT_BOUNDARY[j];
-  if((a[1]>lat)!==(b[1]>lat) && lng<(b[0]-a[0])*(lat-a[1])/(b[1]-a[1])+a[0])inside=!inside;
- }
- return inside?'GT':'';
-}
 function decode(v){
  if(!v||typeof v!=='object')return null;
  if('stringValue'in v)return v.stringValue;
@@ -272,19 +316,21 @@ function documentData(doc){
  Object.keys(f).forEach(k=>out[k]=decode(f[k]));return out
 }
 function dateEligible(c){
- const today=new Date();today.setHours(0,0,0,0);
- if(c.start){const s=new Date(c.start+'T00:00:00');if(Number.isFinite(s.getTime())&&today<s)return false}
- if(c.end){const e=new Date(c.end+'T23:59:59');if(Number.isFinite(e.getTime())&&today>e)return false}
- return true
+ const today = new Date().toISOString().slice(0, 10);
+ return (!c.start || /^\d{4}-\d{2}-\d{2}$/.test(c.start) && c.start <= today) &&
+  (!c.end || /^\d{4}-\d{2}-\d{2}$/.test(c.end) && c.end >= today);
 }
-function targetEligible(c){
- // Los destinos específicos requieren coincidencia geográfica positiva; no suposiciones.
- const cc=countryCode(c.country),xc=countryCode(context.country);
- if(cc&&cc!=='ALL'&&(!xc||cc!==xc))return false;
- if(c.region&&(!context.region||normText(c.region)!==normText(context.region)))return false;
- if(c.city&&(!context.city||normText(c.city)!==normText(context.city)))return false;
- if(c.neighborhood&&(!context.neighborhood||normText(c.neighborhood)!==normText(context.neighborhood)))return false;
- return true
+function comparableArea(value, kind) {
+ const normalized = normText(value);
+ if (kind === 'region') return normalized.replace(/^(?:departamento\s+de(?:l)?|departamento|depto\.?|provincia\s+de|provincia|estado\s+de|estado|region\s+de|region)\s+/, '').trim();
+ if (kind === 'city') return normalized.replace(/^(?:municipio\s+de|municipio|ciudad\s+de|ciudad)\s+/, '').trim();
+ return normalized;
+}
+function targetEligible(target) {
+ const cc = countryCode(target.country);
+ return (!cc || cc === 'ALL' || cc === context.country) &&
+  ['region', 'city', 'neighborhood'].every(kind => !target[kind] ||
+   Boolean(context[kind] && comparableArea(target[kind], kind) === comparableArea(context[kind], kind)));
 }
 
 // Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
@@ -461,7 +507,7 @@ function bindAnalyticsTracking(){
 const OBJECTIVE_CTA=Object.freeze({awareness:'Conocer la marca',traffic:'Visitar sitio web',engagement:'Participar',leads:'Solicitar información',sales:'Comprar ahora',app:'Descargar aplicación'});
 function ctaForObjective(c){return OBJECTIVE_CTA[c?.objective]||OBJECTIVE_CTA.awareness}
 function normalizeCampaign(c){
- if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c)||!targetEligible(c))return [];
+ if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c))return [];
  const placement=['banner','entry','interaction'].includes(c.placement)?c.placement:'';
  if(!placement||!Array.isArray(c.ads))return [];
  return c.ads.map(a=>{
@@ -474,18 +520,19 @@ function normalizeCampaign(c){
    if(placement==='banner'&&!((width===1200&&height===180)||(width===2400&&height===360)))return null;
    if((placement==='entry'||placement==='interaction')&&!((width===1080&&height===1920)||(width===2160&&height===3840)))return null;
    if(type==='video'&&(!Number.isFinite(duration)||duration<9.95||duration>180.05))return null;
-   return {id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
+   return {target:{country:c.country,region:c.region,city:c.city,neighborhood:c.neighborhood},id:String(a.id||c.id).slice(0,140),campaignId:String(c.campaignId||c.id||'').slice(0,140),placement,type,src,destination,mediaWidth:width,mediaHeight:height,objective:c.objective||'awareness',ctaLabel:ctaForObjective(c),sound:type==='video'&&a.sound===true};
  }).filter(Boolean)
 }
 const bannerFailures = new Map(), bannerStatus = new Map(), bannerBusy = new Set();
 const verticalFailures = new Map();
-const BANNER_TURN_MS = 30000, IMAGE_TIMEOUT_MS = 16000, BANNER_RETRY_MS = 60000;
+const IMAGE_TIMEOUT_MS = 16000, BANNER_RETRY_MS = 60000;
 
 function selectedCreatives(placement, slot, failures) {
  const selected = recommendations.get(slot);
- if (!selected || completedSelections.has(selected.selectionToken)) return [];
+ if (!audienceIsCurrent() || !selected || selected.expiresAt <= Date.now() ||
+     completedSelections.has(selected.selectionToken)) return [];
  return catalog.filter(ad => ad.placement === placement && ad.campaignId === selected.campaignId &&
-  ad.id === selected.adId && (failures.get(ad.src) || 0) <= Date.now())
+  ad.id === selected.adId && targetEligible(ad.target) && (failures.get(ad.src) || 0) <= Date.now())
   .sort((a, b) => b.mediaWidth - a.mediaWidth)
   .map(ad => ({...ad, selectionToken: selected.selectionToken}));
 }
@@ -543,56 +590,65 @@ function bannerNode(ad,img){
  a.appendChild(img);
  return a;
 }
-async function displayBanner(slot){
- if (bannerBusy.has(slot) || !adsPermitted()) return;
+function canShowPromo(placement, slot) {
+ if (!config.enabled || paidNoAds()) return false;
+ if (!lastRefresh && !lastError) return false;
+ if (!adsPermitted()) return !window.TaskFlowPermissionsV53 || window.TaskFlowPermissionsV53.canEnter();
+ const inventory = catalog.filter(ad => ad.placement === placement);
+ if (!inventory.length || audienceState === 'unavailable') return true;
+ if (!audienceIsCurrent()) return false;
+ return checkedSlots.has(slot) || !inventory.some(ad => targetEligible(ad.target));
+}
+
+async function displayBanner(slot) {
+ if (bannerBusy.has(slot)) return;
  const element = document.getElementById(slot);
  if (!element) return;
  const selected = recommendations.get(slot);
  const live = element.querySelector('img');
  const current = bannerStatus.get(slot);
- const approved = current && selected && current.campaignId === selected.campaignId &&
-  current.id === selected.adId && catalog.some(a => a.placement === 'banner' &&
-   a.campaignId === current.campaignId && a.id === current.id && a.src === current.src);
+ const approved = audienceIsCurrent() && current && catalog.some(ad => ad.placement === 'banner' &&
+  ad.campaignId === current.campaignId && ad.id === current.id && ad.src === current.src && targetEligible(ad.target));
  if (approved && live?.complete && validBannerPixels(live) &&
-     current.selectionToken === selected.selectionToken && Date.now() - current.at < BANNER_TURN_MS) return;
+     current.selectionToken === selected?.selectionToken) return;
+ const candidates = bannerCandidates(slot);
+ if (!candidates.length) {
+  bannerStatus.delete(slot);
+  window.TaskFlowAdsV50.render(slot, null, canShowPromo('banner', slot));
+  return;
+ }
+ if (!approved) window.TaskFlowAdsV50.render(slot, null, false);
  bannerBusy.add(slot);
  try {
-  for (const ad of bannerCandidates(slot)) {
+  for (const ad of candidates) {
    const img = await testedBanner(ad);
-   if (!adsPermitted() || recommendations.get(slot)?.selectionToken !== ad.selectionToken) return;
-   if (!img || !catalog.some(a => a.placement === 'banner' && a.campaignId === ad.campaignId &&
-       a.id === ad.id && a.src === ad.src)) continue;
+   if (!audienceIsCurrent() || recommendations.get(slot)?.selectionToken !== ad.selectionToken) return;
+   if (!img || !catalog.some(item => item.placement === 'banner' && item.campaignId === ad.campaignId &&
+       item.id === ad.id && item.src === ad.src && targetEligible(item.target))) continue;
    const currentElement = document.getElementById(slot);
    if (!currentElement) return;
-   if (window.TaskFlowAdsV50.render(slot, bannerNode(ad,img))) {
+   if (window.TaskFlowAdsV50.render(slot, bannerNode(ad, img))) {
     bannerStatus.set(slot, {...ad, at: Date.now()});
     recordVisibleAd(ad, slot, currentElement);
     return;
    }
   }
-  if (!approved || !live?.complete || !validBannerPixels(live)) {
-   bannerStatus.delete(slot);
-   window.TaskFlowAdsV50.render(slot, null);
-  }
+  bannerStatus.delete(slot);
+  window.TaskFlowAdsV50.render(slot, null, canShowPromo('banner', slot));
  } catch (error) {
   console.warn('TaskFlow ADS: no fue posible mostrar banner', slot, error);
  } finally {
   bannerBusy.delete(slot);
+  if (recommendations.get(slot) !== selected) queueBanner(slot);
  }
 }
 
-function runtimeReady(){
+function runtimeReady() {
  return !!(window.TaskFlowAdsV50?.render && VERTICAL_PLACEMENTS.every(slot => verticalApi(slot)?.setCreative));
 }
 
-function enableUnfilledVerticalPromos(checked = new Set()) {
- if (!runtimeReady() || !lastRefresh || !config.enabled || paidNoAds()) return;
- for (const placement of VERTICAL_PLACEMENTS) {
-  if (checked.has(placement) || !rawCampaigns.some(c =>
-      c.placement === placement && c.status === 'active' && c.approvalStatus === 'approved' && dateEligible(c))) {
-   window.TaskFlowAdsV50.setPromoReady?.(placement, true);
-  }
- }
+function enableUnfilledVerticalPromos(placement, creative) {
+ window.TaskFlowAdsV50.setPromoReady(placement, !creative && canShowPromo(placement, placement));
 }
 
 function apply() {
@@ -600,28 +656,26 @@ function apply() {
  bindAnalyticsTracking();
  window.TaskFlowAdsV50.setEnabled?.(config.enabled);
  window.TaskFlowAdsV50.refresh();
- if (!adsPermitted()) {
-  for (const slot of bannerSlots()) window.TaskFlowAdsV50.render(slot, null);
-  bannerStatus.clear();
-  for (const placement of VERTICAL_PLACEMENTS) {
-   const api = verticalApi(placement);
-   if (!config.enabled || paidNoAds() || api.isSponsored?.()) api.close(true);
-   api.setCreative(null);
-   activeVerticalAds[placement] = null;
-  }
-  return true;
- }
-
  for (const slot of bannerSlots()) queueBanner(slot);
  for (const placement of VERTICAL_PLACEMENTS) {
   const api = verticalApi(placement);
+  const active = activeVerticalAds[placement];
+  if (active && (!audienceIsCurrent() || !catalog.some(ad => ad.placement === placement &&
+      ad.campaignId === active.campaignId && ad.id === active.id && ad.src === active.src && targetEligible(ad.target)))) {
+   activeVerticalAds[placement] = null;
+   api.setCreative(null);
+   if (api.isSponsored?.()) api.close(true);
+  }
+  if (!config.enabled || paidNoAds()) api.close(true);
   if (api.isRunning() || api.hasShown?.()) continue;
   const ad = selectedCreatives(placement, placement, verticalFailures)[0];
+  if (ad && activeVerticalAds[placement]?.selectionToken === ad.selectionToken) continue;
   const accepted = api.setCreative(ad ? {
    type: ad.type, src: ad.src, destination: trackedDestination(ad), ctaLabel: ad.ctaLabel, sound: ad.sound,
    mediaWidth: ad.mediaWidth, mediaHeight: ad.mediaHeight,
   } : null);
   activeVerticalAds[placement] = accepted ? ad : null;
+  enableUnfilledVerticalPromos(placement, accepted);
   if (accepted) document.dispatchEvent(new Event('taskflow:' + placement + '-ad-creative-ready'));
  }
  return true;
@@ -630,14 +684,14 @@ function apply() {
 function observeSlots(){
  if (slotObserver || !document.documentElement || typeof MutationObserver !== 'function') return;
  slotObserver = new MutationObserver(records => {
-  if (slotUpdateQueued || !adsPermitted() || !catalog.some(ad => ad.placement === 'banner')) return;
+  if (slotUpdateQueued) return;
   const changed = records.some(record => [...record.addedNodes].some(node =>
    node.nodeType === 1 && node.matches('.tf50-ad-slot')));
   if (!changed) return;
   slotUpdateQueued = true;
   requestAnimationFrame(() => {
    slotUpdateQueued = false;
-   if (bannerSlots().some(id => document.getElementById(id) && !recommendations.has(id))) {
+   if (audienceIsCurrent() && bannerSlots().some(id => document.getElementById(id) && !recommendations.has(id))) {
     void refreshRecommendations();
    }
    apply();
@@ -658,6 +712,7 @@ function finishVertical(placement, rejectedSrc) {
  completedSelections.add(ad.selectionToken);
  if (completedSelections.size > 500) completedSelections.delete(completedSelections.values().next().value);
  if (recommendations.get(placement)?.selectionToken === ad.selectionToken) recommendations.delete(placement);
+ checkedSlots.delete(placement);
  if (rejectedSrc) {
   verticalFailures.set(rejectedSrc, Date.now() + BANNER_RETRY_MS);
   window.TaskFlowAdsV50?.setPromoReady?.(placement, true);
@@ -686,12 +741,26 @@ function applyWhenReady(){
   tries++;if(apply()||tries>=120){clearInterval(readinessTimer);readinessTimer=0}
  },500)
 }
-function rebuildCatalog(){
- catalog=rawCampaigns.flatMap(normalizeCampaign).slice(0,1200);
+function rebuildCatalog() {
+ const next = rawCampaigns.flatMap(normalizeCampaign).slice(0, 1200);
+ const signature = JSON.stringify(next);
+ if (signature !== catalogSignature) {
+  catalogSignature = signature;
+  catalogRevision++;
+  catalog = next;
+  checkedSlots.clear();
+  for (const [slot, selected] of recommendations) {
+   if (!catalog.some(ad => ad.placement === (VERTICAL_PLACEMENTS.includes(slot) ? slot : 'banner') &&
+       ad.campaignId === selected.campaignId && ad.id === selected.adId && targetEligible(ad.target))) {
+    recommendations.delete(slot);
+   }
+  }
+ }
  applyWhenReady();
- enableUnfilledVerticalPromos();
  void refreshRecommendations();
- try{document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated',{detail:{available:catalog.length}}))}catch(_){}
+ try {
+  document.dispatchEvent(new CustomEvent('taskflow:ads-catalog-updated', {detail: {available: catalog.length}}));
+ } catch (_) {}
 }
 async function fetchCatalog(){
  const all=[];let token='',pages=0;
@@ -709,9 +778,9 @@ async function fetchCatalog(){
 }
 async function refresh(){
  if(window.TaskFlowNoAds&&window.TaskFlowNoAds.isActive&&window.TaskFlowNoAds.isActive())return false;
- if(!config.enabled){catalog=[];rawCampaigns=[];recommendations.clear();applyWhenReady();return false}
+ if(!config.enabled){catalog=[];rawCampaigns=[];catalogSignature='';clearSelections();applyWhenReady();return false}
  if(refreshing)return refreshing;
- refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);return false}).finally(()=>{refreshing=null});
+ refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);applyWhenReady();return false}).finally(()=>{refreshing=null});
  return refreshing;
 }
 function schedule(){
@@ -719,20 +788,14 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.4.4',
+ version:'3.5.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
    if('enabled'in options)config.enabled=!!options.enabled;
    if('adminUrl'in options)config.adminUrl=validHTTPS(options.adminUrl)||null;
    if('refreshMs'in options)config.refreshMs=Math.max(10000,Number(options.refreshMs)||10000);
-   schedule();if(config.enabled){void refresh();void recoverOwnedAds()}else{catalog=[];rawCampaigns=[];applyWhenReady()}return true
- },
- setContext(next){
-   if(!next||typeof next!=='object')return false;
-   const nextContext={country:Object.prototype.hasOwnProperty.call(next,'country')?countryCode(next.country):context.country,region:String(next.region??context.region??''),city:String(next.city??context.city??''),neighborhood:String(next.neighborhood??context.neighborhood??'')};
-   if(Object.keys(nextContext).every(k=>nextContext[k]===context[k]))return true;
-   context=nextContext;rebuildCatalog();return true
+   schedule();void refresh();if(config.enabled){updateAudience();void recoverOwnedAds()}return true
  },
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:'firestore'})},
  refresh,
@@ -742,155 +805,69 @@ const API={
 };
 try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writable:false,configurable:false})}catch(_){window.TaskFlowADS=Object.freeze(API)}
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{observeSlots();void refresh();schedule();setTimeout(()=>void recoverOwnedAds(),3500)},{once:true});else{observeSlots();void refresh();schedule();setTimeout(()=>void recoverOwnedAds(),3500)}
-window.addEventListener('pageshow',()=>{if(Date.now()-lastRefresh>8000)void refresh();else applyWhenReady();void recoverOwnedAds()},{passive:true});
-window.addEventListener('online',()=>{void refresh();retryRecommendations(1200);void recoverOwnedAds()},{passive:true});
-document.addEventListener('taskflow:account-state-updated',()=>{if(catalog.length)retryRecommendations(300);void recoverOwnedAds()},false);
-document.addEventListener('taskflow:firebase-auth-changed',()=>{ownerRecoveryAt=0;void recoverOwnedAds();if(catalog.length)retryRecommendations(500)},false);
-document.addEventListener('taskflow:permissions-ready',()=>{if(catalog.length&&localStorage.getItem('taskflow_location_decision_v52')==='granted')retryRecommendations(500);void recoverOwnedAds()},false);
-document.addEventListener('taskflow:noads-status-updated',e=>{if(e.detail&&e.detail.active)apply();else void refresh()});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefresh>8000)void refresh()});
-// Convierte coordenadas autorizadas a municipio/departamento con una consulta
-// geográfica de precisión reducida. No transmite UID, correo ni hábitos.
-async function resolveAuthorizedRegion(position){
- const lat=Number(position?.latitude),lng=Number(position?.longitude);
- if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180)return false;
- // No procesar geolocalización sin la decisión explícita ya concedida en TaskFlow.
- if(localStorage.getItem('taskflow_location_decision_v52')!=='granted')return false;
- void reportAuthorizedGeoPresence({latitude:lat,longitude:lng,timestamp:Number(position?.timestamp||position?.updatedAt)||0});
- const inGuatemala=verifiedCountryFromLocation({latitude:lat,longitude:lng})==='GT';
- const digits=inGuatemala?3:2; // En el exterior se transmiten coordenadas aproximadas, no GPS exacto.
- const qlat=Number(lat.toFixed(digits)),qlng=Number(lng.toFixed(digits));
- const grid=(inGuatemala?'GT:':'WORLD:')+qlat+','+qlng;
- if(lastGeoGrid!==grid){
-  // No arrastrar país/ciudad anteriores al cruzar fronteras.
-  API.setContext({country:inGuatemala?'GT':'',region:'',city:''});
-  lastGeoAt=0;
+function updateAudience() {
+ if (!locationConsent()) {
+  resetAudience('', 'unavailable');
+  applyWhenReady();
+  let denied = false;
+  try { denied = localStorage.getItem(LOCATION_DECISION) === 'denied'; } catch (_) {}
+  if (presenceRecorded || denied) void withdrawAuthorizedGeoPresence();
+  return;
  }
- if(geoPending&&lastGeoGrid===grid)return geoPending;
- if(Date.now()-lastGeoAt<15*60*1000&&lastGeoGrid===grid&&context.country)return true;
- lastGeoGrid=grid;
- geoPending=(async()=>{
-  const cacheName=inGuatemala?GEO_GRID_CACHE:WORLD_GEO_CACHE;
-  try{
-   const cached=JSON.parse(localStorage.getItem(cacheName)||'null');
-   if(cached&&cached.grid===grid&&Date.now()-Number(cached.at)<12*60*60*1000
-    &&/^[A-Z]{2}$/.test(String(cached.country||''))){
-    API.setContext({country:cached.country,region:cached.region||'',city:cached.city||''});
-    lastGeoAt=Date.now();return true;
-   }
-  }catch(_){}
-  // Mantener la resolución oficial de municipio/departamento utilizada en Guatemala.
-  if(inGuatemala){
-   const url=new URL(GEO_API);
-   const query={f:'json',where:'1=1',geometry:qlng+','+qlat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'nombre_1,depto_1',returnGeometry:'false'};
-   Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,v));
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
-   try{
-    const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
-    if(res.ok){
-     const data=await res.json(),matches=Array.isArray(data.features)?data.features:[];
-     if(matches.length===1){
-      const attrs=matches[0].attributes||{},region=String(attrs.depto_1||'').trim(),city=String(attrs.nombre_1||'').trim();
-      if(region&&city&&region.length<=100&&city.length<=100){
-       API.setContext({country:'GT',region,city});lastGeoAt=Date.now();
-       try{localStorage.setItem(cacheName,JSON.stringify({grid,country:'GT',region,city,at:lastGeoAt}))}catch(_){}
-       return true;
-      }
-     }
-    }
-   }catch(_){/* Segundo proveedor internacional cuando falla la resolución municipal. */}
-   finally{clearTimeout(timer)}
-  }
-  // Resto del mundo: geocodificación internacional del GPS ya autorizado,
-  // con latitud/longitud reducidas y sin ID de usuario, correo ni historial.
-  const url=new URL(WORLD_GEO_URL);
-  url.searchParams.set('latitude',String(qlat));
-  url.searchParams.set('longitude',String(qlng));
-  url.searchParams.set('localityLanguage','es');
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
-  try{
-   const res=await fetch(url.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
-   if(!res.ok)return false;
-   const data=await res.json(),country=countryCode(data?.countryCode||'');
-   if(!/^[A-Z]{2}$/.test(country)||country==='ZZ')return false;
-   // El país es el criterio principal; ciudad/región solo si el proveedor las resuelve.
-   const region=String(data?.principalSubdivision||'').trim().slice(0,100);
-   const city=String(data?.city||'').trim().slice(0,100);
-   API.setContext({country,region,city});lastGeoAt=Date.now();
-   try{localStorage.setItem(cacheName,JSON.stringify({grid,country,region,city,at:lastGeoAt}))}catch(_){}
-   return true;
-  }catch(_){return false}finally{clearTimeout(timer)}
- })().finally(()=>{geoPending=null});
- return geoPending;
+ if (locationChecking || locationFailed) {
+  resetAudience('', locationChecking ? 'pending' : 'unavailable');
+  applyWhenReady();
+  return;
+ }
+ void reportAuthorizedGeoPresence();
 }
-function useLocationDetail(detail){
- if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){
-  API.setContext({country:'',region:'',city:'',neighborhood:''});
-  void withdrawAuthorizedGeoPresence();return;
- }
- const authorized=lastAuthorizedPosition();
- if(authorized)void reportAuthorizedGeoPresence(authorized);
- const data=detail&&typeof detail==='object'?detail:{};
- const place=data.address&&typeof data.address==='object'?data.address:data;
- const region=String(place.region||place.department||place.state||'').trim();
- const city=String(place.city||place.municipality||place.locality||'').trim();
- const country=countryCode(place.countryCode||place.country||'');
- // Conservar ubicaciones ya resueltas por la aplicación cuando incluyen código de país.
- if(/^[A-Z]{2}$/.test(country)&&country!=='ZZ'&&region.length<=100&&city.length<=100){
-  API.setContext({country,region,city});return;
- }
- const pos=data.position&&typeof data.position==='object'?data.position:place;
- if(Number.isFinite(Number(pos.latitude))&&Number.isFinite(Number(pos.longitude)))void resolveAuthorizedRegion(pos);
+
+function boot() {
+ observeSlots();
+ void refresh();
+ updateAudience();
+ void Promise.resolve(window.TaskFlowFirebase?.initialize?.()).then(() => {
+  authSettled = true;
+  updateAudience();
+ }).catch(() => {});
+ schedule();
+ setTimeout(() => void recoverOwnedAds(), 3500);
+ setTimeout(updateAudience, Math.max(0, audienceDeadline - Date.now()));
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
+else boot();
+window.addEventListener('pageshow', () => {
+ updateAudience();
+ if (Date.now() - lastRefresh > 8000) void refresh();
  else applyWhenReady();
+ void recoverOwnedAds();
+}, {passive: true});
+window.addEventListener('online', () => { updateAudience(); void refresh(); void recoverOwnedAds(); }, {passive: true});
+document.addEventListener('taskflow:account-state-updated', () => { updateAudience(); void recoverOwnedAds(); });
+document.addEventListener('taskflow:firebase-auth-changed', () => {
+ ownerRecoveryAt = 0;
+ updateAudience();
+ void recoverOwnedAds();
+});
+document.addEventListener('taskflow:location-checking', () => {
+ locationChecking = true;
+ updateAudience();
+});
+for (const name of ['permissions-ready', 'location-updated', 'location-unavailable']) {
+ document.addEventListener('taskflow:' + name, () => {
+  locationChecking = false;
+  locationFailed = name === 'location-unavailable';
+  updateAudience();
+ });
 }
-document.addEventListener('taskflow:permissions-ready',e=>useLocationDetail(e.detail),false);
-document.addEventListener('taskflow:location-updated',e=>useLocationDetail(e.detail),false);
-
-/* Recuperar la ubicación ya autorizada si el evento se emitió durante el arranque,
-   antes de que se cargara este puente. La ubicación no se entrega a anunciantes. */
-async function restoreAuthorizedLocation(){
- try{
-  if(localStorage.getItem('taskflow_location_decision_v52')!=='granted'){void withdrawAuthorizedGeoPresence();return false}
-  if(navigator.permissions&&typeof navigator.permissions.query==='function'){
-   try{
-    const permission=await navigator.permissions.query({name:'geolocation'});
-    if(permission.state==='denied'){void withdrawAuthorizedGeoPresence();return false}
-   }catch(_){}
-  }
-  const position=JSON.parse(localStorage.getItem('taskflow_location_v52')||'null');
-  if(!position||typeof position!=='object')return false;
-  return await resolveAuthorizedRegion(position);
- }catch(_){return false}
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{void restoreAuthorizedLocation()},{once:true});
-else void restoreAuthorizedLocation();
-window.addEventListener('pageshow',()=>{void restoreAuthorizedLocation()},{passive:true});
-
-// Actualizar el país/región cuando el usuario se desplaza, sin solicitar ubicación si está denegada.
-async function refreshLiveAuthorizedLocation(){
- if(document.hidden||localStorage.getItem('taskflow_location_decision_v52')!=='granted'||!navigator.geolocation?.getCurrentPosition)return false;
- try{
-  if(navigator.permissions?.query){
-   const p=await navigator.permissions.query({name:'geolocation'});
-   if(p.state==='denied'){void withdrawAuthorizedGeoPresence();return false}
-  }
-  return await new Promise(resolve=>navigator.geolocation.getCurrentPosition(
-   position=>{void resolveAuthorizedRegion({latitude:position.coords.latitude,longitude:position.coords.longitude,timestamp:Number(position.timestamp)||Date.now()});resolve(true)},
-   ()=>resolve(false),
-   {enableHighAccuracy:false,maximumAge:300000,timeout:10000}
-  ));
- }catch(_){return false}
-}
-// Comprobar cambios geográficos en sesiones prolongadas sin vigilar continuamente al usuario.
-setInterval(()=>{if(!document.hidden)void refreshLiveAuthorizedLocation()},15*60*1000);
-// Mantener actividad únicamente mientras TaskFlow esté abierto y el permiso continúe vigente.
-setInterval(()=>{if(document.hidden)return;
- const permitted=localStorage.getItem('taskflow_location_decision_v52')==='granted';
- if(!permitted){if(!withdrawConfirmed)void withdrawAuthorizedGeoPresence();return}
- const position=lastAuthorizedPosition();if(position)void reportAuthorizedGeoPresence(position);
-},60*1000);
-window.addEventListener('storage',e=>{if(e.key==='taskflow_location_decision_v52'&&e.newValue!=='granted')void withdrawAuthorizedGeoPresence()},{passive:true});
+document.addEventListener('taskflow:noads-status-updated', e => { if (e.detail?.active) apply(); else void refresh(); });
+document.addEventListener('visibilitychange', () => {
+ if (document.hidden) return;
+ updateAudience();
+ if (Date.now() - lastRefresh > 8000) void refresh();
+});
+setInterval(updateAudience, 60000);
+window.addEventListener('storage', e => { if (e.key === LOCATION_DECISION) updateAudience(); }, {passive: true});
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
 window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){

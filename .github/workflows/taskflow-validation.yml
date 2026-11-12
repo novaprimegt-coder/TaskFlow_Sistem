@@ -78,7 +78,7 @@ jobs:
           assert.ok(live.includes('taskflow-v58-stability.js'),'Protección diaria no cargada');
           assert.ok(live.includes('function installSharedRoutineLayout()')&&live.includes('tfSharedRoutineLayoutV156')&&live.includes('headExtras:headExtras+routineStyle'),'La vista común de rutinas debe inyectarse en el documento final');
           for(const k of ['tf21-legal','tf32-socrates','tf33-machiavelli'])assert.ok(live.includes(k),'Falta rutina '+k);
-          assert.ok(adsRuntime.includes('const REQUIRED_TAPS = 5;')&&adsRuntime.includes('taskflow_interaction_ad_count_v57'),'Los clics publicitarios deben acumularse en grupos de cinco');
+          assert.ok(adsRuntime.includes('const REQUIRED_TAPS = 10;')&&adsRuntime.includes('taskflow_interaction_ad_count_v160'),'Los clics publicitarios deben acumularse en grupos de diez');
           assert.ok(!adsRuntime.includes('taskflow_entry_ad_completed_session')&&read('t57/runtime-19.txt').includes('taskflow-ads-runtime-v157.js'),'El anuncio de ingreso debe activarse en cada apertura');
           for (const id of ['tfAdBannerTimer','tfAdBannerHabitsTasks','tfAdBannerFooter','tfAdBannerRoutine','tfAdBannerMenu','tfAdBannerHabits','tfAdBannerTasks']) assert.ok(adsRuntime.includes(id),'Falta espacio publicitario '+id);
           const activeParts=JSON.parse(root.match(/const parts=(\[[^;]+\]);/)?.[1]||'[]');
@@ -133,9 +133,9 @@ jobs:
             ['Londres DST',51.51,-0.1,'2026-03-29T00:00:00Z','2026-03-29T23:00:00Z'],
             ['Sidney DST',-33.86,151.2,'2026-10-03T14:00:00Z','2026-10-04T13:00:00Z']
           ]){
-            const window={addEventListener(){},TaskFlowLocationV52:{getCached:()=>({latitude,longitude,updatedAt:Date.now()})}};
+            const window={addEventListener(){},TaskFlowLocationV52:{getCached:()=>({latitude,longitude,accuracy:80,timestamp:Date.now()})}};
             const document={readyState:'loading',hidden:false,addEventListener(){},getElementById(){return null}};
-            vm.runInNewContext(js,{window,document,navigator:{},localStorage:{getItem(){return null}},console,Intl,Date,setTimeout,clearTimeout});
+            vm.runInNewContext(js,{window,document,navigator:{},localStorage:{getItem(){return 'granted'}},console,Intl,Date});
             assert.equal(new Date(window.TaskFlowRegionalClock.getCycle(Date.parse(at)).reset).toISOString(),new Date(expect).toISOString(),label);
           }
           const runtimeParts=JSON.parse(fs.readFileSync('index.html','utf8').match(/const parts=(\[[^;]+\]);/)[1]);

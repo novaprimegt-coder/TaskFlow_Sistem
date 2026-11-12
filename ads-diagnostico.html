@@ -7,7 +7,7 @@
 <section class="panel"><h2>Resultado de la comprobación</h2><div id="report" class="report">Esperando respuesta…</div></section>
 <section class="panel"><h2>Formatos disponibles</h2><div id="placements" class="report">—</div></section>
 <section id="samplesSection" class="panel" hidden><h2>Prueba de carga del creativo</h2><div id="samples" class="preview"></div></section>
-<p class="foot">El resultado refleja lo que recibe este navegador desde el catálogo público; no cambia campañas, permisos, ubicaciones ni credenciales. Si no aparece publicidad en TaskFlow, comparte una captura de esta pantalla.</p>
+<p class="foot">Consulta pública del catálogo. La ubicación de cada dispositivo se valida dentro de TaskFlow.</p>
 </div><script>
 (function(){
 "use strict";
@@ -22,63 +22,21 @@ function decode(v){
  return null;
 }
 function data(doc){const o={};for(const [k,v]of Object.entries(doc.fields||{}))o[k]=decode(v);return o}
-function norm(x){return String(x||"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function safeUrl(x){try{const u=new URL(String(x));return u.protocol==="https:"&&!u.username&&!u.password}catch(_){return false}}
-// País basado en la ubicación autorizada, nunca en el idioma del navegador.
-// Contorno simplificado Guatemala, GeoJSON público GTM, johan/world.geo.json.
-const GT_BOUNDARY=[[-90.095555,13.735338],[-90.608624,13.909771],[-91.23241,13.927832],[-91.689747,14.126218],[-92.22775,14.538829],[-92.20323,14.830103],[-92.087216,15.064585],[-92.229249,15.251447],[-91.74796,16.066565],[-90.464473,16.069562],[-90.438867,16.41011],[-90.600847,16.470778],[-90.711822,16.687483],[-91.08167,16.918477],[-91.453921,17.252177],[-91.002269,17.254658],[-91.00152,17.817595],[-90.067934,17.819326],[-89.14308,17.808319],[-89.150806,17.015577],[-89.229122,15.886938],[-88.930613,15.887273],[-88.604586,15.70638],[-88.518364,15.855389],[-88.225023,15.727722],[-88.68068,15.346247],[-89.154811,15.066419],[-89.22522,14.874286],[-89.145535,14.678019],[-89.353326,14.424133],[-89.587343,14.362586],[-89.534219,14.244816],[-89.721934,14.134228],[-90.064678,13.88197],[-90.095555,13.735338]];
-function countryFromLocation(pos){
- const lat=Number(pos&&pos.latitude),lng=Number(pos&&pos.longitude);
- if(!Number.isFinite(lat)||!Number.isFinite(lng)||!lat||!lng)return"";
- let inside=false;
- for(let i=0,j=GT_BOUNDARY.length-1;i<GT_BOUNDARY.length;j=i++){
-  const a=GT_BOUNDARY[i],b=GT_BOUNDARY[j];
-  if((a[1]>lat)!==(b[1]>lat)&&lng<(b[0]-a[0])*(lat-a[1])/(b[1]-a[1])+a[0])inside=!inside;
- }
- return inside?"GT":"";
+function deliveryFilters(c){
+ const reasons=[];
+ if(Number(c.radius||0)>0)reasons.push("Radio geográfico sin verificación");
+ if(Number(c.ageMin||18)>18||Number(c.ageMax||65)<65)reasons.push("Rango de edad sin verificación");
+ return reasons;
 }
-async function context(){
- const out={country:"",region:"",city:"",note:""};
- try{
-  if(localStorage.getItem("taskflow_location_decision_v52")!=="granted"){out.note="No hay autorización de ubicación guardada para este origen.";return out}
-  if(navigator.permissions&&navigator.permissions.query){
-   try{const permission=await navigator.permissions.query({name:"geolocation"});if(permission.state!=="granted"){out.note="El navegador no confirma el permiso de ubicación.";return out}}catch(_){}
-  }
-  const pos=JSON.parse(localStorage.getItem("taskflow_location_v52")||"null");
-  if(!pos||!Number.isFinite(Number(pos.latitude))||!Number.isFinite(Number(pos.longitude))){out.note="TaskFlow no tiene una posición autorizada guardada.";return out}
-  out.country=countryFromLocation(pos);
-  if(!out.country){out.note="La posición autorizada no se pudo verificar dentro de Guatemala con el contorno disponible.";return out}
-  const grid=Number(pos.latitude).toFixed(3)+","+Number(pos.longitude).toFixed(3);
-  const cached=JSON.parse(localStorage.getItem("tf_ads_geo_gt_grid_v1")||"null");
-  if(cached&&cached.grid===grid&&Date.now()-Number(cached.at)<43200000&&cached.region&&cached.city){
-   out.region=String(cached.region);out.city=String(cached.city);out.note="Ubicación confirmada con datos previamente autorizados.";return out;
-  }
-  // La misma consulta municipal utilizada por TaskFlow, solo con ubicación autorizada.
-  const u=new URL("https://sig.conred.gob.gt/server/rest/services/Hosted/municipios_guatemala/FeatureServer/0/query");
-  for(const [k,v]of Object.entries({f:"json",where:"1=1",geometry:Number(pos.longitude).toFixed(3)+","+Number(pos.latitude).toFixed(3),geometryType:"esriGeometryPoint",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:"nombre_1,depto_1",returnGeometry:"false"}))u.searchParams.set(k,v);
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
-  try{
-   const resp=await fetch(u.href,{method:"GET",mode:"cors",cache:"no-store",credentials:"omit",referrerPolicy:"no-referrer",signal:controller.signal});
-   if(!resp.ok){out.note="No se pudo consultar el mapa municipal ("+resp.status+").";return out}
-   const result=await resp.json();
-   if(!Array.isArray(result.features)||result.features.length!==1){out.note="El mapa municipal no devolvió un único municipio.";return out}
-   const attrs=result.features[0].attributes||{};out.region=String(attrs.depto_1||"").trim();out.city=String(attrs.nombre_1||"").trim();
-   out.note=out.region&&out.city?"País, departamento y municipio verificados.":"El mapa municipal no devolvió departamento y municipio.";
-   return out;
-  }catch(e){out.note="No se pudo obtener el departamento y municipio ("+(e?.name==="AbortError"?"tiempo agotado":"conexión no disponible")+").";return out}
-  finally{clearTimeout(timer)}
- }catch(e){out.note="No se pudo consultar la ubicación autorizada.";return out}
-}
-function validity(c,ad,ctx){
+function validity(c,ad){
  if(c.status!=="active")return"Inactiva";
  if(c.approvalStatus!=="approved")return"Sin aprobar";
- const today=new Date();today.setHours(0,0,0,0);
- if(c.start){const d=new Date(c.start+"T00:00:00");if(Number.isFinite(d.getTime())&&today<d)return"Fecha de inicio futura"}
- if(c.end){const d=new Date(c.end+"T23:59:59");if(Number.isFinite(d.getTime())&&today>d)return"Campaña vencida"}
- const cc=norm(c.country)==="guatemala"?"GT":String(c.country||"").toUpperCase();
- if(cc&&cc!=="ALL"&&ctx.country&&cc!==ctx.country)return"País de la campaña distinto de la ubicación autorizada";
- if(c.region&&ctx.region&&norm(c.region)!==norm(ctx.region))return"Región diferente a la autorizada";
- if(c.city&&ctx.city&&norm(c.city)!==norm(ctx.city))return"Municipio diferente al autorizado";
+ const today=new Date().toISOString().slice(0,10);
+ if(c.start&&c.start>today)return"Fecha de inicio futura";
+ if(c.end&&c.end<today)return"Campaña vencida";
+ const filters=deliveryFilters(c);
+ if(filters.length)return filters.join(" y ");
  if(!["banner","entry","interaction"].includes(c.placement))return"Formato de campaña desconocido";
  if(!ad||!safeUrl(ad.src))return"Sin enlace HTTPS válido del creativo";
  if(!["image","gif","video"].includes(String(ad.type||"image")))return"Tipo de archivo no válido";
@@ -104,12 +62,12 @@ async function scan(){
    if(!resp.ok)throw new Error("HTTP "+resp.status+": "+(body.error?.message||"Firebase rechazó la consulta"));
    records.push(...(body.documents||[]));next=body.nextPageToken||"";pages++;
   }while(next&&pages<5);
-  const ctx=await context();let valid=0,invalid=0;
+  let valid=0,invalid=0;
   for(const doc of records){
    const c=data(doc);
    if(!Array.isArray(c.ads)||!c.ads.length){reasons["Campaña sin anuncios"]=1+(reasons["Campaña sin anuncios"]||0);invalid++;continue}
    for(const ad of c.ads.slice(0,12)){
-    const reason=validity(c,ad,ctx);
+    const reason=validity(c,ad);
     if(reason!=="ok"){invalid++;reasons[reason]=1+(reasons[reason]||0);continue}
     valid++;ctr[c.placement]++;if(samples.length<3&&c.placement==="banner"&&safeUrl(ad.src))samples.push(ad.src);
    }
@@ -118,13 +76,9 @@ async function scan(){
   $("placements").textContent="Banner: "+ctr.banner+"\nIngreso: "+ctr.entry+"\nInteracción: "+ctr.interaction;
   const lines=[];
   if(records.length===0)lines.push("Firebase respondió correctamente, pero el catálogo público está vacío. Aprobar una campaña no basta: debe estar activa, con un creativo válido, y existir su documento en adsPublicCampaigns.");
-  else if(valid===0)lines.push("Hay campañas publicadas, pero ningún creativo supera todos los filtros de TaskFlow en este dispositivo.");
-  else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles. Si no aparecen en TaskFlow, revisa la carga de la app, el estado «Sin anuncios» y los archivos multimedia.");
+  else if(valid===0)lines.push("Hay campañas publicadas con restricciones de entrega o creativos incompatibles.");
+  else lines.push("Firebase entregó "+records.length+" campaña(s) y "+valid+" creativo(s) compatibles con el catálogo. La entrega se decide en TaskFlow según la ubicación autorizada, la disponibilidad y el estado «Sin anuncios».");
   Object.entries(reasons).sort((a,b)=>b[1]-a[1]).forEach(([reason,count])=>lines.push("• "+reason+": "+count));
-  lines.push("País verificado por ubicación: "+(ctx.country||"Pendiente; la entrega no se suspende por ausencia de datos")+".");
-  if(ctx.region||ctx.city)lines.push("Ubicación autorizada: "+[ctx.region,ctx.city].filter(Boolean).join(", ")+".");
-  else if(records.some(d=>{const c=data(d);return!!(c.region||c.city)}))lines.push("Aviso: el departamento o municipio aún no está verificado; los anuncios aprobados se muestran salvo incompatibilidad confirmada.");
-  if(ctx.note)lines.push("Geolocalización: "+ctx.note);
   $("report").textContent=lines.join("\n");$("status").textContent="Comprobación completada.";
   if(samples.length){$("samplesSection").hidden=false;for(const [i,src]of samples.entries()){let card=document.createElement("div"),label=document.createElement("small"),image=new Image();card.className="sample";label.textContent="Banner "+(i+1)+" · Comprobando archivo…";image.onload=()=>{label.textContent="Banner "+(i+1)+" · Imagen accesible"};image.onerror=()=>{label.textContent="Banner "+(i+1)+" · El archivo no se pudo descargar"};image.src=src;image.alt="Vista de prueba";card.append(label,image);$("samples").appendChild(card)}}
  }catch(e){

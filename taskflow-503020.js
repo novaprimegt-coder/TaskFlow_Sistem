@@ -8,6 +8,7 @@
   var state=null;
   var memoryFallback=null;
   var observer=null;
+  var previousFocus=null;
 
   function blankState(){return {schemaVersion:1,revision:0,salary:0,salaryUpdatedAt:null,salaryChanges:[],records:[]};}
   function validMonth(v){return /^\d{4}-\d{2}$/.test(String(v||''));}
@@ -150,69 +151,100 @@
   }
 
   function make(tag,cls,text){var el=document.createElement(tag);if(cls)el.className=cls;if(text!=null)el.textContent=text;return el;}
-  function allocationCard(cls,pct,title,note,id){
-    var el=make('article','tf503020-allocation '+cls);
-    var p=make('div','tf503020-percent',pct+'%');
-    var t=make('div','tf503020-bucket-title',title);
-    var a=make('div','tf503020-amount','—');a.id=id;
-    var n=make('div','tf503020-bucket-note',note);
-    var bal=make('div','tf503020-balance');bal.innerHTML='<span>Parte del ingreso total</span><strong>'+pct+' / 100</strong>';
-    el.append(p,t,a,n,bal);return el;
+  const budgetGlyphs = {
+    budget: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M7 15h3m4-2v4m3-4v4"/>',
+    close: '<path d="m6 6 12 12M18 6 6 18"/>',
+    save: '<path d="M20 20H4V4h11l5 5v11Z"/><path d="M8 4v5h7V4m-7 16v-6h8v6"/>',
+    chart: '<path d="M11 3a9 9 0 1 0 10 10H11V3Z"/><path d="M14 3.5V10h6.5A9 9 0 0 0 14 3.5Z"/>',
+    home: '<path d="m3 11 9-8 9 8M5 10v10h14V10m-9 10v-6h4v6"/>',
+    wants: '<path d="M5 8h14l2 13H3L5 8Z"/><path d="M9 9V6a3 3 0 1 1 6 0v3"/>',
+    savings: '<path d="M4 11 12 4l8 7v9H4v-9Z"/><path d="M9 14h6m-3-3v6"/>',
+    history: '<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M8 3v4m8-4v4m-7 8h6"/>',
+    guide: '<path d="M12 6C9 4 6 4 3 5v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v14M6 9h3m6 0h3"/>',
+    trend: '<path d="M4 4v16h16M7 15l4-4 3 2 6-6m-4 0h4v4"/>',
+    lock: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v2"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
+  };
+  function budgetIcon(name) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">'+budgetGlyphs[name]+'</svg>';
   }
-  function guideCard(cls,title,items){
-    var el=make('article','tf503020-guide '+cls),head=make('div','tf503020-guide-head');
-    head.append(make('span','tf503020-dot'),document.createTextNode(title));
-    var ul=document.createElement('ul');items.forEach(function(item){ul.appendChild(make('li','',item));});
-    el.append(head,ul);return el;
+  function allocationRow(kind, glyph, title, percent, id) {
+    const row = make('li', 'tf503020-allocation ' + kind);
+    row.innerHTML = '<span class="tf503020-category-icon">'+budgetIcon(glyph)+'</span>'+
+      '<span class="tf503020-bucket-title">'+title+'<small>'+percent+'%</small></span>'+
+      '<strong class="tf503020-amount" id="'+id+'">—</strong>';
+    return row;
   }
   function buildModal(){
-    if(document.getElementById('tf503020Overlay'))return document.getElementById('tf503020Overlay');
-    var overlay=make('div','window-container tf503020-overlay');overlay.id='tf503020Overlay';overlay.setAttribute('aria-hidden','true');
-    var shell=make('section','tf503020-shell');shell.setAttribute('role','dialog');shell.setAttribute('aria-modal','true');shell.setAttribute('aria-labelledby','tf503020Title');
-    var head=make('header','tf503020-head');
-    var icon=make('span','tf503020-brand-icon');icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h16M4 12h10M4 19h5"/><path d="M20 10v9M16 14h4"/></svg>';
-    var tw=make('div','tf503020-title-wrap');tw.innerHTML='<div class="tf503020-kicker">Presupuesto mensual</div><h2 class="tf503020-title" id="tf503020Title">50/30/20</h2>';
-    var close=make('button','tf503020-close','×');close.type='button';close.id='tf503020Close';close.setAttribute('aria-label','Cerrar 50/30/20');
-    head.append(icon,tw,close);
-    var content=make('div','tf503020-content');
-
-    var intro=make('section','tf503020-card tf503020-intro');
-    var ic=make('div');ic.innerHTML='<h3>Tu salario se distribuye obligatoriamente en tres partes</h3><p>Ingresa tu ingreso mensual en quetzales. TaskFlow calcula el 50% para necesidades, el 30% para gustos y el 20% para ahorro, exactamente sobre el 100% del salario indicado.</p>';
-    intro.append(ic,make('span','tf503020-rule-pill','50 + 30 + 20 = 100%'));
-
-    var income=make('section','tf503020-card');income.innerHTML='<h3>Ingreso mensual</h3><p>El salario vigente se puede actualizar. Los registros mensuales ya creados quedan protegidos: no se pueden editar ni eliminar manualmente.</p>';
-    var ig=make('div','tf503020-income-grid');
-    var field=make('div','tf503020-field');var lab=make('label','','Salario / ingresos mensuales *');lab.setAttribute('for','tf503020Salary');
-    var mw=make('div','tf503020-money-wrap');mw.innerHTML='<span class="tf503020-money-prefix">Q</span><input id="tf503020Salary" type="text" inputmode="decimal" autocomplete="off" placeholder="5,000.00" aria-describedby="tf503020Status">';
-    field.append(lab,mw);var save=make('button','tf503020-save','Guardar salario');save.type='button';save.id='tf503020Save';ig.append(field,save);
-    var status=make('div','tf503020-status');status.id='tf503020Status';income.append(ig,status);
-
-    var alloc=make('section','tf503020-allocations');
-    alloc.append(allocationCard('needs',50,'Necesidades','Gastos esenciales y básicos.','tf503020Needs'),allocationCard('wants',30,'Gustos','Consumo personal no esencial.','tf503020Wants'),allocationCard('savings',20,'Ahorro','Ahorro, inversión y reducción de deuda.','tf503020Savings'));
-
-    var rules=make('section','tf503020-card');var rh=make('div','tf503020-section-head');rh.innerHTML='<div><h3>Qué incluye cada parte</h3><p>Clasificación tomada de las imágenes de referencia.</p></div><small>El monto de cada bloque depende del salario.</small>';rules.appendChild(rh);
-    var guides=make('div','tf503020-guides');
-    guides.append(
-      guideCard('needs','50% · Necesidades',['Vivienda','Servicios (luz, agua, gas, etc.)','Seguro','Alimentos','Salud','Transporte','Cuidado personal']),
-      guideCard('wants','30% · Gustos',['Entretenimiento','Compras','Comer fuera','Suscripciones']),
-      guideCard('savings','20% · Ahorro',['Jubilación','Emergencias','Inversiones','Pago de deudas'])
-    );rules.appendChild(guides);
-
-    var history=make('section','tf503020-card');var hh=make('div','tf503020-section-head');hh.innerHTML='<div><h3>Registros mensuales</h3><p>Se crean automáticamente por mes y conservan el salario usado en ese momento.</p></div><small>Historial móvil de 6 meses</small>';history.append(hh,make('div','tf503020-history'));history.lastChild.id='tf503020History';
-
-    var wealth=make('section','tf503020-card');var wh=make('div','tf503020-section-head');wh.innerHTML='<div><h3>Ruta patrimonial de las referencias</h3><p>Contenido adicional inspirado en las otras imágenes que compartiste.</p></div><small>Orientación educativa</small>';wealth.appendChild(wh);
-    var wg=make('div','tf503020-wealth-grid');
-    var w1=make('article','tf503020-wealth');w1.innerHTML='<strong>Al acumular Q1,000</strong><p>La referencia propone dividir esos primeros 1,000 en 70% para un fondo de reserva inmobiliario y 30% para educación.</p><div class="split"><div><b>Q700</b><span>Fondo de reserva inmobiliario</span></div><div><b>Q300</b><span>Educación financiera</span></div></div>';
-    var w2=make('article','tf503020-wealth');w2.innerHTML='<strong>Decisiones de consumo vs. patrimonio</strong><p>Las imágenes comparan gastar en vacaciones, lujos, suscripciones y compras impulsivas con destinar capital a un inmueble o activo que pueda construir patrimonio.</p><ul class="tf503020-books"><li>Padre rico, Padre pobre</li><li>El inversor inteligente</li><li>Piense y Hágase Rico</li><li>El Efecto compuesto</li><li>El Millonario de la Puerta de al lado</li></ul><div class="tf503020-note"><b>Nota de TaskFlow:</b> una propiedad, inversión o alquiler puede subir o bajar de valor; la plusvalía y la rentabilidad no están garantizadas.</div>';
-    wg.append(w1,w2);wealth.appendChild(wg);
-
-    content.append(intro,income,alloc,rules,history,wealth);shell.append(head,content);overlay.appendChild(shell);document.body.appendChild(overlay);
-    close.addEventListener('click',closeTool);
-    overlay.addEventListener('click',function(e){if(e.target===overlay)closeTool();});
-    save.addEventListener('click',handleSave);
-    var input=mw.querySelector('input');
-    input.addEventListener('input',function(){renderPreview(parseMoney(input.value));});
-    input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();handleSave();}});
+    const current = document.getElementById('tf503020Overlay');
+    if (current) return current;
+    const overlay = make('div', 'window-container tf503020-overlay');
+    overlay.id = 'tf503020Overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+      <section class="tf503020-shell" role="dialog" aria-modal="true" aria-labelledby="tf503020Title">
+        <header class="tf503020-head">
+          <span class="tf503020-brand-icon">${budgetIcon('budget')}</span>
+          <div><span class="tf503020-kicker">Presupuesto mensual</span>
+            <h2 class="tf503020-title" id="tf503020Title"><span>50</span>/<span>30</span>/<span>20</span></h2>
+          </div>
+          <button class="tf503020-close" type="button" id="tf503020Close" aria-label="Cerrar 50/30/20">${budgetIcon('close')}</button>
+        </header>
+        <div class="tf503020-content">
+          <section class="tf503020-card tf503020-income">
+            <h3 class="tf503020-heading"><span class="tf503020-section-icon">${budgetIcon('budget')}</span><label for="tf503020Salary">Ingreso mensual</label></h3>
+            <div class="tf503020-income-grid">
+              <div class="tf503020-money-wrap">
+                <span class="tf503020-money-prefix" aria-hidden="true">Q</span>
+                <input id="tf503020Salary" type="text" inputmode="decimal" autocomplete="off" placeholder="5,000.00" aria-describedby="tf503020Status" />
+              </div>
+              <button class="tf503020-save" type="button" id="tf503020Save">${budgetIcon('save')}Guardar ingreso</button>
+            </div>
+            <div class="tf503020-status" id="tf503020Status" role="status"></div>
+          </section>
+          <section class="tf503020-card tf503020-distribution">
+            <h3 class="tf503020-heading"><span class="tf503020-section-icon">${budgetIcon('chart')}</span>Distribución mensual</h3>
+            <div class="tf503020-chart">
+              <div class="tf503020-donut" aria-hidden="true"><div><strong>100%</strong><small>DEL INGRESO</small></div></div>
+              <ul class="tf503020-allocations"></ul>
+            </div>
+          </section>
+          <section class="tf503020-card tf503020-history-card">
+            <h3 class="tf503020-heading"><span class="tf503020-section-icon">${budgetIcon('history')}</span>Historial mensual<small>6 meses</small></h3>
+            <div class="tf503020-history" id="tf503020History"></div>
+          </section>
+          <details class="tf503020-card tf503020-detail">
+            <summary><span class="tf503020-section-icon">${budgetIcon('guide')}</span><span>Qué incluye cada categoría</span>${budgetIcon('chevron')}</summary>
+            <dl>
+              <div class="needs"><dt>Necesidades</dt><dd>Vivienda, servicios, seguros, alimentos, salud, transporte y cuidado personal.</dd></div>
+              <div class="wants"><dt>Gastos</dt><dd>Compras, entretenimiento, comidas fuera y suscripciones.</dd></div>
+              <div class="savings"><dt>Ahorro</dt><dd>Emergencias, jubilación, inversiones y pago de deudas.</dd></div>
+            </dl>
+          </details>
+          <details class="tf503020-card tf503020-detail">
+            <summary><span class="tf503020-section-icon">${budgetIcon('trend')}</span><span>Ruta patrimonial</span>${budgetIcon('chevron')}</summary>
+            <div class="tf503020-wealth">
+              <p>La referencia propone destinar los primeros Q1,000 a un fondo inmobiliario (Q700) y educación financiera (Q300).</p>
+              <p>Evalúa el costo de las compras recreativas frente al dinero que puedes dedicar al ahorro. Las inversiones pueden perder valor.</p>
+              <ul><li>Padre rico, padre pobre</li><li>El inversor inteligente</li><li>Piense y hágase rico</li><li>El efecto compuesto</li><li>El millonario de la puerta de al lado</li></ul>
+            </div>
+          </details>
+        </div>
+      </section>`;
+    overlay.querySelector('.tf503020-allocations').append(
+      allocationRow('needs', 'home', 'Necesidades', 50, 'tf503020Needs'),
+      allocationRow('wants', 'wants', 'Gastos', 30, 'tf503020Wants'),
+      allocationRow('savings', 'savings', 'Ahorro', 20, 'tf503020Savings')
+    );
+    document.body.appendChild(overlay);
+    overlay.querySelector('#tf503020Close').addEventListener('click', closeTool);
+    overlay.addEventListener('click', event => { if (event.target === overlay) closeTool(); });
+    overlay.querySelector('#tf503020Save').addEventListener('click', handleSave);
+    const input = overlay.querySelector('#tf503020Salary');
+    input.addEventListener('input', () => renderPreview(parseMoney(input.value)));
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); handleSave(); }
+    });
     return overlay;
   }
   function ensureHubButton(){
@@ -229,12 +261,12 @@
   function setStatus(text,type){var el=document.getElementById('tf503020Status');if(!el)return;el.className='tf503020-status'+(type?' '+type:'');el.textContent=text||'';}
   function renderHistory(){
     var box=document.getElementById('tf503020History');if(!box)return;box.replaceChildren();
-    if(!state.records.length){box.appendChild(make('div','tf503020-empty','Aún no hay registros. Guarda tu salario y TaskFlow creará automáticamente el registro del mes correspondiente.'));return;}
+    if(!state.records.length){box.appendChild(make('div','tf503020-empty','Todavía no hay registros. Guarda un ingreso para crear el primero.'));return;}
     state.records.forEach(function(r){
       var row=make('article','tf503020-record');
-      var main=make('div','tf503020-record-main');main.append(make('div','tf503020-record-month',monthLabel(r.month)),make('div','tf503020-record-salary',fmt(r.salary)),make('div','tf503020-record-lock','🔒 Registro protegido · eliminación automática al cumplir 6 meses'));
+      var main=make('div','tf503020-record-main');main.append(make('div','tf503020-record-month',monthLabel(r.month)),make('div','tf503020-record-salary',fmt(r.salary)),make('div','tf503020-record-lock','Registro protegido'));
       function cell(label,val){var c=make('div','tf503020-record-cell');c.append(make('span','',label),make('strong','',fmt(val)));return c;}
-      row.append(main,cell('50% necesidades',r.needs),cell('30% gustos',r.wants),cell('20% ahorro',r.savings));box.appendChild(row);
+      row.append(main,cell('Necesidades',r.needs),cell('Gastos',r.wants),cell('Ahorro',r.savings));box.appendChild(row);
     });
   }
   function renderState(){
@@ -242,9 +274,9 @@
     var input=document.getElementById('tf503020Salary');if(input){input.value=state.salary>0?new Intl.NumberFormat('es-GT',{minimumFractionDigits:0,maximumFractionDigits:2}).format(state.salary):'';renderPreview(state.salary);}
     var current=currentMonthGT(),lc=latestChange();
     if(state.salary>0&&lc){
-      if(compareMonth(lc.month,current)>0)setStatus('Salario actualizado. Se aplicará a partir de '+monthLabel(lc.month)+'. El registro actual no se modifica.','warn');
-      else setStatus('Salario vigente: '+fmt(state.salary)+'. El registro mensual queda protegido una vez creado.','ok');
-    }else setStatus('Ingresa tu salario mensual para activar la distribución y el historial.','');
+      if(compareMonth(lc.month,current)>0)setStatus('Nuevo ingreso desde '+monthLabel(lc.month)+'.','warn');
+      else setStatus('Ingreso guardado · '+fmt(state.salary),'ok');
+    }else setStatus('','');
     renderHistory();
   }
   function handleSave(){
@@ -257,10 +289,10 @@
     if(!result.persisted)setStatus('El cálculo funciona, pero el navegador no permitió guardar el historial local.','warn');
   }
   function openTool(){
-    state=loadState();maintainRecords(true);var overlay=buildModal();renderState();overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');overlay.scrollTop=0;document.body.classList.add('tf503020-open');
-    setTimeout(function(){var input=document.getElementById('tf503020Salary');if(input&&!state.salary)input.focus({preventScroll:true});},80);
+    previousFocus=document.activeElement;state=loadState();maintainRecords(true);var overlay=buildModal();renderState();overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');overlay.scrollTop=0;document.body.classList.add('tf503020-open');
+    document.getElementById('tf503020Close').focus({preventScroll:true});
   }
-  function closeTool(){var overlay=document.getElementById('tf503020Overlay');if(!overlay)return;overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.classList.remove('tf503020-open');}
+  function closeTool(){var overlay=document.getElementById('tf503020Overlay');if(!overlay)return;overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.classList.remove('tf503020-open');if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});previousFocus=null;}
   function init(){
     state=loadState();maintainRecords(true);ensureHubButton();
     observer=new MutationObserver(function(records){if(document.getElementById('tf503020Hub'))return;for(var i=0;i<records.length;i++){var m=records[i];if(m.target&&m.target.id==='v27MainHub'){ensureHubButton();return;}for(var j=0;j<m.addedNodes.length;j++){var n=m.addedNodes[j];if(n.nodeType===1&&(n.id==='v27MainHub'||n.querySelector('#v27MainHub'))){ensureHubButton();return;}}}});observer.observe(document.body,{childList:true,subtree:true});
