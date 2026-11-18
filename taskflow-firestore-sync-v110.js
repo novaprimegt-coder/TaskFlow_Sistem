@@ -280,7 +280,8 @@ function applySnapshot(snapshot,local){
 }
 
 // Refrescar la sesión existente sin repetir el arranque ni los anuncios.
-function notifySnapshotApplied(uid,keys){
+function notifySnapshotApplied(uid,keys,accountChanged=false){
+ try{document.dispatchEvent(new CustomEvent('taskflow:cloud-snapshot-applied',{detail:{uid,keys,accountChanged}}))}catch(_){}
  try{
   for(const key of keys){
    const latest=safeGet(key);
@@ -289,7 +290,6 @@ function notifySnapshotApplied(uid,keys){
    }));
   }
  }catch(e){warn('Notificación interna de almacenamiento no disponible',e)}
- try{document.dispatchEvent(new CustomEvent('taskflow:cloud-snapshot-applied',{detail:{uid,keys}}))}catch(_){}
  for(const name of ['TaskFlowV117','TaskFlowV119']){
   try{const api=window[name];if(api&&typeof api.refresh==='function')api.refresh()}catch(_){}
  }
@@ -303,12 +303,12 @@ function backupConflict(uid,snapshot){
 }
 function clearLiveForNewAccount(uid){applying=true;try{[MAIN_KEY,MAIN_BACKUP,MAIN_RECOVERY,FIN_KEY,FIN_BACKUP,'taskflow_share_reward_claimed_v1','taskflow_share_count_v1'].forEach(nativeRemove);nativeSet(TOUCH_KEY,String(now()));setBound(uid);writeMeta(uid,{lastRemoteRevision:0,lastSyncedHash:'',lastSyncedAt:0,lastRemoteClientUpdatedAt:0})}finally{applying=false}}
 
-function acceptSnapshot(uid,snapshot,manifest,local){
+function acceptSnapshot(uid,snapshot,manifest,local,accountChanged=false){
  assertAccount(uid);
  const keys=SOURCE_KEYS.filter(key=>local.values[key]!==snapshot.values[key]);
  applySnapshot(snapshot,local);
  recordBaseline(uid,snapshot,manifest);
- if(keys.length)notifySnapshotApplied(uid,keys);
+ if(keys.length||accountChanged)notifySnapshotApplied(uid,keys,accountChanged);
 }
 async function reconcile(uid){
  assertAccount(uid);
@@ -320,7 +320,7 @@ async function reconcile(uid){
  if(!remote){
   if(switched){
    clearLiveForNewAccount(uid);
-   notifySnapshotApplied(uid,SOURCE_KEYS);
+   notifySnapshotApplied(uid,SOURCE_KEYS,true);
    queueRecheck('new-account',150);
    return;
   }
@@ -343,7 +343,7 @@ async function reconcile(uid){
  if(!switched)window.TaskFlowCloudViewV162?.flush?.();
  const latest=capture();
  if(!switched&&latest.hash!==local.hash){queueRecheck('local-during-download',130);return}
- if(!sameAccount||!localChanged||!meta){acceptSnapshot(uid,incoming,remote,latest);return}
+ if(!sameAccount||!localChanged||!meta){acceptSnapshot(uid,incoming,remote,latest,Boolean(switched));return}
  const base=baseline?.uid===uid&&baseline.snapshot.hash===meta.lastSyncedHash?baseline.snapshot.values:null;
  const values={};
  for(const key of SOURCE_KEYS){

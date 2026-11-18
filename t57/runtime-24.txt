@@ -473,13 +473,23 @@ function tf20StabilizeCore(html){
                 saveToStorage(true);
               },
             });
-            let tfCloudRenderFrame=0,tfCloudDraft=null;
-            function tfRenderCloudSnapshotV162(){
+            let tfCloudRenderFrame=0,tfCloudDraft=null,tfCloudRefreshPending=false;
+            function tfRenderCloudSnapshotV162(accountChanged=false){
               tfCloudRenderFrame=0;
-              if(!window.__tfCoreInitialized||localStorage.getItem(STORAGE_KEY)===__tfLastSerialized)return;
+              if(!window.__tfCoreInitialized)return;
+              if(accountChanged){
+                clearTimeout(__tfSaveTimer);
+                __tfSaveTimer=0;
+                __tfSavePending=false;
+              }
+              if(accountChanged||localStorage.getItem(STORAGE_KEY)!==__tfLastSerialized){
+                loadData();
+                tfCloudRefreshPending=true;
+              }
+              if(!tfCloudRefreshPending)return;
               const frame=document.getElementById('windowContainer'),panel=document.getElementById('windowContent');
               const active=document.activeElement;
-              if(frame?.classList.contains('open')&&panel?.contains(active)&&active.matches('input:not([type="checkbox"]),textarea,[contenteditable="true"]')){
+              if(!accountChanged&&frame?.classList.contains('open')&&panel?.contains(active)&&active.matches('input:not([type="checkbox"]),textarea,[contenteditable="true"]')){
                 if(tfCloudDraft!==active){
                   tfCloudDraft=active;
                   active.addEventListener('blur',()=>{tfCloudDraft=null;tfQueueCloudRenderV162()},{once:true});
@@ -487,14 +497,24 @@ function tf20StabilizeCore(html){
                 return;
               }
               const open=frame?.classList.contains('open'),routine=open&&panel?.dataset.tfRoutine;
+              const listView=open&&panel?.dataset.tf35View;
+              const visibleList=/^list-(habits|tasks)-(active|completed)$/.exec(listView||'');
               const savedScroll=[frame?.scrollTop,panel?.scrollTop,panel?.querySelector('.tf156-routine-list')?.scrollTop];
-              if(!open){currentCategoryId=null;currentCourseId=null;}
-              loadData();
+              if(accountChanged&&open)closeWindow();
+              if(!open||accountChanged){currentCategoryId=null;currentCourseId=null;}
+              tfCloudRefreshPending=false;
               renderAll();
-              if(routine&&Object.hasOwn(tfCloudRoutinesV162,routine)){
-                tfCloudRoutinesV162[routine]();
+              const refreshRoutine=routine&&Object.hasOwn(tfCloudRoutinesV162,routine);
+              if(!accountChanged&&(refreshRoutine||visibleList)){
+                if(refreshRoutine)tfCloudRoutinesV162[routine]();
+                else {
+                  const [,list,type]=visibleList;
+                  if(list==='habits')openHabitListModal(type);
+                  else openTaskListModal(type);
+                }
                 requestAnimationFrame(()=>{
-                  if(frame.classList.contains('open')&&panel.dataset.tfRoutine===routine){
+                  if(frame.classList.contains('open')&&(refreshRoutine?panel.dataset.tfRoutine===routine:
+                    panel.dataset.tf35View===listView)){
                     frame.scrollTop=savedScroll[0]||0;
                     panel.scrollTop=savedScroll[1]||0;
                     const list=panel.querySelector('.tf156-routine-list');
@@ -504,8 +524,14 @@ function tf20StabilizeCore(html){
               }
             }
             function tfQueueCloudRenderV162(){
-              if(!tfCloudRenderFrame)tfCloudRenderFrame=requestAnimationFrame(tfRenderCloudSnapshotV162);
+              if(!tfCloudRenderFrame)tfCloudRenderFrame=requestAnimationFrame(()=>tfRenderCloudSnapshotV162());
             }
+            document.addEventListener('taskflow:cloud-snapshot-applied',event=>{
+              if(event.detail?.accountChanged){
+                cancelAnimationFrame(tfCloudRenderFrame);
+                tfRenderCloudSnapshotV162(true);
+              }
+            });
             window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY)tfQueueCloudRenderV162()});
             `;
   html=html.slice(0,start)+newBlock+html.slice(stop);
