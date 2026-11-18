@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.7.0
+/* TaskFlow ADS Bridge v3.8.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -26,9 +26,9 @@ const OWNER_SYNC_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/task
 let ownerRecoveryPending=null,ownerRecoveryUid='',ownerRecoveryAt=0,ownerRecoveryResult='pending';
 async function recoverOwnedAds(force=false){
  const auth=window.TaskFlowFirebase,user=auth?.getUser?.(),uid=String(user?.uid||'');
- if(!config.enabled||!uid||document.hidden||navigator.onLine===false)return false;
- if(ownerRecoveryUid!==uid){ownerRecoveryUid=uid;ownerRecoveryAt=0;ownerRecoveryResult='pending'}
+ if(!adsPermitted()||!uid||document.hidden||navigator.onLine===false)return false;
  if(ownerRecoveryPending)return ownerRecoveryPending;
+ if(ownerRecoveryUid!==uid){ownerRecoveryUid=uid;ownerRecoveryAt=0;ownerRecoveryResult='pending'}
  if(!force&&Date.now()-ownerRecoveryAt<5*60*1000)return ownerRecoveryResult==='ok';
  ownerRecoveryAt=Date.now();
  ownerRecoveryPending=(async()=>{
@@ -47,7 +47,10 @@ async function recoverOwnedAds(force=false){
  })().catch(error=>{
   ownerRecoveryResult='unavailable';
   console.warn('TaskFlow ADS: sincronización del propietario no confirmada',error?.message||'Sin conexión');return false;
- }).finally(()=>{ownerRecoveryPending=null});
+ }).finally(()=>{
+  ownerRecoveryPending=null;
+  if(signedInAccount()&&signedInAccount()!==uid)void recoverOwnedAds();
+ });
  return ownerRecoveryPending;
 }
 
@@ -145,6 +148,7 @@ function settleUnavailable() {
 const LEGACY_TYPES=Object.freeze(['banner','interstitial','native_profile','native_menu','in_chat','rewarded_video']);
 let config={enabled:true,adminUrl:null,refreshMs:10000};
 let catalog=[],rawCampaigns=[],lastRefresh=0,refreshTimer=0,refreshing=null,lastError='';
+let refreshEpoch=-1,followUpRefresh=false;
 let slotObserver=null,slotUpdateQueued=false;
 let selectedTopic = '';
 let audienceState = 'pending', audienceScope = '', authSettled = false;
@@ -252,7 +256,8 @@ function dateEligible(c){
 }
 function targetEligible(target) {
  const cc = countryCode(target.country);
- return (!cc || cc === 'ALL') && !target.region && !target.city && !target.neighborhood;
+ return (!cc || cc === 'ALL') && !target.region && !target.city && !target.neighborhood &&
+  !target.radius && target.ageMin <= 18 && target.ageMax >= 65;
 }
 
 function adEligible(ad) {
@@ -300,6 +305,27 @@ function telemetryDiagnostic(kind,state,error){
   localStorage.setItem(ANALYTICS_DIAG_KEY,JSON.stringify(record));
  }catch(_){}
 }
+async function confirmAdEvent(payload){
+ for(let attempt=0;attempt<3;attempt++){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),9000);
+  let response;
+  try{
+   response=await fetch(CONFIRM_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
+    keepalive:true,headers:{'Content-Type':'application/json'},body:payload,signal:controller.signal});
+   if(response.ok){
+    const confirmation=await response.json();
+    if(confirmation?.ok===true)return;
+    throw new Error('Entrega sin confirmación válida');
+   }
+   throw new Error('No se pudo confirmar la entrega (HTTP '+response.status+')');
+  }catch(error){
+   const retryable=!response||response.status===408||response.status===429||response.status>=500;
+   if(!retryable||attempt===2)throw error;
+  }finally{clearTimeout(timeout)}
+  await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));
+ }
+}
 function recordAdEvent(type,ad,slot){
  if(!ad||!['impression','click'].includes(type)||!catalog.some(x=>x.id===ad.id&&x.campaignId===ad.campaignId&&x.src===ad.src))return;
  const sessionId=analyticsSessionId();if(!sessionId)return;
@@ -307,22 +333,12 @@ function recordAdEvent(type,ad,slot){
  if(!/^[a-f0-9-]{36}$/i.test(selectionToken))return;
  const base={campaignId:ad.campaignId,adId:ad.id,slot:String(slot||ad.placement).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),sessionId,selectionToken};
  telemetryDiagnostic(type,'attempted');
- const post=async event=>{
-  const controller=new AbortController(),stop=setTimeout(()=>controller.abort(),9000);
-  let verification;
-  try{
-   const confirmation=await fetch(CONFIRM_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event}),signal:controller.signal});
-   if(!confirmation.ok)throw Error('No se pudo verificar la entrega');
-   verification=await confirmation.json();
-  }finally{clearTimeout(stop)}
-  if(verification?.ok!==true)throw Error('Entrega sin confirmación válida');
-  // Only the private SQL ledger is authoritative. This is optional legacy telemetry.
-  void fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,event})}).catch(()=>{});
- };
  const job=(async()=>{
-  // Clic comprobado de manera independiente: no obliga a crear una impresión visible.
-  // El servicio privado valida la selección y registra cada clic una sola vez.
-  await post(type);
+  // El servidor deduplica por evento y selección incluso si se perdió la primera respuesta.
+  const payload=JSON.stringify({...base,event:type});
+  await confirmAdEvent(payload);
+  void fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,
+   headers:{'Content-Type':'application/json'},body:payload}).catch(()=>{});
   telemetryDiagnostic(type,'acknowledged');
  })();
  if(type==='impression'){
@@ -437,9 +453,10 @@ function normalizeCampaign(c){
  if(!c||c.status!=='active'||c.approvalStatus!=='approved'||!dateEligible(c))return [];
  const placement=['banner','entry','interaction'].includes(c.placement)?c.placement:'';
  if(!placement||!Array.isArray(c.ads))return [];
- const target={country:c.country,region:c.region,city:c.city,neighborhood:c.neighborhood};
+ const target={country:c.country,region:c.region,city:c.city,neighborhood:c.neighborhood,
+  ageMin:Number(c.ageMin)||18,ageMax:Number(c.ageMax)||65,radius:Number(c.radius)||0};
  const interestTopics=Array.isArray(c.interestTopics)?c.interestTopics.filter(t=>typeof t==='string').slice(0,10).sort():[];
- const scopeRevision=JSON.stringify([target,interestTopics,c.start,c.end,c.ageMin,c.ageMax,c.radius]);
+ const scopeRevision=JSON.stringify([target,interestTopics,c.start,c.end]);
  return c.ads.map(a=>{
    if(!a||typeof a!=='object')return null;
    const src=validHTTPS(a.src),destination=a.destination?validHTTPS(a.destination):'';
@@ -524,7 +541,6 @@ function bannerNode(ad,img){
 function canShowPromo(placement, slot) {
  if (!adsPermitted()) return false;
  if (!lastRefresh && !lastError) return false;
- if (!adsPermitted()) return false;
  const inventory = catalog.filter(ad => ad.placement === placement);
  if (!inventory.length || audienceState === 'unavailable' || navigator.onLine === false) return true;
  if (!audienceIsCurrent()) return false;
@@ -673,7 +689,7 @@ function applyWhenReady(){
  },500)
 }
 function rebuildCatalog() {
- const next = rawCampaigns.flatMap(normalizeCampaign).slice(0, 1200);
+ const next = rawCampaigns.flatMap(normalizeCampaign);
  const signature = JSON.stringify(next);
  if (signature !== catalogSignature) {
   catalogSignature = signature;
@@ -697,7 +713,7 @@ function rebuildCatalog() {
 
 const SDK_ROOT = 'https://www.gstatic.com/firebasejs/12.18.0/';
 let liveUnsubscribe = null, liveStarting = null, liveConnected = false;
-let liveEpoch = 0, liveSerial = 0, liveTimeout = 0, liveRetry = 0;
+let liveEpoch = 0, liveSerial = 0, liveRetry = 0;
 function loadCatalogSdk(file, available) {
  if (available()) return Promise.resolve();
  return new Promise((resolve, reject) => {
@@ -726,8 +742,8 @@ function loadCatalogSdk(file, available) {
 }
 function stopLiveCatalog() {
  liveEpoch++;
+ liveSerial++;
  liveConnected = false;
- clearTimeout(liveTimeout);
  clearTimeout(liveRetry);
  liveRetry = 0;
  liveUnsubscribe?.();
@@ -749,11 +765,15 @@ function connectLiveCatalog() {
   // Aislar el catálogo público del SDK que sincroniza la cuenta y los datos privados.
   const appName = 'taskflow-public-ads';
   const app = sdk.apps.find(item => item.name === appName) || sdk.initializeApp({projectId:PROJECT_ID},appName);
-  liveTimeout = setTimeout(recoverLiveCatalog,9000);
-  liveUnsubscribe = app.firestore().collection(COLLECTION).limit(500).onSnapshot({includeMetadataChanges:true},snapshot => {
+  // REST cubre conexiones lentas mientras Firestore negocia o recupera su canal.
+  liveUnsubscribe = app.firestore().collection(COLLECTION).onSnapshot({includeMetadataChanges:true},snapshot => {
    if (epoch !== liveEpoch) return;
-   if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) { liveConnected = false; return; }
-   clearTimeout(liveTimeout);
+   if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) {
+    const wasConnected=liveConnected;
+    liveConnected=false;
+    if(wasConnected)void refresh();
+    return;
+   }
    liveConnected = true;
    liveSerial++;
    rawCampaigns = snapshot.docs.map(doc => ({...doc.data(),id:doc.id}));
@@ -761,14 +781,20 @@ function connectLiveCatalog() {
    lastError = '';
    rebuildCatalog();
   },() => { if (epoch === liveEpoch) recoverLiveCatalog(); });
- })().catch(() => { if (epoch === liveEpoch) recoverLiveCatalog(); }).finally(() => { liveStarting = null; });
+ })().catch(() => { if (epoch === liveEpoch) recoverLiveCatalog(); }).finally(() => {
+  liveStarting=null;
+  if(epoch!==liveEpoch)void connectLiveCatalog();
+ });
  return liveStarting;
 }
 
-async function fetchCatalog(){
- const epoch = liveSerial;
- const all=[];let token='',pages=0;
+async function fetchCatalog(epoch){
+ const all=[],seen=new Set();
+ let token='';
  do{
+   if(epoch!==liveSerial||!adsPermitted()||navigator.onLine===false)return false;
+   if(seen.has(token))throw Error('El catálogo repitió una página.');
+   seen.add(token);
    const u=new URL(REST_BASE);u.searchParams.set('pageSize','100');if(token)u.searchParams.set('pageToken',token);
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
    let r,data;
@@ -776,27 +802,45 @@ async function fetchCatalog(){
     r=await fetch(u.href,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
     if(!r.ok)throw new Error('ADS HTTP '+r.status);
     data=await r.json();
-   }finally{clearTimeout(timer)}(data.documents||[]).forEach(doc=>all.push(documentData(doc)));token=String(data.nextPageToken||'');pages++
- }while(token&&pages<5);
- if (epoch === liveSerial && !liveConnected && adsPermitted()) {
+   }finally{clearTimeout(timer)}
+   (data.documents||[]).forEach(doc=>all.push(documentData(doc)));token=String(data.nextPageToken||'');
+ }while(token);
+ if (epoch === liveSerial && adsPermitted() && navigator.onLine!==false) {
   rawCampaigns=all;lastRefresh=Date.now();lastError='';rebuildCatalog();
  }
  return true;
 }
-async function refresh(){
+async function refresh(confirmServer=false){
  if(config.enabled&&!adsPermitted())return false;
  if(!config.enabled){stopLiveCatalog();catalog=[];rawCampaigns=[];catalogSignature='';clearSelections();applyWhenReady();return false}
- if(liveConnected){rebuildCatalog();return true}
- if(refreshing)return refreshing;
- refreshing=fetchCatalog().catch(e=>{lastError=String(e&&e.message||'No se pudo consultar el catálogo').slice(0,120);console.warn('TaskFlow ADS no disponible:',lastError);applyWhenReady();return false}).finally(()=>{refreshing=null});
- return refreshing;
+ if(liveConnected&&!confirmServer){rebuildCatalog();return true}
+ const epoch=liveSerial;
+ if(refreshing&&refreshEpoch===epoch){
+  if(confirmServer)followUpRefresh=true;
+  return refreshing;
+ }
+ refreshEpoch=epoch;
+ followUpRefresh=false;
+ const request=fetchCatalog(epoch).catch(error=>{
+  if(epoch===liveSerial&&!liveConnected&&adsPermitted()){
+   lastError=String(error?.message||'No se pudo consultar el catálogo').slice(0,120);
+   console.warn('TaskFlow ADS no disponible:',lastError);applyWhenReady();
+  }
+  return false;
+ }).finally(()=>{
+  if(refreshing!==request)return;
+  refreshing=null;
+  if(followUpRefresh){followUpRefresh=false;void refresh(true)}
+ });
+ refreshing=request;
+ return request;
 }
 function schedule(){
  clearInterval(refreshTimer);refreshTimer=0;if(!config.enabled)return;
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.7.0',
+ version:'3.8.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
@@ -806,7 +850,7 @@ const API={
    schedule();void refresh();if(config.enabled){void connectLiveCatalog();updateAudience();void recoverOwnedAds()}return true
  },
  connection(){return Object.freeze({enabled:config.enabled,connected:!lastError&&lastRefresh>0,lastRefresh,adsLoaded:catalog.length,campaignsReceived:rawCampaigns.length,lastError,adminUrl:config.adminUrl,source:liveConnected?'firestore-realtime':'firestore-rest'})},
- refresh,
+ refresh:()=>refresh(true),
  getCatalog(){return catalog.map(ad=>({...ad,target:{...ad.target},interestTopics:[...ad.interestTopics]}))},
  mount(){return false},
  unmount(){}
@@ -885,9 +929,14 @@ document.addEventListener('visibilitychange', () => {
 });
 setInterval(withdrawPreviousArea, 60000);
 // Aviso local entre los dos sistemas; no incluye datos de personas ni campañas.
-window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')void refresh()},{passive:true});
+let managerRefreshTimer=0;
+function managerChangedCatalog(){
+ clearTimeout(managerRefreshTimer);
+ managerRefreshTimer=setTimeout(()=>void refresh(true),150);
+}
+window.addEventListener('storage',e=>{if(e.key==='taskflow_ads_public_changed_at')managerChangedCatalog()},{passive:true});
 try{if(typeof BroadcastChannel==='function'){
  const channel=new BroadcastChannel('taskflow-ads-catalog-v1');
- channel.addEventListener('message',e=>{if(e.data&&e.data.type==='catalog-changed')void refresh()});
+ channel.addEventListener('message',e=>{if(e.data&&e.data.type==='catalog-changed')managerChangedCatalog()});
 }}catch(_){}
 })();
