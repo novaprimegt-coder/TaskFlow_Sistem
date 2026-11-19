@@ -143,7 +143,7 @@ function loadSettings(){
  if(settings)return Promise.resolve(settings);
  if(settingsRequest)return settingsRequest;
  settingsRequest=(async()=>{
-  const r=await fetchWithin(CFG_URL,{cache:'no-store',credentials:'omit'},5500);
+  const r=await fetchWithin(CFG_URL,{cache:'no-store',credentials:'omit'},12000);
   if(!r.ok)throw new Error('PUBLIC_CONFIG_UNAVAILABLE');
   const c=await r.json(),base=safeBase(c.apiBase);
   settings={enabled:(c.enabled===true||c.enabled==='auto')&&!!base,apiBase:base};
@@ -157,12 +157,9 @@ async function config(){
  if(!configured)return settings;
  // La URL pública no es una autorización de cobro. Solo el servidor PayPal Live
  // con un plan mensual y webhook verificados puede habilitar el checkout.
- const controller=new AbortController();
- const timer=setTimeout(()=>controller.abort(),5500);
  let response;
- try{response=await fetch(base+'/config',{cache:'no-store',credentials:'omit',signal:controller.signal})}
+ try{response=await fetchWithin(base+'/config',{cache:'no-store',credentials:'omit'},32000)}
  catch(_){throw new Error('PAYPAL_BACKEND_UNAVAILABLE')}
- finally{clearTimeout(timer)}
  if(!response.ok)throw new Error('PAYPAL_BACKEND_UNAVAILABLE');
  let data;
  try{data=await response.json()}catch(_){throw new Error('PAYPAL_BACKEND_INVALID_RESPONSE')}
@@ -189,7 +186,7 @@ async function request(method,path,payload){
   method,mode:'cors',cache:'no-store',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
   body:method==='POST'?JSON.stringify(payload||{}):undefined
  };
- const r=method==='GET'?await fetchWithin(url,options,7500):await fetch(url,options);
+ const r=method==='GET'?await fetchWithin(url,options,16000):await fetch(url,options);
  const data=await r.json().catch(()=>({}));
  if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
  if(!r.ok)throw Object.assign(new Error(data.error||'PAYMENT_UNAVAILABLE'),{status:r.status});
@@ -336,7 +333,15 @@ async function showCheckout(){
  statusText('');
  try{
   await (ready||Promise.resolve());
-  if(!enabled){try{await config()}catch(_){/* No ofrecer un cargo sin servidor Live verificado. */}}
+  if(!enabled){
+   try{await config()}
+   catch(error){
+    if(error.message!=='PAYPAL_LIVE_NOT_READY'){
+     statusText('No se pudo conectar con el servicio de pagos. Vuelve a abrir el plan para intentarlo de nuevo.','error');
+     return false;
+    }
+   }
+  }
   if(!enabled){
    statusText('Los pagos aún no están habilitados. No se ha realizado ningún cargo.');
    return false;
