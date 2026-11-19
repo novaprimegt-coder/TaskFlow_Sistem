@@ -291,9 +291,14 @@ function paypalSdk(){
  }).catch(error=>{sdkPromise=null;throw error});return sdkPromise;
 }
 async function waitForFirstPayment(root,target,subscriptionId=''){
+ const uid=currentUid(),epoch=accountEpoch;
+ const stillHere=()=>currentUid()===uid&&accountEpoch===epoch;
  for(let i=0;i<15;i++){
   await new Promise(resolve=>setTimeout(resolve,3000));
-  if(await verifyStatus()&&subscriptionStatus?.renewalStatus!=='CANCELLED'){
+  if(!stillHere())return false;
+  const activeNow=await verifyStatus();
+  if(!stillHere())return false;
+  if(activeNow&&subscriptionStatus?.renewalStatus!=='CANCELLED'){
    signalBillingChange();target.replaceChildren();
    statusText(subscriptionStatus?.trialActive?'Tu prueba gratuita de 7 días ya está activa.':'Pago confirmado. Tu suscripción mensual sin anuncios está activa.');
    root.querySelector('#tfPayPalCancel').hidden=false;
@@ -314,8 +319,10 @@ async function waitForFirstPayment(root,target,subscriptionId=''){
    }catch(_){/* Retry verification only; do not launch another checkout. */}
   }
  }
+ if(!stillHere())return false;
  pendingApproval=false;
  await verifyStatus();
+ if(!stillHere())return false;
  if(subscriptionStatus){presentAccount(root);if(subscriptionStatus.awaitingPayment||subscriptionStatus.scheduled)return true}
  statusText('Puedes volver a comprobar tu suscripción. TaskFlow reutiliza la autorización pendiente.');
  return false;

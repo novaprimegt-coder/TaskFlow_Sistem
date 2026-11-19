@@ -181,6 +181,55 @@ function mergeValue(base,local,remote,preferRemote){
  }
  return winner;
 }
+function completionAwards(data){
+ const awards=new Map();
+ function add(id,bucket,reward){
+  if(reward&&Number.isFinite(reward.xp)&&Number.isFinite(reward.points))
+   awards.set(id,{bucket,xp:reward.xp,points:reward.points});
+ }
+ for(const [list,bucket] of [['habits','habitPoints'],['tasks','taskPoints']]){
+  for(const row of data[list]||[])if(row.completed)add(list+'/'+row.id,bucket,row.v33Award);
+ }
+ for(const [day,log] of Object.entries(data.meta.v33MandatoryAwards||{})){
+  for(const [id,reward] of Object.entries(log||{}))add('sung/'+day+'/'+id,'habitPoints',reward);
+ }
+ for(const [day,entry] of Object.entries(data.meta.incomeMissionLog||{}))
+  if(entry?.completed)add('income/'+day,'taskPoints',entry.v33Award);
+ return awards;
+}
+// Credit two distinct completions once each, including when their EXP crosses a level.
+// Other balance changes (e.g. a penalty or reset) keep the normal field merge.
+function mergeCompletionRewards(base,left,right,merged){
+ if(![base,left,right,merged].every(d=>d?.meta&&Array.isArray(d.habits)&&Array.isArray(d.tasks)))return;
+ const prior=completionAwards(base);
+ const added=data=>{
+  const counts={taskPoints:0,habitPoints:0,xp:0};
+  for(const [id,a] of completionAwards(data)){
+   if(prior.has(id))continue;
+   counts[a.bucket]+=a.points;counts.xp+=a.xp;
+  }
+  return counts;
+ };
+ const a=added(left),b=added(right),both=added(merged);
+ for(const field of ['taskPoints','habitPoints']){
+  const value=base.meta[field]||0;
+  if(a[field]&&b[field]&&left.meta[field]===value+a[field]&&right.meta[field]===value+b[field])
+   merged.meta[field]=value+both[field];
+ }
+ const progress=window.TaskFlowCloudViewV162?.advanceXp;
+ if(!progress||!a.xp||!b.xp)return;
+ const from=(amount)=>progress(base.meta.playerLevel,base.meta.playerXp,amount);
+ const agrees=(state,score)=>state.meta.playerLevel===score.level&&state.meta.playerXp===score.xp;
+ if(!agrees(left,from(a.xp))||!agrees(right,from(b.xp)))return;
+ const combined=from(both.xp);
+ merged.meta.playerLevel=combined.level;
+ merged.meta.playerXp=combined.xp;
+ merged.meta.playerRank=combined.rank;
+ if(combined.level>=Number(merged.meta.highestLevelAchieved||0)){
+  merged.meta.highestLevelAchieved=combined.level;
+  merged.meta.highestRankAchieved=combined.rank;
+ }
+}
 function mergeStored(base,local,remote,preferRemote){
  if(local===base)return remote;
  if(remote===base||local===remote)return local;
@@ -189,7 +238,9 @@ function mergeStored(base,local,remote,preferRemote){
  try{
   const a=JSON.parse(local),b=JSON.parse(remote),old=base?JSON.parse(base):undefined;
   if(!a||!b||typeof a!=='object'||typeof b!=='object')return fallback;
-  return JSON.stringify(mergeValue(old,a,b,preferRemote));
+  const merged=mergeValue(old,a,b,preferRemote);
+  mergeCompletionRewards(old,a,b,merged);
+  return JSON.stringify(merged);
  }catch(_){return fallback}
 }
 let baselineDb;
