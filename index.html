@@ -142,7 +142,7 @@ try{
  const texts=new Array(parts.length);
  let next=0;
  async function loadPart(p){
-   const version=p==='t57/runtime-00.txt'?'?v=165.1-account-assets':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=162-auth-listener-20261112':p==='t57/runtime-24.txt'?'?v=165.1-cuenta-vinculada':p==='t57/runtime-03.txt'?'?v=162-routine-ad-close-20261112':p==='t57/runtime-19.txt'?'?v=164-catalogo-ads':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
+   const version=p==='t57/runtime-00.txt'?'?v=166-recompensa-activos':/^t57\/runtime-0[012]\.txt$/.test(p)?'?v=63-no-splash-assets-20261106':p==='t57/runtime-06.txt'?'?v=162-auth-listener-20261112':p==='t57/runtime-24.txt'?'?v=166-recompensa-diaria':p==='t57/runtime-03.txt'?'?v=162-routine-ad-close-20261112':p==='t57/runtime-19.txt'?'?v=164-catalogo-ads':p==='t57/runtime-09.txt'?'?v=158-vector-catalog-20261111':'?v=57-ads21-paypal6-dailyfix1';
    const url='./'+p+version;
    for(let attempt=0;attempt<2;attempt++){
      const controller=new AbortController();
