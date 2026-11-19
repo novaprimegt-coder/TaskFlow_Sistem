@@ -108,7 +108,9 @@ async function paypal(path, method = "GET", body, requestId = "") {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.warn("PayPal response",res.status,String(data?.name || "").slice(0,55),String(data?.details?.[0]?.issue || "").slice(0,70));
-    throw fail("PAYPAL_API_ERROR_"+res.status);
+    throw Object.assign(fail("PAYPAL_API_ERROR_"+res.status), {
+      resourceMissing:res.status === 404 && data?.name === "RESOURCE_NOT_FOUND"
+    });
   }
   return data;
 }
@@ -388,7 +390,21 @@ function scheduledStartChanged(existing, expected) {
   const now = Date.now();
   return Math.max(now,Date.parse(existing || "") || 0) !== Math.max(now,Date.parse(expected || "") || 0);
 }
-async function checkout(uid, offeredTrial) {
+async function pendingAgreement(row) {
+  try {
+    return await getSubscription(row.agreement_id,row.plan_id);
+  } catch (error) {
+    if (!error.resourceMissing) throw error;
+    // An expired, never-approved intent can outlive its PayPal approval resource.
+    // Keep recently created or already linked agreements while verification is inconclusive.
+    const expired = Date.parse(row.expires_at) <= Date.now();
+    if (row.checkout_state !== "pending" || !expired ||
+        await one("taskflow_paypal_subscriptions","paypal_id",row.agreement_id))
+      throw fail("CHECKOUT_VERIFYING",409);
+    return null;
+  }
+}
+async function checkout(uid, offeredTrial, canReplace = true) {
   const status = await getStatus(uid);
   if ((status.active && status.renewalStatus !== "CANCELLED") || status.scheduled || status.awaitingPayment)
     throw fail("ALREADY_SUBSCRIBED",409);
@@ -400,16 +416,19 @@ async function checkout(uid, offeredTrial) {
   if (error || !row) throw fail("DATABASE_UNAVAILABLE");
   if (row.checkout_state === "approved") throw fail("ALREADY_SUBSCRIBED",409);
   if (row.agreement_id) {
-    const remote = await getSubscription(row.agreement_id,row.plan_id);
-    if (["APPROVED","ACTIVE"].includes(remote.status)) {
+    const remote = await pendingAgreement(row);
+    if (remote && remote.custom_id !== row.intent_id) throw fail("PLAN_MISMATCH",409);
+    if (["APPROVED","ACTIVE"].includes(remote?.status)) {
       await settle(uid,row,remote);
       throw fail("ALREADY_SUBSCRIBED",409);
     }
-    if (remote.status === "APPROVAL_PENDING" && row.plan_id === plan && !scheduledStartChanged(row.starts_at,start)) return {intent:row.intent_id,subscriptionId:remote.id,trial};
-    if (remote.status === "APPROVAL_PENDING")
+    if (remote?.status === "APPROVAL_PENDING" && row.plan_id === plan && !scheduledStartChanged(row.starts_at,start)) return {intent:row.intent_id,subscriptionId:remote.id,trial};
+    if (!canReplace || (remote && !["APPROVAL_PENDING","CANCELLED","EXPIRED"].includes(remote.status)))
+      throw fail("CHECKOUT_VERIFYING",409);
+    if (remote?.status === "APPROVAL_PENDING")
       await paypal("/v1/billing/subscriptions/" + remote.id + "/cancel","POST",{reason:"TaskFlow checkout replaced"});
     await updateCheckout(row,{checkout_state:"closed"});
-    return checkout(uid,offeredTrial);
+    return checkout(uid,offeredTrial,false);
   }
   if (row.plan_id !== plan) throw fail("OFFER_CHANGED",409);
   const scheduled = Date.parse(row.starts_at || "") > Date.now() + 1000;
@@ -618,7 +637,7 @@ Deno.serve(async (req) => {
     console.error("TaskFlow subscription server:", e?.message || "UNEXPECTED");
     return respond(req, e?.status || 503, {
       error: e?.status === 401 ? "AUTH_REQUIRED" :
-        ["TRIAL_ALREADY_USED","ALREADY_SUBSCRIBED","OFFER_CHANGED"].includes(e?.message) ? e.message :
+        ["TRIAL_ALREADY_USED","ALREADY_SUBSCRIBED","OFFER_CHANGED","CHECKOUT_VERIFYING"].includes(e?.message) ? e.message :
         e?.message?.startsWith("INVALID") ? e.message : "PAYMENT_UNAVAILABLE"
     });
   }

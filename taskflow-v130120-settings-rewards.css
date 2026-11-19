@@ -739,7 +739,7 @@
  display:grid; grid-template-columns:40px minmax(0,1fr) auto; align-items:center;
  gap:10px; min-width:0; padding:9px 10px; box-sizing:border-box; border-radius:15px;
 }
-#windowContent .tf166-routines .v32-perfect-row[data-reward-routine]::before { content:none!important; display:none!important; }
+#windowContent .tf166-routines .v32-perfect-row:is([data-reward-routine],[data-reward-group])::before { content:none!important; display:none!important; }
 #windowContent .tf166-routine-icon {
  display:grid; place-items:center; width:36px; height:36px; border-radius:11px;
  color:#69f0e6; background:#103245; border:1px solid #286075;

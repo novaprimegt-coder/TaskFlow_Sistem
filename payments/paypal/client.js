@@ -385,16 +385,19 @@ async function beginPurchase(){
   target.replaceChildren();
   const methods=root.querySelector('#tfPayPalMethods');
   methods.hidden=true;
+  let checkoutError='';
   const buttons=pp.Buttons({
    style:{layout:'vertical',color:'blue',shape:'pill',height:54,label:'subscribe',tagline:false},
    createSubscription:async ()=>{
     busy=true;
+    checkoutError='';
     try{
      if(!sameAccount())throw new Error('ACCOUNT_CHANGED');
      const info=await request('POST','/checkout',{trial:offeredTrial});
      pendingIntent=info.intent;
      return info.subscriptionId;
-    }finally{busy=false}
+    }catch(error){checkoutError=String(error?.message||'');throw error}
+    finally{busy=false}
    },
    onApprove:async data=>{
     if(!sameAccount())return;
@@ -423,7 +426,14 @@ async function beginPurchase(){
     finally{busy=false}
    },
    onCancel:()=>{if(!sameAccount())return;pendingApproval=false;pendingIntent=null;void showCheckout()},
-   onError:()=>{if(!sameAccount())return;pendingIntent=null;target.replaceChildren();methods.hidden=true;buy.hidden=false;statusText('No se pudo completar la operación. Puedes volver a intentarlo.')}
+   onError:()=>{
+    if(!sameAccount())return;
+    target.replaceChildren();methods.hidden=true;buy.hidden=false;
+    if(['ALREADY_SUBSCRIBED','OFFER_CHANGED','TRIAL_ALREADY_USED'].includes(checkoutError)){void showCheckout();return}
+    if(checkoutError==='CHECKOUT_VERIFYING')statusText('PayPal está verificando tu autorización anterior. Vuelve a intentarlo en unos minutos.','error');
+    else if(checkoutError==='AUTH_REQUIRED'||checkoutError==='LOGIN_REQUIRED')statusText('Vuelve a iniciar sesión en TaskFlow para continuar con el pago.','error');
+    else statusText('PayPal no pudo abrir la autorización. Pulsa el botón del plan para volver a intentarlo.','error');
+   }
   });
   if(buttons.isEligible&& !buttons.isEligible())throw new Error('PAYPAL_NOT_ELIGIBLE');
   await buttons.render(target);
