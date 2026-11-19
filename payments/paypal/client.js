@@ -274,18 +274,30 @@ function presentAccount(root){
  return true;
 }
 function paypalSdk(){
- if(window.paypal&&typeof window.paypal.Buttons==='function')return Promise.resolve(window.paypal);
- if(sdkPromise)return sdkPromise;
- sdkPromise=new Promise((resolve,reject)=>{
-  const script=document.createElement('script');
-  const qs=new URLSearchParams({'client-id':plan.clientId,currency:plan.currency,
-   vault:'true',intent:'subscription',components:'buttons'});
-  script.src='https://www.paypal.com/sdk/js?'+qs.toString();
-  script.async=true;
-  script.onload=()=>window.paypal?resolve(window.paypal):reject(new Error('PAYPAL_SDK_UNAVAILABLE'));
-  script.onerror=()=>reject(new Error('PAYPAL_SDK_UNAVAILABLE'));
-  document.head.appendChild(script);
- }).catch(error=>{sdkPromise=null;throw error});return sdkPromise;
+  if(window.paypal&&typeof window.paypal.Buttons==='function')return Promise.resolve(window.paypal);
+  if(sdkPromise)return sdkPromise;
+  sdkPromise=new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   const qs=new URLSearchParams({'client-id':plan.clientId,currency:plan.currency,
+    vault:'true',intent:'subscription',components:'buttons'});
+   let settled=false;
+   const finish=error=>{
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    script.onload=null;script.onerror=null;
+    if(error){script.remove();reject(error)}
+    else resolve(window.paypal);
+   };
+   const timeout=setTimeout(()=>finish(new Error('PAYPAL_SDK_TIMEOUT')),20000);
+   script.src='https://www.paypal.com/sdk/js?'+qs.toString();
+   script.async=true;
+   script.onload=()=>window.paypal&&typeof window.paypal.Buttons==='function'
+    ?finish(null):finish(new Error('PAYPAL_SDK_UNAVAILABLE'));
+   script.onerror=()=>finish(new Error('PAYPAL_SDK_UNAVAILABLE'));
+   try{document.head.appendChild(script)}catch(error){finish(error)}
+  }).catch(error=>{sdkPromise=null;throw error});
+  return sdkPromise;
 }
 async function waitForFirstPayment(root,target,subscriptionId=''){
  const uid=currentUid(),epoch=accountEpoch;
@@ -337,7 +349,9 @@ async function showCheckout(){
    try{await config()}
    catch(error){
     if(error.message!=='PAYPAL_LIVE_NOT_READY'){
-     statusText('No se pudo conectar con el servicio de pagos. Vuelve a abrir el plan para intentarlo de nuevo.','error');
+     buy.hidden=false;
+     buy.textContent='Reintentar conexión con PayPal';
+     statusText('No se pudo conectar con el servicio de pagos. Puedes reintentar sin iniciar ningún cobro.','error');
      return false;
     }
    }
@@ -360,7 +374,9 @@ async function showCheckout(){
   presentAccount(root);
   return true;
  }catch(_){
-  statusText('No se pudo verificar el estado de PayPal. Puedes volver a intentarlo; no se ha realizado ningún cargo.');
+  buy.hidden=false;
+  buy.textContent='Reintentar verificación de PayPal';
+  statusText('No se pudo verificar el estado de PayPal. Reintenta antes de iniciar un cobro.','error');
   return false;
  }
 }
