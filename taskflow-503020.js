@@ -296,8 +296,7 @@
   function closeTool(){var overlay=document.getElementById('tf503020Overlay');if(!overlay)return;overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.classList.remove('tf503020-open');if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});previousFocus=null;}
   function init(){
     state=loadState();maintainRecords(true);ensureHubButton();
-    window.addEventListener('storage',event=>{
-      if(event.key!==STORAGE_KEY)return;
+    function applySharedFinance(){
       state=loadState();
       const overlay=document.getElementById('tf503020Overlay');
       if(!overlay?.classList.contains('open'))return;
@@ -308,6 +307,12 @@
         input.value=draft;
         renderPreview(parseMoney(draft));
       }
+    }
+    window.addEventListener('storage',event=>{
+      if(event.key===STORAGE_KEY)applySharedFinance();
+    });
+    document.addEventListener('taskflow:cloud-snapshot-applied',event=>{
+      if(event.detail?.keys?.includes(STORAGE_KEY))applySharedFinance();
     });
     observer=new MutationObserver(function(records){if(document.getElementById('tf503020Hub'))return;for(var i=0;i<records.length;i++){var m=records[i];if(m.target&&m.target.id==='v27MainHub'){ensureHubButton();return;}for(var j=0;j<m.addedNodes.length;j++){var n=m.addedNodes[j];if(n.nodeType===1&&(n.id==='v27MainHub'||n.querySelector('#v27MainHub'))){ensureHubButton();return;}}}});observer.observe(document.body,{childList:true,subtree:true});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'){var o=document.getElementById('tf503020Overlay');if(o&&o.classList.contains('open'))closeTool();}});

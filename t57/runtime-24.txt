@@ -681,7 +681,10 @@ function tf20StabilizeCore(html){
               if(event.detail?.accountChanged){
                 cancelAnimationFrame(tfCloudRenderFrame);
                 tfRenderCloudSnapshotV162(true);
+                return;
               }
+              // Actualizar también por señal de Firestore, aunque WebView no emita StorageEvent.
+              if(event.detail?.keys?.includes(STORAGE_KEY))tfQueueCloudRenderV162();
             });
             window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY)tfQueueCloudRenderV162()});
             let dailyRewardFrame=0;
@@ -696,6 +699,7 @@ function tf20StabilizeCore(html){
               });
             }
             window.addEventListener('storage',event=>{if(event.key==='taskflow_routines_v115')queueDailyRewardRefresh()});
+            document.addEventListener('taskflow:account-state-updated',queueDailyRewardRefresh);
             document.addEventListener('change',event=>{if(event.target.closest?.('#tfManagerV117'))queueDailyRewardRefresh()});
             document.addEventListener('click',event=>{if(event.target.closest?.('#tf119AllOn,#tf119AllOff'))queueDailyRewardRefresh()});
             document.addEventListener('visibilitychange',()=>{if(!document.hidden)queueDailyRewardRefresh()});
