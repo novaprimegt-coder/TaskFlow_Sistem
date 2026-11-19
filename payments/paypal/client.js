@@ -72,15 +72,15 @@ function panel(){
  r.querySelector('#tfPayPalBuy').addEventListener('click',()=>{void beginPurchase()});
  const cancel=r.querySelector('#tfPayPalCancel');
  cancel.addEventListener('click',async()=>{
-  if(busy||!subscriptionStatus||subscriptionStatus.renewalStatus==='CANCELLED')return;
+  if(busy||!subscriptionStatus||(!subscriptionStatus.scheduled&&!subscriptionStatus.awaitingPayment&&subscriptionStatus.renewalStatus==='CANCELLED'))return;
   busy=true;cancel.disabled=true;
   try{
    const info=await request('POST','/cancel');
-   subscriptionStatus=info;
+   subscriptionStatus=info;signalBillingChange();setActive(info.active===true);presentAccount(r);
    statusText(subscriptionStatus?.trialActive?'Renovación cancelada. Conservas el acceso hasta el fin de tu prueba gratuita.':'Renovación cancelada. Conservas el acceso sin anuncios hasta el fin del período pagado.');
    cancel.hidden=true;
   }catch(_){statusText('No se pudo cancelar desde aquí. Inténtalo nuevamente.');cancel.disabled=false}
-  finally{busy=false}
+  finally{busy=false;cancel.disabled=false}
  });
  r.addEventListener('click',e=>{if(e.target===r&&!busy)r.hidden=true});
  document.body.appendChild(r);return r;
@@ -99,6 +99,8 @@ function bindAccount(uid){
  accountUid=uid;
  accountEpoch++;
  verified=false;
+ const modal=document.getElementById(MODAL_ID);
+ if(modal){modal.hidden=true;modal.querySelector('#tfPayPalButtons')?.replaceChildren()}
  subscriptionStatus=null;
  pendingIntent=null;
  pendingApproval=false;
@@ -166,8 +168,8 @@ async function config(){
  try{data=await response.json()}catch(_){throw new Error('PAYPAL_BACKEND_INVALID_RESPONSE')}
  if(!data||data.enabled!==true||data.environment!=='live')throw new Error('PAYPAL_LIVE_NOT_READY');
  if(!data.clientId||!/^[A-Za-z0-9_-]+$/.test(data.clientId))throw new Error('PAYPAL_LIVE_NOT_READY');
- plan={clientId:data.clientId,planId:data.planId,price:data.price,currency:data.currency,recurring:data.recurring,frequency:data.frequency,trialDays:data.trialDays===7?7:0};
- if(!plan.planId||!plan.recurring||plan.frequency!=='MONTH'||plan.price!=='6.00'||plan.currency!=='USD')throw new Error('INVALID_SUBSCRIPTION_PLAN');
+ plan={clientId:data.clientId,planId:data.planId,price:data.price,total:data.total||data.price,currency:data.currency,recurring:data.recurring,frequency:data.frequency,trialDays:data.trialDays===7?7:0};
+ if(!/^\d+\.\d{2}$/.test(plan.total)||Number(plan.total)<6||Number(plan.total)>12||!plan.planId||!plan.recurring||plan.frequency!=='MONTH'||plan.price!=='6.00'||plan.currency!=='USD')throw new Error('INVALID_SUBSCRIPTION_PLAN');
  enabled=true;return settings;
 }
 async function authToken(){
@@ -211,7 +213,9 @@ async function verifyStatus(){
    if(epoch!==accountEpoch||uid!==currentUid()||typeof data.active!=='boolean')return false;
    const confirmedActive=data.active===true&&Number(data.paidUntil)>Date.now();
    if(data.active&&!confirmedActive)return false;
+   const changed=subscriptionStatus && ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
    subscriptionStatus=data;
+   if(changed&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
    verified=true;
    setActive(confirmedActive);
    return isActive();
@@ -232,24 +236,45 @@ async function waitForStatus(timeoutMs){
  try{return await Promise.race([verifyStatus(),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),wait)})])}
  finally{clearTimeout(timer)}
 }
-function displayPeriod(){
- if(!plan)return '';
- return plan.trialDays===7?'7 días gratis. Después US$6.00 mensuales con renovación automática, cancelable antes del primer cobro.':'US$6.00 mensuales · Suscripción con renovación automática. Cancela cuando quieras; el beneficio dura hasta el final del período pagado.';
-}
+function monthlyCharge(){return 'US$'+(plan?.total||'6.00')}
 function configureCheckoutOffer(root){
- const trial=!!plan&&plan.trialDays===7;
+ const trial=plan?.trialDays===7&&subscriptionStatus?.trialUsed===false;
  const price=root.querySelector('.tf-paypal-price');
  const period=root.querySelector('.tf-paypal-period');
  const notes=root.querySelector('#tfPayPalPlan');
  const buy=root.querySelector('#tfPayPalBuy');
  const details=root.querySelector('#tfPayPalTrialDetails');
- if(price)price.textContent=trial?'7 días gratis':'US$6.00';
+ if(price)price.textContent=trial?'7 días gratis':monthlyCharge();
  if(period)period.textContent=trial?'':'/ mes';
  if(notes)notes.textContent=trial
-  ?'Después US$6.00/mes · Renovación automática'
-  :'Renovación automática · Cancela cuando quieras';
- if(buy)buy.textContent=trial?'Comenzar prueba de 7 días':'Comprar ahora · US$6.00/mes';
- if(details)details.hidden=!trial;
+  ?'Después '+monthlyCharge()+'/mes · Renovación automática'
+  :plan?.total!==plan?.price?'Impuesto incluido en el total · Renovación mensual':'Renovación automática · Cancela cuando quieras';
+ if(buy)buy.textContent=trial?'Comenzar prueba de 7 días':subscriptionStatus?.trialUsed?'Reactivar plan · '+monthlyCharge()+'/mes':'Suscribirme · '+monthlyCharge()+'/mes';
+ if(details){details.hidden=!trial;details.textContent='La prueba dura 7 días. Después se cobrarán '+monthlyCharge()+' al mes si mantienes la renovación activa.'}
+}
+function signalBillingChange(){
+ try{localStorage.setItem('taskflow_billing_revision_v165',String(Date.now()))}catch(_){}
+}
+function presentAccount(root){
+ const buy=root.querySelector('#tfPayPalBuy'),cancel=root.querySelector('#tfPayPalCancel'),s=subscriptionStatus;
+ configureCheckoutOffer(root);
+ buy.hidden=true;cancel.hidden=true;cancel.disabled=false;
+ if(!s)return false;
+ if(s.scheduled||s.awaitingPayment){
+  cancel.hidden=false;
+  statusText(s.scheduled?'Renovación programada para el '+new Date(s.startsAt).toLocaleDateString('es-GT')+'.':'PayPal está confirmando el primer pago.');
+  return false;
+ }
+ if(s.active&&s.renewalStatus!=='CANCELLED'){
+  cancel.hidden=false;
+  statusText(s.trialActive?'Tu prueba gratuita está activa.':'Tu plan sin anuncios está activo.');
+  return false;
+ }
+ buy.hidden=false;
+ if(s.active)statusText('Tienes acceso hasta el '+new Date(s.paidUntil).toLocaleDateString('es-GT')+'. Si reactivas ahora, el cobro empezará al terminar ese período.');
+ else if(s.trialUsed)statusText('Tu prueba ya terminó. Al confirmar en PayPal se cobrarán '+monthlyCharge()+' y el plan se renovará cada mes.');
+ else statusText('Elige tu método de pago en PayPal.','guide');
+ return true;
 }
 function paypalSdk(){
  if(window.paypal&&typeof window.paypal.Buttons==='function')return Promise.resolve(window.paypal);
@@ -268,8 +293,8 @@ function paypalSdk(){
 async function waitForFirstPayment(root,target,subscriptionId=''){
  for(let i=0;i<15;i++){
   await new Promise(resolve=>setTimeout(resolve,3000));
-  if(await verifyStatus()){
-   target.replaceChildren();
+  if(await verifyStatus()&&subscriptionStatus?.renewalStatus!=='CANCELLED'){
+   signalBillingChange();target.replaceChildren();
    statusText(subscriptionStatus?.trialActive?'Tu prueba gratuita de 7 días ya está activa.':'Pago confirmado. Tu suscripción mensual sin anuncios está activa.');
    root.querySelector('#tfPayPalCancel').hidden=false;
    return true;
@@ -281,7 +306,7 @@ async function waitForFirstPayment(root,target,subscriptionId=''){
     const result=await request('POST','/confirm',
       {subscriptionId,intent:pendingIntent});
     if(result.active&&(result.paid||result.trialActive)){
-     subscriptionStatus=result;setActive(true);target.replaceChildren();
+     subscriptionStatus=result;setActive(true);signalBillingChange();target.replaceChildren();
      statusText(result.trialActive?'Tu prueba gratuita de 7 días ya está activa.':'Pago confirmado. Tu suscripción mensual sin anuncios está activa.');
      root.querySelector('#tfPayPalCancel').hidden=false;
      return true;
@@ -289,13 +314,16 @@ async function waitForFirstPayment(root,target,subscriptionId=''){
    }catch(_){/* Retry verification only; do not launch another checkout. */}
   }
  }
- statusText('La suscripción continúa en verificación. No inicies otra compra.');
+ pendingApproval=false;
+ await verifyStatus();
+ if(subscriptionStatus){presentAccount(root);if(subscriptionStatus.awaitingPayment||subscriptionStatus.scheduled)return true}
+ statusText('Puedes volver a comprobar tu suscripción. TaskFlow reutiliza la autorización pendiente.');
  return false;
 }
 async function showCheckout(){
  const root=panel(),target=root.querySelector('#tfPayPalButtons');
  const buy=root.querySelector('#tfPayPalBuy'),cancel=root.querySelector('#tfPayPalCancel');
- root.hidden=false;target.replaceChildren();buy.hidden=false;buy.disabled=false;cancel.hidden=true;
+ root.hidden=false;target.replaceChildren();buy.hidden=true;buy.disabled=false;cancel.hidden=true;
  root.querySelector('#tfPayPalMethods').hidden=true;
  configureCheckoutOffer(root);
  statusText('');
@@ -311,25 +339,13 @@ async function showCheckout(){
    statusText('Inicia sesión en TaskFlow antes de comprar. El pago se procesará de forma segura en PayPal.');
    return false;
   }
-  if(await verifyStatus()){
-   buy.hidden=true;
-   statusText(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED'
-    ?'Tu período sin anuncios sigue vigente y su renovación está cancelada.'
-    :subscriptionStatus?.trialActive?'Tu prueba gratuita de 7 días está activa.':'Tu suscripción sin anuncios está activa. No se realizará otro cobro.');
-   cancel.hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
-   return true;
+  const uid=currentUid();
+  await verifyStatus();
+  if(!uid||currentUid()!==uid||!verified||!subscriptionStatus)throw new Error('ACCOUNT_NOT_VERIFIED');
+  if(pendingApproval&&!subscriptionStatus.active&&!subscriptionStatus.scheduled){
+   buy.hidden=true;statusText('Estamos verificando la autorización de PayPal.');return false;
   }
-  if(pendingApproval){
-   buy.hidden=true;
-   statusText('Hay una suscripción pendiente de confirmación. No inicies otro pago.');
-   return false;
-  }
-  if(plan?.trialDays===7 && subscriptionStatus?.trialUsed){
-   buy.hidden=true;
-   statusText('Ya utilizaste tu prueba gratuita. Este plan no permite iniciar otra.');
-   return false;
-  }
-  statusText('Elige PayPal o tarjeta y completa tu suscripción de forma segura.','guide');
+  presentAccount(root);
   return true;
  }catch(_){
   statusText('No se pudo verificar el estado de PayPal. Puedes volver a intentarlo; no se ha realizado ningún cargo.');
@@ -352,14 +368,11 @@ async function beginPurchase(){
   const current=await request('GET','/status');
   subscriptionStatus=current;
   setActive(current.active===true);
-  if(current.active===true){
-   buy.hidden=true;
-   statusText(current.trialActive?'Tu prueba gratuita de 7 días está activa.':'Tu suscripción ya está activa. No se realizará otro cobro.');
-   root.querySelector('#tfPayPalCancel').hidden=!!(subscriptionStatus&&subscriptionStatus.renewalStatus==='CANCELLED');
-   return true;
-  }
-  if(plan?.trialDays===7 && current.trialUsed)throw new Error('TRIAL_ALREADY_USED');
+  if(!presentAccount(root))return true;
   if(pendingApproval)throw new Error('PAYMENT_PENDING');
+  const offeredTrial=plan.trialDays===7&&!current.trialUsed;
+  const startingUid=currentUid(),startingEpoch=accountEpoch;
+  const sameAccount=()=>startingUid===currentUid()&&startingEpoch===accountEpoch;
   const pp=await paypalSdk();
   if(!pp||!pp.Buttons)throw new Error('PAYPAL_SDK_UNAVAILABLE');
   target.replaceChildren();
@@ -367,23 +380,27 @@ async function beginPurchase(){
   methods.hidden=true;
   const buttons=pp.Buttons({
    style:{layout:'vertical',color:'blue',shape:'pill',height:54,label:'subscribe',tagline:false},
-   createSubscription:async (_data,actions)=>{
+   createSubscription:async ()=>{
     busy=true;
     try{
-     const info=await request('POST','/intent');
+     if(!sameAccount())throw new Error('ACCOUNT_CHANGED');
+     const info=await request('POST','/checkout',{trial:offeredTrial});
      pendingIntent=info.intent;
-     return actions.subscription.create({plan_id:plan.planId,custom_id:pendingIntent});
+     return info.subscriptionId;
     }finally{busy=false}
    },
    onApprove:async data=>{
+    if(!sameAccount())return;
     busy=true;pendingApproval=true;
     methods.hidden=true;
     target.replaceChildren();
-    statusText(plan?.trialDays===7?'Verificando tu prueba gratuita con PayPal…':'Comprobando la suscripción y el primer pago con PayPal…');
+    statusText(offeredTrial?'Verificando tu prueba gratuita con PayPal…':'Comprobando la suscripción y el primer pago con PayPal…');
     try{
      if(!pendingIntent||!data.subscriptionID)throw new Error('INVALID_SUBSCRIPTION');
      const result=await request('POST','/confirm',
       {subscriptionId:data.subscriptionID,intent:pendingIntent});
+     signalBillingChange();
+     if(result.scheduled){pendingApproval=false;subscriptionStatus=result;presentAccount(root);return}
      if(result.active&&(result.paid||result.trialActive)){
       subscriptionStatus=result;setActive(true);target.replaceChildren();
       statusText(result.trialActive?'Prueba gratuita activada: disfruta 7 días sin anuncios.':'Pago verificado. Tu suscripción mensual sin anuncios está activa.');
@@ -398,8 +415,8 @@ async function beginPurchase(){
     }
     finally{busy=false}
    },
-   onCancel:()=>{pendingApproval=false;pendingIntent=null;statusText('Pago cancelado. No se ha modificado tu cuenta.')},
-   onError:()=>statusText('PayPal no pudo completar la operación.')
+   onCancel:()=>{if(!sameAccount())return;pendingApproval=false;pendingIntent=null;void showCheckout()},
+   onError:()=>{if(!sameAccount())return;pendingIntent=null;target.replaceChildren();methods.hidden=true;buy.hidden=false;statusText('No se pudo completar la operación. Puedes volver a intentarlo.')}
   });
   if(buttons.isEligible&& !buttons.isEligible())throw new Error('PAYPAL_NOT_ELIGIBLE');
   await buttons.render(target);
@@ -439,6 +456,7 @@ async function initialize(){
  const accountChanged=()=>{bindAccount(currentUid());void verifyStatus()};
  document.addEventListener('taskflow:firebase-auth-changed',accountChanged);
  document.addEventListener('taskflow:account-state-updated',accountChanged);
+ window.addEventListener('storage',e=>{if(e.key==='taskflow_billing_revision_v165')void verifyStatus()});
  setInterval(()=>{if(!document.hidden)void verifyStatus()},20000);
  void verifyStatus();
  try{await config()}catch(_){return false}

@@ -138,13 +138,99 @@ async function readManifest(uid){
  return {activeSlot:x.activeSlot,revision:Number(x.revision),hash:String(x.hash||''),
   clientUpdatedAt:Number(x.clientUpdatedAt)||0,updateTime:doc.updateTime};
 }
+// Resolve concurrent changes against the last version both devices had seen.
+function mergeValue(base,local,remote,preferRemote){
+ const equal=(a,b)=>a===b||JSON.stringify(a)===JSON.stringify(b);
+ if(equal(local,base))return remote;
+ if(equal(remote,base)||equal(local,remote))return local;
+ const winner=preferRemote?remote:local,other=preferRemote?local:remote;
+ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+ if(object(local)&&object(remote)&&(base===undefined||object(base))){
+  const result=Object.create(null);
+  for(const key of new Set([...Object.keys(local),...Object.keys(remote)])){
+   const value=mergeValue(base?.[key],local[key],remote[key],preferRemote);
+   if(value!==undefined)result[key]=value;
+  }
+  return result;
+ }
+ if(Array.isArray(local)&&Array.isArray(remote)&&(base===undefined||Array.isArray(base))){
+  const original=base||[],all=[...original,...local,...remote];
+  // A keyed collection can be reordered, edited and deleted independently.
+  const unique=key=>[original,local,remote].every(items=>new Set(items.map(key)).size===items.length);
+  let key;
+  if(all.every(x=>x===null||['number','boolean','string'].includes(typeof x)))key=JSON.stringify;
+  else for(const name of ['id','key','month','date','day','iso','createdAt']){
+   const by=x=>JSON.stringify(x[name]);
+   if(all.every(x=>object(x)&&Object.hasOwn(x,name)&&x[name]!=null)&&unique(by)){key=by;break}
+  }
+  if(key&&unique(key)){
+   const map=items=>new Map(items.map(v=>[key(v),v]));
+   const old=map(original),a=map(local),b=map(remote);
+   const oldOrder=original.map(key),localOrder=local.map(key),remoteOrder=remote.map(key);
+   const order=equal(remoteOrder,oldOrder)?local:equal(localOrder,oldOrder)?remote:winner;
+   const result=[];
+   for(const id of new Set([...order.map(key),...other.map(key),...localOrder,...remoteOrder])){
+    const v=mergeValue(old.get(id),a.get(id),b.get(id),preferRemote);
+    if(v!==undefined)result.push(v);
+   }
+   return result;
+  }
+  // Fixed-position series (for example mission ticks) have no record identifiers.
+  if(original.length===local.length&&original.length===remote.length)
+   return local.map((v,index)=>mergeValue(original[index],v,remote[index],preferRemote));
+ }
+ return winner;
+}
+function mergeStored(base,local,remote,preferRemote){
+ if(local===base)return remote;
+ if(remote===base||local===remote)return local;
+ const fallback=preferRemote?remote:local;
+ if(!local||!remote)return fallback;
+ try{
+  const a=JSON.parse(local),b=JSON.parse(remote),old=base?JSON.parse(base):undefined;
+  if(!a||!b||typeof a!=='object'||typeof b!=='object')return fallback;
+  return JSON.stringify(mergeValue(old,a,b,preferRemote));
+ }catch(_){return fallback}
+}
+let baselineDb;
+function openBaselines(){
+ if(!baselineDb)baselineDb=new Promise(resolve=>{
+  try{
+   const req=indexedDB.open('taskflow-account-baselines',1);
+   req.onupgradeneeded=()=>req.result.createObjectStore('accounts');
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=req.onblocked=()=>resolve(null);
+  }catch(_){resolve(null)}
+ });
+ return baselineDb;
+}
+async function storedBaseline(uid,hash){
+ const db=await openBaselines();if(!db)return null;
+ return new Promise(resolve=>{
+  try{
+   const req=db.transaction('accounts').objectStore('accounts').get(uid);
+   req.onsuccess=()=>resolve(req.result?.hash===hash?req.result.values:null);
+   req.onerror=()=>resolve(null);
+  }catch(_){resolve(null)}
+ });
+}
+async function persistBaseline(uid,snapshot){
+ try{
+  const db=await openBaselines();
+  if(db&&baseline?.uid===uid&&baseline.snapshot.hash===snapshot.hash)
+   db.transaction('accounts','readwrite').objectStore('accounts').put(snapshot,uid);
+ }catch(_){}
+}
 function recordBaseline(uid,snapshot,manifest){
+ const changed=baseline?.uid!==uid||baseline.snapshot.hash!==snapshot.hash;
  baseline={uid,snapshot};
+ if(changed)void persistBaseline(uid,snapshot);
  writeMeta(uid,{lastRemoteRevision:manifest.revision,lastSyncedHash:snapshot.hash,lastSyncedAt:now(),
   lastRemoteClientUpdatedAt:manifest.clientUpdatedAt||snapshot.updatedAt});
  setBound(uid);
 }
 async function uploadSnapshot(uid,snapshot,remote,localHash=snapshot.hash){
+ const uploadLocal=capture();
  const slot=remote?.activeSlot==='a'?'b':'a';
  const revision=Math.max(remote?.revision||0,Number(readMeta(uid)?.lastRemoteRevision)||0)+1;
  const base=slotBase(uid,slot),writes=[];
@@ -156,7 +242,7 @@ async function uploadSnapshot(uid,snapshot,remote,localHash=snapshot.hash){
   });
   writes.push(put(path,{revision,key,chunkCount:parts.length,length:raw.length,hash:fnv1a(raw)}));
  }
- const manifest={activeSlot:slot,revision,hash:snapshot.hash,clientUpdatedAt:snapshot.updatedAt||now(),schemaVersion:1,appVersion:'162'};
+ const manifest={activeSlot:slot,revision,hash:snapshot.hash,clientUpdatedAt:snapshot.updatedAt||now(),schemaVersion:1,appVersion:'165'};
  writes.push({...put(manifestPath(uid),manifest),currentDocument:remote?{updateTime:remote.updateTime}:{exists:false}});
  // Fragmentos y puntero se publican juntos. Un segundo dispositivo debe releer una revisión nueva.
  await request(API+':commit',{method:'POST',body:JSON.stringify({writes})},uid);
@@ -164,8 +250,15 @@ async function uploadSnapshot(uid,snapshot,remote,localHash=snapshot.hash){
  const latest=capture();
  if(latest.hash===localHash&&localHash!==snapshot.hash)acceptSnapshot(uid,snapshot,manifest,latest);
  else {
+  if(latest.hash!==localHash&&localHash!==snapshot.hash){
+   const original=uploadLocal.values,values={};
+   for(const key of SOURCE_KEYS)values[key]=mergeStored(original[key],latest.values[key],snapshot.values[key],false);
+   const updated={values,hash:hashValues(values),updatedAt:latest.updatedAt};
+   applySnapshot(updated,latest);
+   notifySnapshotApplied(uid,SOURCE_KEYS.filter(k=>updated.values[k]!==latest.values[k]));
+  }
   recordBaseline(uid,snapshot,manifest);
-  dirty=latest.hash!==snapshot.hash;
+  dirty=capture().hash!==snapshot.hash;
   if(dirty)queueRecheck('changes-during-upload',200);
  }
  log('subida completada',revision);
@@ -344,14 +437,20 @@ async function reconcile(uid){
  const latest=capture();
  if(!switched&&latest.hash!==local.hash){queueRecheck('local-during-download',130);return}
  if(!sameAccount||!localChanged||!meta){acceptSnapshot(uid,incoming,remote,latest,Boolean(switched));return}
- const base=baseline?.uid===uid&&baseline.snapshot.hash===meta.lastSyncedHash?baseline.snapshot.values:null;
+ let base=baseline?.uid===uid&&baseline.snapshot.hash===meta.lastSyncedHash?
+  baseline.snapshot.values:await storedBaseline(uid,meta.lastSyncedHash);
+ if(!base&&meta.lastRemoteRevision===remote.revision-1){
+  try{base=(await downloadSnapshot(uid,{activeSlot:remote.activeSlot==='a'?'b':'a',
+   revision:meta.lastRemoteRevision,hash:meta.lastSyncedHash})).values}catch(_){}
+ }
+ assertAccount(uid);
+ if(capture().hash!==latest.hash){queueRecheck('local-during-merge',100);return}
  const values={};
  for(const key of SOURCE_KEYS){
-  if(base&&local.values[key]===base[key])values[key]=incoming.values[key];
-  else if(base&&incoming.values[key]===base[key])values[key]=local.values[key];
-  else values[key]=(preferRemote?incoming:local).values[key];
+  values[key]=base?mergeStored(base[key],local.values[key],incoming.values[key],preferRemote):
+   (preferRemote?incoming:local).values[key];
  }
- if(SOURCE_KEYS.some(key=>values[key]!==local.values[key]))backupConflict(uid,local);
+ if(!base)backupConflict(uid,local);
  const hash=hashValues(values);
  if(hash===incoming.hash)acceptSnapshot(uid,incoming,remote,latest);
  else await uploadSnapshot(uid,{values,hash,updatedAt:Math.max(local.updatedAt,incoming.updatedAt)},remote,latest.hash);
@@ -521,6 +620,6 @@ async function init(){
  return true;
 }
 
-window.TaskFlowCloudSync={initialize:init,syncNow:()=>syncNow('manual'),getUid:()=>currentUid,isDirty:()=>dirty,getBinding:()=>getBound()};
+window.TaskFlowCloudSync={mergeStored,initialize:init,syncNow:()=>syncNow('manual'),getUid:()=>currentUid,isDirty:()=>dirty,getBinding:()=>getBound()};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>init().catch(e=>warn('init',e)),{once:true});else init().catch(e=>warn('init',e));
 })();

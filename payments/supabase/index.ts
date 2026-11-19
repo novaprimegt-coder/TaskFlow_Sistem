@@ -16,6 +16,30 @@ const PLAN_ID = Deno.env.get("TF_PAYPAL_PLAN_ID") || "";
 const WEBHOOK_ID = Deno.env.get("TF_PAYPAL_WEBHOOK_ID") || "";
 const JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"));
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Vary": "Origin" };
+const PAID_PLAN_ID = Deno.env.get("TF_PAYPAL_PAID_PLAN_ID") || "P-0B668231B7983243ENLXKBMA";
+let regularPlan = { id: "", until: 0 };
+let resolvingPlan = null;
+let productId = "";
+let merchantTax = {percentage:0,inclusive:false};
+const verifiedAmounts = new Map();
+function taxTerms(plan) {
+  return {percentage:Number(plan.taxes?.percentage || 0),inclusive:plan.taxes?.inclusive === true};
+}
+function totalPrice(tax) {
+  return (Math.round(Number(PRICE)*100*(tax.inclusive ? 1 : 1+tax.percentage/100))/100).toFixed(2);
+}
+function rememberAmount(plan) {
+  verifiedAmounts.set(plan.id,{value:totalPrice(taxTerms(plan)),until:Date.now()+300000});
+}
+async function expectedAmount(id) {
+  const cached = verifiedAmounts.get(id);
+  if (cached?.until > Date.now()) return cached.value;
+  const plan = await paypal("/v1/billing/plans/" + encodeURIComponent(id));
+  if (plan.id!==id || !validatedPlan({...plan,status:"ACTIVE"}).ok) throw fail("PAYMENT_TERMS_UNVERIFIED");
+  rememberAmount(plan);
+  return verifiedAmounts.get(id).value;
+}
+let planDiagnostic = "unchecked";
 let planValidCache = { until: 0, ok: false, trialDays: 0 };
 
 function respond(req, status, data) {
@@ -62,7 +86,7 @@ function credentialsSet() {
   return MODE === "live" && /^P-[A-Za-z0-9-]{8,64}$/.test(PLAN_ID) &&
     CLIENT_ID.length > 8 && CLIENT_SECRET.length > 8 && WEBHOOK_ID.length > 8;
 }
-async function paypal(path, method = "GET", body) {
+async function paypal(path, method = "GET", body, requestId = "") {
   if (!CLIENT_ID || !CLIENT_SECRET) throw fail("PAYPAL_NOT_CONFIGURED");
   const basic = btoa(CLIENT_ID + ":" + CLIENT_SECRET);
   const tokenResponse = await fetch(BASE + "/v1/oauth2/token", {
@@ -72,20 +96,25 @@ async function paypal(path, method = "GET", body) {
     }, body: "grant_type=client_credentials",
     signal: AbortSignal.timeout(12000)
   });
-  if (!tokenResponse.ok) throw fail("PAYPAL_AUTH_FAILED");
+  if (!tokenResponse.ok) throw fail("PAYPAL_AUTH_FAILED_"+tokenResponse.status);
   const token = (await tokenResponse.json()).access_token;
   if (!token) throw fail("PAYPAL_AUTH_FAILED");
   const res = await fetch(BASE + path, {
-    method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json",
+      ...(requestId ? { "PayPal-Request-Id": requestId, Prefer: "return=representation" } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(16000)
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw fail("PAYPAL_API_ERROR");
+  if (!res.ok) {
+    console.warn("PayPal response",res.status,String(data?.name || "").slice(0,55),String(data?.details?.[0]?.issue || "").slice(0,70));
+    throw fail("PAYPAL_API_ERROR_"+res.status);
+  }
   return data;
 }
 function validatedPlan(p) {
-  if (p.id !== PLAN_ID || p.status !== "ACTIVE") return { ok: false, trialDays: 0 };
+  const tax = taxTerms(p);
+  if (!p?.id || p.status !== "ACTIVE" || !Number.isFinite(tax.percentage) || tax.percentage<0 || tax.percentage>100) return { ok: false, trialDays: 0 };
   const cycles = Array.isArray(p.billing_cycles) ? p.billing_cycles : [];
   const regular = cycles.filter(v => v.tenure_type === "REGULAR");
   if (regular.length !== 1) return { ok: false, trialDays: 0 };
@@ -105,27 +134,53 @@ function validatedPlan(p) {
   const charge = trial?.pricing_scheme?.fixed_price;
   const free = !charge || (Number(charge.value) === 0 &&
     (!charge.currency_code || charge.currency_code === CURRENCY));
-  const sevenDays = (trial.frequency?.interval_unit === "DAY" &&
+  const sevenDays = (trial?.frequency?.interval_unit === "DAY" &&
     Number(trial.frequency?.interval_count) === 7) ||
-    (trial.frequency?.interval_unit === "WEEK" &&
+    (trial?.frequency?.interval_unit === "WEEK" &&
     Number(trial.frequency?.interval_count) === 1);
   const validTrial = trial && Number(trial.sequence) === 1 &&
     sevenDays && Number(trial.total_cycles) === 1 && free;
   return validTrial ? { ok: true, trialDays: 7 } : { ok: false, trialDays: 0 };
 }
 async function planReady() {
-  if (!credentialsSet()) return false;
+  if (!credentialsSet()) { planDiagnostic="configuration"; return false; }
   if (planValidCache.until > Date.now()) return planValidCache.ok;
   try {
     const p = await paypal("/v1/billing/plans/" + encodeURIComponent(PLAN_ID));
     const checked = validatedPlan(p);
+    if (p.id !== PLAN_ID) throw fail("PLAN_MISMATCH");
+    productId = p.product_id || "";
+    if(checked.ok){merchantTax=taxTerms(p);rememberAmount(p);}
+    if(!checked.ok)console.warn("TaskFlow plan terms",JSON.stringify({status:p.status,tax:p.taxes?.percentage,fee:p.payment_preferences?.setup_fee?.value,
+      cycles:p.billing_cycles?.map(c=>({type:c.tenure_type,unit:c.frequency?.interval_unit,every:c.frequency?.interval_count,
+        sequence:c.sequence,count:c.total_cycles,amount:c.pricing_scheme?.fixed_price?.value,currency:c.pricing_scheme?.fixed_price?.currency_code}))}));
+    planDiagnostic = checked.ok ? "ready" : p.status === "ACTIVE" ? "terms" : "plan_inactive";
     planValidCache = { until: Date.now() + (checked.ok ? 60000 : 10000),
       ok: checked.ok, trialDays: checked.trialDays };
     return checked.ok;
-  } catch (_) {
+  } catch (error) {
+    planDiagnostic = /^(PAYPAL_[A-Z_]+(?:_\d{3})?|PLAN_MISMATCH)$/.test(error?.message) ? error.message : "provider_connection";
     planValidCache = { until: Date.now() + 10000, ok: false, trialDays: 0 };
     return false;
   }
+}
+async function monthlyPlan() {
+  if (!planValidCache.trialDays) return PLAN_ID;
+  if (!productId) throw fail("PRODUCT_NOT_AVAILABLE");
+  if (regularPlan.until > Date.now()) return regularPlan.id;
+  if (resolvingPlan) return resolvingPlan;
+  resolvingPlan = (async () => {
+    const id = PAID_PLAN_ID;
+    const plan = await paypal("/v1/billing/plans/" + encodeURIComponent(id));
+    const terms = validatedPlan(plan), tax = taxTerms(plan);
+    if (plan.id !== id || plan.product_id !== productId || !terms.ok || terms.trialDays !== 0 ||
+        tax.percentage !== merchantTax.percentage || (tax.percentage && tax.inclusive !== merchantTax.inclusive))
+      throw fail("MONTHLY_PLAN_INVALID");
+    rememberAmount(plan);
+    regularPlan = { id, until: Date.now() + 300000 };
+    return id;
+  })();
+  try { return await resolvingPlan; } finally { resolvingPlan = null; }
 }
 async function ready() {
   if (!await planReady()) throw fail("PLAN_NOT_READY");
@@ -172,19 +227,30 @@ async function trialEligible(uid, subscriptionId = "") {
   return (!claim || claim.subscription_id === subscriptionId) &&
     !await pastSubscription(uid, subscriptionId);
 }
-async function getStatus(uid) {
-  const status = showStatus(await one("taskflow_paypal_entitlements", "uid", uid));
-  return planValidCache.trialDays === 7 ?
-    { ...status, trialUsed: await trialUsed(uid) } : status;
+async function openCheckout(uid) {
+  const {data,error} = await db().from("taskflow_paypal_intents").select("*").eq("uid",uid)
+    .in("checkout_state",["pending","approved"]).maybeSingle();
+  if (error) throw fail("DATABASE_UNAVAILABLE");
+  return data;
 }
-async function getSubscription(id, currentPlanOnly = false) {
+async function updateCheckout(row, changes) {
+  const {error} = await db().from("taskflow_paypal_intents").update(changes)
+    .eq("intent_id",row.intent_id).eq("checkout_state",row.checkout_state);
+  if (error) throw fail("DATABASE_UNAVAILABLE");
+}
+async function getStatus(uid) {
+  const [ent,used,checkout] = await Promise.all([one("taskflow_paypal_entitlements","uid",uid),trialUsed(uid),openCheckout(uid)]);
+  const status = showStatus(ent);
+  const approved = checkout?.checkout_state === "approved";
+  const scheduled = approved && Date.parse(checkout.starts_at || "") > Date.now();
+  return { ...status, trialUsed: used, scheduled, startsAt: scheduled ? Date.parse(checkout.starts_at) : null,
+    awaitingPayment: approved && !scheduled && checkout.agreement_id !== ent?.subscription_id };
+}
+async function getSubscription(id, expectedPlan = "") {
   if (!/^I-[A-Za-z0-9-]{8,64}$/.test(id)) throw fail("INVALID_SUBSCRIPTION", 400);
   const s = await paypal("/v1/billing/subscriptions/" + encodeURIComponent(id));
-  // Existing subscriptions keep their original plan when a new trial plan is published.
-  const linked = currentPlanOnly ? null :
-    await one("taskflow_paypal_subscriptions", "paypal_id", id);
-  const trustedPlan = currentPlanOnly ? PLAN_ID : linked?.plan_id;
-  if (s.id !== id || s.plan_id !== trustedPlan) throw fail("PLAN_MISMATCH", 409);
+  const trustedPlan = expectedPlan || (await one("taskflow_paypal_subscriptions","paypal_id",id))?.plan_id;
+  if (s.id !== id || s.plan_id !== trustedPlan) throw fail("PLAN_MISMATCH",409);
   return s;
 }
 async function linkSubscription(uid, sub) {
@@ -192,7 +258,7 @@ async function linkSubscription(uid, sub) {
   if (existing && existing.uid !== uid) throw fail("SUBSCRIPTION_ALREADY_LINKED", 409);
   if (!existing) {
     const { error } = await db().from("taskflow_paypal_subscriptions").insert({
-      paypal_id: sub.id, uid, plan_id: PLAN_ID
+      paypal_id: sub.id, uid, plan_id: sub.plan_id
     });
     if (error) {
       const after = await one("taskflow_paypal_subscriptions", "paypal_id", sub.id);
@@ -200,10 +266,10 @@ async function linkSubscription(uid, sub) {
     }
   }
 }
-function paymentDate(sub) {
+function paymentDate(sub, expected) {
   const lp = sub.billing_info?.last_payment;
   if (!lp || lp.amount?.currency_code !== CURRENCY ||
-      Number(lp.amount?.value) !== 6) return 0;
+      Number(lp.amount?.value) !== Number(expected)) return 0;
   const at = Date.parse(lp.time || "");
   if (!Number.isFinite(at) || at > Date.now() + 300000 ||
       at < Date.now() - 45 * 86400000) return 0;
@@ -222,14 +288,26 @@ function paidUntil(sub, at) {
   return sub.status === "ACTIVE" && Number.isFinite(next) &&
     next > at && next < at + 40 * 86400000 ? next : nextMonth(at);
 }
+async function applyAccess(uid,sub,kind,until,paidAt=null,startedAt=null,sale=null) {
+  const {data,error} = await db().rpc("taskflow_apply_access",{p_uid:uid,p_id:sub.id,p_kind:kind,p_status:sub.status,
+    p_until:new Date(until).toISOString(),p_paid:paidAt ? new Date(paidAt).toISOString() : null,
+    p_trial:startedAt ? new Date(startedAt).toISOString() : null,p_sale:sale || null});
+  if (error) throw fail("DATABASE_UNAVAILABLE");
+  return data === true;
+}
 async function recordPaid(uid, sub, saleId = "") {
-  const at = paymentDate(sub);
+  if (!sub.billing_info?.last_payment) return false;
+  const expected = await expectedAmount(sub.plan_id);
+  const at = paymentDate(sub,expected);
   if (!at || !["ACTIVE", "CANCELLED"].includes(sub.status)) return false;
   const linked = await one("taskflow_paypal_subscriptions", "paypal_id", sub.id);
   if (!linked || linked.uid !== uid) throw fail("SUBSCRIPTION_NOT_OWNED", 403);
   const prior = await one("taskflow_paypal_entitlements", "uid", uid);
-  if (prior && paid(prior) && prior.subscription_id !== sub.id)
-    throw fail("ALREADY_SUBSCRIBED", 409);
+  if (prior && prior.subscription_id !== sub.id) {
+    const previous = await one("taskflow_paypal_subscriptions", "paypal_id", prior.subscription_id);
+    if (previous && Date.parse(previous.created_at) >= Date.parse(linked.created_at)) return false;
+    if (paid(prior) && prior.renewal_status !== "CANCELLED") return false;
+  }
   if (prior?.state === "revoked" && Date.parse(prior.last_paid_at || "") >= at)
     return false;
   if (saleId) {
@@ -240,19 +318,14 @@ async function recordPaid(uid, sub, saleId = "") {
   const until = Math.max(paidUntil(sub, at), prior?.subscription_id === sub.id ?
     Date.parse(prior.paid_until || "") || 0 : 0);
   if (until <= Date.now()) return false;
-  await write("taskflow_paypal_entitlements", {
-    uid, subscription_id: sub.id, state: "active", access_kind: "paid",
-    renewal_status: sub.status, paid_until: new Date(until).toISOString(),
-    last_paid_at: new Date(at).toISOString(),
-    trial_started_at: prior?.trial_started_at || null,
-    last_sale_id: saleId || prior?.last_sale_id || null,
-    updated_at: new Date().toISOString()
-  }, "uid");
+  const granted = await applyAccess(uid,sub,"paid",until,at,null,saleId);
   if (saleId) await write("taskflow_paypal_sales", {
-    paypal_sale_id: saleId, paypal_id: sub.id, uid, amount: 6,
+    paypal_sale_id: saleId, paypal_id: sub.id, uid, amount: Number(expected),
     state: "completed", paid_at: new Date(at).toISOString()
   }, "paypal_sale_id");
-  return true;
+  const checkout = await one("taskflow_paypal_intents","agreement_id",sub.id);
+  if (checkout && checkout.checkout_state !== "closed") await updateCheckout(checkout,{checkout_state:"closed"});
+  return granted;
 }
 // Free access is granted only to a PayPal ACTIVE subscription under a
 // verified 7-day-zero-price plan. An unapproved intent never grants access.
@@ -282,8 +355,7 @@ async function recordTrial(uid, sub) {
     throw fail("SUBSCRIPTION_NOT_OWNED", 403);
   if (!await trialEligible(uid, sub.id)) throw fail("TRIAL_ALREADY_USED", 409);
   const previous = await one("taskflow_paypal_entitlements", "uid", uid);
-  if (previous && paid(previous) && previous.subscription_id !== sub.id)
-    throw fail("ALREADY_SUBSCRIBED", 409);
+  if (previous && paid(previous) && previous.subscription_id !== sub.id) return false;
   if (previous?.access_kind === "paid" && previous.subscription_id === sub.id)
     return false; // Never downgrade a verified paid entitlement to a free trial.
   const claim = await one("taskflow_paypal_trial_claims", "uid", uid);
@@ -297,16 +369,9 @@ async function recordTrial(uid, sub) {
         throw fail("TRIAL_ALREADY_USED", 409);
     }
   }
-  await write("taskflow_paypal_entitlements", {
-    uid, subscription_id: sub.id, state: "active", access_kind: "trial",
-    renewal_status: sub.status, paid_until: new Date(window.until).toISOString(),
-    last_paid_at: null, last_sale_id: null,
-    trial_started_at: new Date(window.start).toISOString(),
-    updated_at: new Date().toISOString()
-  }, "uid");
-  return true;
+  return applyAccess(uid,sub,"trial",window.until,null,window.start);
 }
-async function intent(uid) {
+async function legacyIntent(uid) {
   const existing = await getStatus(uid);
   if (existing.active) throw fail("ALREADY_SUBSCRIBED", 409);
   if (planValidCache.trialDays === 7 && !await trialEligible(uid))
@@ -318,6 +383,44 @@ async function intent(uid) {
   });
   if (error) throw fail("DATABASE_UNAVAILABLE");
   return { intent: id };
+}
+function scheduledStartChanged(existing, expected) {
+  const now = Date.now();
+  return Math.max(now,Date.parse(existing || "") || 0) !== Math.max(now,Date.parse(expected || "") || 0);
+}
+async function checkout(uid, offeredTrial) {
+  const status = await getStatus(uid);
+  if ((status.active && status.renewalStatus !== "CANCELLED") || status.scheduled || status.awaitingPayment)
+    throw fail("ALREADY_SUBSCRIBED",409);
+  const trial = planValidCache.trialDays === 7 && !status.trialUsed;
+  if (offeredTrial !== trial) throw fail("OFFER_CHANGED",409);
+  const plan = trial ? PLAN_ID : await monthlyPlan();
+  const start = !trial && status.active && status.paidUntil > Date.now() ? new Date(status.paidUntil).toISOString() : null;
+  const {data: row,error} = await db().rpc("taskflow_reserve_checkout",{p_uid:uid,p_plan:plan,p_start:start}).single();
+  if (error || !row) throw fail("DATABASE_UNAVAILABLE");
+  if (row.checkout_state === "approved") throw fail("ALREADY_SUBSCRIBED",409);
+  if (row.agreement_id) {
+    const remote = await getSubscription(row.agreement_id,row.plan_id);
+    if (["APPROVED","ACTIVE"].includes(remote.status)) {
+      await settle(uid,row,remote);
+      throw fail("ALREADY_SUBSCRIBED",409);
+    }
+    if (remote.status === "APPROVAL_PENDING" && row.plan_id === plan && !scheduledStartChanged(row.starts_at,start)) return {intent:row.intent_id,subscriptionId:remote.id,trial};
+    if (remote.status === "APPROVAL_PENDING")
+      await paypal("/v1/billing/subscriptions/" + remote.id + "/cancel","POST",{reason:"TaskFlow checkout replaced"});
+    await updateCheckout(row,{checkout_state:"closed"});
+    return checkout(uid,offeredTrial);
+  }
+  if (row.plan_id !== plan) throw fail("OFFER_CHANGED",409);
+  const scheduled = Date.parse(row.starts_at || "") > Date.now() + 1000;
+  const created = await paypal("/v1/billing/subscriptions","POST",{
+    plan_id:plan, custom_id:row.intent_id, ...(scheduled ? {start_time:row.starts_at} : {}),
+    application_context:{user_action:"SUBSCRIBE_NOW",shipping_preference:"NO_SHIPPING",
+      return_url:ORIGIN+"/TaskFlow_Sistem/",cancel_url:ORIGIN+"/TaskFlow_Sistem/"}
+  },row.intent_id);
+  if (!/^I-[A-Za-z0-9-]{8,64}$/.test(created.id)) throw fail("PAYPAL_API_ERROR");
+  await updateCheckout(row,{agreement_id:created.id});
+  return {intent:row.intent_id,subscriptionId:created.id,trial};
 }
 async function parse(req) {
   if (Number(req.headers.get("content-length") || 0) > 64000)
@@ -333,34 +436,46 @@ async function confirm(uid, req) {
   if (!/^I-[A-Za-z0-9-]{8,64}$/.test(id) ||
       !/^[a-f0-9-]{36}$/.test(nonce)) throw fail("INVALID_CONFIRMATION", 400);
   const pending = await one("taskflow_paypal_intents", "intent_id", nonce);
-  if (!pending || pending.uid !== uid || pending.plan_id !== PLAN_ID ||
-      Date.parse(pending.expires_at) < Date.now()) throw fail("INTENT_INVALID", 403);
-  const sub = await getSubscription(id, true);
+  if (!pending || pending.uid !== uid || (pending.checkout_state ?
+      pending.agreement_id !== id : pending.plan_id !== PLAN_ID || Date.parse(pending.expires_at) < Date.now()))
+    throw fail("INTENT_INVALID",403);
+  const sub = await getSubscription(id,pending.plan_id);
   if (sub.custom_id !== nonce) throw fail("SUBSCRIPTION_NOT_OWNED", 403);
-  if (planValidCache.trialDays === 7 && !await trialEligible(uid, sub.id))
-    throw fail("TRIAL_ALREADY_USED", 409);
-  await linkSubscription(uid, sub);
-  if (["APPROVAL_PENDING", "APPROVED"].includes(sub.status))
-    return { paid: false, trialActive: false, pending: true };
-  if (sub.status !== "ACTIVE") throw fail("SUBSCRIPTION_NOT_ACTIVE", 409);
-  const trialActivated = planValidCache.trialDays === 7 && await recordTrial(uid, sub);
-  const credited = trialActivated ? false : await recordPaid(uid, sub);
-  const status = await getStatus(uid);
-  return { paid: credited, ...status,
-    pending: !credited && !status.trialActive };
+  return settle(uid,pending,sub);
+}
+async function settle(uid,pending,sub) {
+  if (sub.custom_id !== pending.intent_id || sub.plan_id !== pending.plan_id) throw fail("PLAN_MISMATCH",409);
+  if (!["APPROVED","ACTIVE"].includes(sub.status)) return {...await getStatus(uid),pending:true};
+  if (pending.checkout_state === "closed") return getStatus(uid);
+  const trial = sub.plan_id === PLAN_ID && planValidCache.trialDays === 7;
+  if (trial && !await trialEligible(uid,sub.id)) throw fail("TRIAL_ALREADY_USED",409);
+  await linkSubscription(uid,sub);
+  if (pending.checkout_state === "pending") await updateCheckout(pending,{checkout_state:"approved"});
+  const trialActivated = trial && await recordTrial(uid,sub);
+  const credited = !trialActivated && await recordPaid(uid,sub);
+  if (trialActivated && pending.checkout_state) {
+    const current = await one("taskflow_paypal_intents","intent_id",pending.intent_id);
+    if (current.checkout_state === "approved") await updateCheckout(current,{checkout_state:"closed"});
+  }
+  return {...await getStatus(uid),paid:credited,pending:!credited && !trialActivated};
 }
 async function cancel(uid) {
-  const ent = await one("taskflow_paypal_entitlements", "uid", uid);
-  if (!ent?.subscription_id) throw fail("SUBSCRIPTION_NOT_FOUND", 404);
-  const sub = await getSubscription(ent.subscription_id);
-  if (sub.status === "ACTIVE") await paypal(
-    "/v1/billing/subscriptions/" + encodeURIComponent(sub.id) + "/cancel",
-    "POST", { reason: "Customer requested cancellation in TaskFlow" }
-  );
-  await write("taskflow_paypal_entitlements", {
-    ...ent, renewal_status: "CANCELLED", updated_at: new Date().toISOString()
-  }, "uid");
-  return { cancelled: true, ...(await getStatus(uid)) };
+  const ent = await one("taskflow_paypal_entitlements","uid",uid);
+  const pending = await openCheckout(uid);
+  const queued = pending?.checkout_state === "approved" && pending.agreement_id;
+  const id = queued || ent?.subscription_id;
+  if (!id) throw fail("SUBSCRIPTION_NOT_FOUND",404);
+  const sub = await getSubscription(id);
+  if (["ACTIVE","APPROVED","SUSPENDED"].includes(sub.status)) await paypal(
+    "/v1/billing/subscriptions/" + id + "/cancel","POST",{reason:"Customer requested cancellation in TaskFlow"});
+  if (pending && pending.agreement_id === id) await updateCheckout(pending,{checkout_state:"closed"});
+  if (id === ent?.subscription_id) await updateEntitlementState(uid,id,{renewal_status:"CANCELLED"});
+  return {cancelled:true,...await getStatus(uid)};
+}
+async function updateEntitlementState(uid,id,changes) {
+  const {error} = await db().from("taskflow_paypal_entitlements").update({...changes,updated_at:new Date().toISOString()})
+    .eq("uid",uid).eq("subscription_id",id);
+  if (error) throw fail("DATABASE_UNAVAILABLE");
 }
 async function webhook(req) {
   if (!credentialsSet()) throw fail("PAYPAL_WEBHOOK_NOT_READY");
@@ -384,7 +499,12 @@ async function webhook(req) {
     const row = await one("taskflow_paypal_subscriptions", "paypal_id", id);
     // PayPal can deliver the webhook before the browser confirms ownership;
     // retry later rather than granting entitlement to an unlinked subscription.
-    if (!row) throw fail("SUBSCRIPTION_PENDING");
+    if (!row) {
+      const intent = await one("taskflow_paypal_intents","agreement_id",id);
+      if (!intent) throw fail("SUBSCRIPTION_PENDING");
+      await planReady();
+      return settle(intent.uid,intent,await getSubscription(id,intent.plan_id));
+    }
     const sub = await getSubscription(id);
     if (sub.status !== "ACTIVE") return { pending: true };
     await planReady();
@@ -401,12 +521,21 @@ async function webhook(req) {
     if (!/^[A-Za-z0-9-]{5,100}$/.test(sale) ||
         !/^I-[A-Za-z0-9-]{8,64}$/.test(subId) ||
         resource.amount?.currency !== CURRENCY ||
-        Number(resource.amount?.total) !== 6 ||
+        !Number.isFinite(Number(resource.amount?.total)) ||
         String(resource.state || "").toLowerCase() !== "completed")
       return { ignored: true };
     const row = await one("taskflow_paypal_subscriptions", "paypal_id", subId);
-    if (!row) throw fail("SUBSCRIPTION_PENDING");
+    if (!row) {
+      const intent = await one("taskflow_paypal_intents","agreement_id",subId);
+      if (!intent) throw fail("SUBSCRIPTION_PENDING");
+      const sub = await getSubscription(subId,intent.plan_id);
+      if (sub.custom_id !== intent.intent_id) throw fail("SUBSCRIPTION_NOT_OWNED",403);
+      if (Number(resource.amount.total)!==Number(await expectedAmount(sub.plan_id))) return {ignored:true};
+      await linkSubscription(intent.uid,sub);
+      return {ok:true,credited:await recordPaid(intent.uid,sub,sale)};
+    }
     const sub = await getSubscription(subId);
+    if (Number(resource.amount.total)!==Number(await expectedAmount(sub.plan_id))) return {ignored:true};
     const credited = await recordPaid(row.uid, sub, sale);
     return { ok: true, credited };
   }
@@ -418,7 +547,7 @@ async function webhook(req) {
     await write("taskflow_paypal_sales", { ...row, state: "reversed" }, "paypal_sale_id");
     const ent = await one("taskflow_paypal_entitlements", "uid", row.uid);
     if (ent && ent.subscription_id === row.paypal_id && ent.last_sale_id === sale)
-      await write("taskflow_paypal_entitlements", { ...ent, state: "revoked" }, "uid");
+      await updateEntitlementState(ent.uid,row.paypal_id,{state:"revoked"});
     return { ok: true };
   }
   if (["BILLING.SUBSCRIPTION.CANCELLED",
@@ -429,12 +558,12 @@ async function webhook(req) {
     const row = await one("taskflow_paypal_subscriptions", "paypal_id", id);
     if (!row) return { ignored: true };
     const ent = await one("taskflow_paypal_entitlements", "uid", row.uid);
-    if (ent && ent.subscription_id === id) {
-      await write("taskflow_paypal_entitlements", {
-        ...ent, renewal_status: type.split(".").pop(),
-        state: type === "BILLING.SUBSCRIPTION.CANCELLED" ? ent.state : "revoked"
-      }, "uid");
-    }
+    const agreement = await getSubscription(id);
+    if (!["CANCELLED","SUSPENDED","EXPIRED"].includes(agreement.status)) return {ignored:true};
+    const pending = await one("taskflow_paypal_intents","agreement_id",id);
+    if (pending && pending.checkout_state !== "closed") await updateCheckout(pending,{checkout_state:"closed"});
+    if (ent?.subscription_id === id) await updateEntitlementState(row.uid,id,{
+      renewal_status:agreement.status,...(agreement.status === "CANCELLED" ? {} : {state:"revoked"})});
     return { ok: true };
   }
   return { ignored: true };
@@ -454,24 +583,30 @@ Deno.serve(async (req) => {
   const path = pathname.match(/\/taskflow-noads(\/.*)?$/)?.[1] || "/";
   try {
     if (req.method === "GET" && path === "/health")
-      return respond(req, 200, { ok: true, backend: "supabase", paymentsEnabled: await planReady() });
+      return respond(req, 200, { ok: true, backend: "supabase", paymentsEnabled: await planReady(), planStatus:planDiagnostic });
+    if (req.method === "GET" && path === "/plans") {
+      await ready();
+      return respond(req,200,{monthly:await monthlyPlan(),trialDays:planValidCache.trialDays,price:PRICE,total:totalPrice(merchantTax),currency:CURRENCY});
+    }
     if (req.method === "GET" && path === "/config") {
       const enabled = await planReady();
       if (!enabled) return respond(req, 200, { enabled: false, environment: MODE });
       return respond(req, 200, {
         enabled: true, environment: "live", clientId: CLIENT_ID,
-        planId: PLAN_ID, price: PRICE, currency: CURRENCY,
+        planId: PLAN_ID, price: PRICE, total:totalPrice(merchantTax), currency: CURRENCY,
         frequency: "MONTH", recurring: true, trialDays: planValidCache.trialDays
       });
     }
     if (req.method === "POST" && path === "/paypal/webhook")
       return respond(req, 200, await webhook(req));
-    await ready();
     const uid = await requireFirebaseUser(req);
     if (req.method === "GET" && path === "/status")
       return respond(req, 200, await getStatus(uid));
+    await ready();
     if (req.method === "POST" && path === "/intent")
-      return respond(req, 200, await intent(uid));
+      return respond(req, 200, await legacyIntent(uid));
+    if (req.method === "POST" && path === "/checkout")
+      return respond(req,200,await checkout(uid,(await parse(req)).trial));
     if (req.method === "POST" && path === "/confirm") {
       const data = await confirm(uid, req);
       return respond(req, data.active ? 200 : 202, data);
@@ -483,7 +618,7 @@ Deno.serve(async (req) => {
     console.error("TaskFlow subscription server:", e?.message || "UNEXPECTED");
     return respond(req, e?.status || 503, {
       error: e?.status === 401 ? "AUTH_REQUIRED" :
-        e?.message === "TRIAL_ALREADY_USED" ? "TRIAL_ALREADY_USED" :
+        ["TRIAL_ALREADY_USED","ALREADY_SUBSCRIBED","OFFER_CHANGED"].includes(e?.message) ? e.message :
         e?.message?.startsWith("INVALID") ? e.message : "PAYMENT_UNAVAILABLE"
     });
   }
