@@ -210,9 +210,9 @@ async function verifyStatus(){
    if(epoch!==accountEpoch||uid!==currentUid()||typeof data.active!=='boolean')return false;
    const confirmedActive=data.active===true&&Number(data.paidUntil)>Date.now();
    if(data.active&&!confirmedActive)return false;
-   const changed=subscriptionStatus && ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
+   const changed=!subscriptionStatus || ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
    subscriptionStatus=data;
-   if(changed&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
+   if(changed&&enabled&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
    verified=true;
    setActive(confirmedActive);
    return isActive();
