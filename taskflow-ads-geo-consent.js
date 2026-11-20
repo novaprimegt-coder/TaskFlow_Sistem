@@ -18,7 +18,14 @@
   if(dialog){try{if(dialog.open)dialog.close()}catch(_){}dialog.remove()}
   document.getElementById('tfAdsGeoConsentMenu')?.remove();
   const uid=String(window.TaskFlowFirebase?.getUser?.()?.uid||'');
-  if(uid){try{localStorage.removeItem(PREFIX+uid)}catch(_){}}
+  if(uid){try{
+   if(localStorage.getItem(PREFIX+uid)!==null){
+    localStorage.removeItem(PREFIX+uid);
+    // Permitir la revocación del registro anterior en el servidor,
+    // aunque exista una marca de retirada obsoleta.
+    localStorage.removeItem('taskflow_ads_area_withdrawn_v162:'+uid);
+   }
+  }catch(_){}}
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',retire,{once:true});
  else retire();
