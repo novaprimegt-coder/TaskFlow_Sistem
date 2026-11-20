@@ -119,10 +119,11 @@ async function loadRecommendations() {
     }),
    });
    if (response.ok) {
-    const {campaignId, adId, selectionToken} = await response.json();
+    const {campaignId, adId, selectionToken, adCode} = await response.json();
     if (typeof selectionToken === 'string' && /^[a-f0-9-]{36}$/i.test(selectionToken) &&
         candidates.some(ad => ad.campaignId === campaignId && ad.id === adId)) {
      selected = {campaignId, adId, selectionToken,
+      adCode: /^[0-9]{6}$/.test(String(adCode||'')) ? String(adCode) : '',
       expiresAt: Date.now() + (placement === 'banner' ? 30000 : 900000)};
     }
    }
@@ -482,7 +483,7 @@ function selectedCreatives(placement, slot, failures) {
  return catalog.filter(ad => ad.placement === placement && ad.campaignId === selected.campaignId &&
   ad.id === selected.adId && adEligible(ad) && (failures.get(ad.src) || 0) <= Date.now())
   .sort((a, b) => b.mediaWidth - a.mediaWidth)
-  .map(ad => ({...ad, selectionToken: selected.selectionToken}));
+  .map(ad => ({...ad, selectionToken: selected.selectionToken, adCode: selected.adCode}));
 }
 function queueBanner(slot) {
  if (document.getElementById(slot)) void displayBanner(slot);
@@ -527,6 +528,7 @@ function testedBanner(ad){
 }
 function bannerNode(ad,img){
  if(!img)return null;
+ if(/^[0-9]{6}$/.test(String(ad.adCode||'')))img.dataset.tfAdCode=String(ad.adCode);
  if(!ad.destination)return img;
  const a=document.createElement('a');a.href=trackedDestination(ad);a.target='_blank';
  a.rel='sponsored noopener noreferrer';a.referrerPolicy='no-referrer';
@@ -534,6 +536,7 @@ function bannerNode(ad,img){
  a.title=ad.ctaLabel||'Abrir anuncio';
  a.dataset.tfAdCta=ad.ctaLabel||'Conocer más';
  a.className='tf-ads-cta-link';
+ if(/^[0-9]{6}$/.test(String(ad.adCode||'')))a.dataset.tfAdCode=String(ad.adCode);
  // No agregar un segundo hijo: TaskFlowAdsV50 exige A > IMG exclusivamente.
  a.appendChild(img);
  return a;
@@ -619,7 +622,7 @@ function apply() {
   if (ad && activeVerticalAds[placement]?.selectionToken === ad.selectionToken) continue;
   const accepted = api.setCreative(ad ? {
    type: ad.type, src: ad.src, destination: trackedDestination(ad), ctaLabel: ad.ctaLabel, sound: ad.sound,
-   mediaWidth: ad.mediaWidth, mediaHeight: ad.mediaHeight,
+   mediaWidth: ad.mediaWidth, mediaHeight: ad.mediaHeight, adCode: ad.adCode,
   } : null);
   activeVerticalAds[placement] = accepted ? ad : null;
   enableUnfilledVerticalPromos(placement, accepted);
