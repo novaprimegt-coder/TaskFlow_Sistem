@@ -51,6 +51,15 @@ const BANNER_CSS = `
   letter-spacing: .07em;
   pointer-events: none;
 }
+.tf50-ad-slot.tf50-has-ad[data-tf-ad-code]::after{
+  content:'ADS · ' attr(data-tf-ad-code);
+  position:absolute;right:5px;bottom:5px;z-index:5;
+  padding:2px 5px;border-radius:4px;
+  font:700 8px/1.2 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.02em;color:#f2faff;background:rgba(1,12,27,.76);
+  border:1px solid rgba(140,190,210,.25);
+  pointer-events:none;user-select:none;
+}
 .tf50-ad-slot > a, .tf50-ad-slot img {
   display: block !important;
   width: 100% !important;
@@ -395,6 +404,7 @@ function promoLink(placement) {
 
 function renderPromo(slot) {
   if (slot.classList.contains('tf158-has-promo')) return;
+  delete slot.dataset.tfAdCode;
   slot.classList.remove('tf50-has-ad');
   slot.style.removeProperty('--tf-ad-native-width');
   slot.replaceChildren(promoLink('banner'));
@@ -432,6 +442,7 @@ function renderBanner(id, content, showPromo = true) {
   const slot = BANNER_IDS.includes(id) && document.getElementById(id);
   if (!slot) return false;
   if (!content) {
+    delete slot.dataset.tfAdCode;
     if (!canShowAds() || !promosEnabled) slot.remove();
     else if (showPromo) renderPromo(slot);
     else if (slot.childElementCount) {
@@ -447,6 +458,9 @@ function renderBanner(id, content, showPromo = true) {
   if (!img.complete || !((img.naturalWidth === 1200 && img.naturalHeight === 180) ||
       (img.naturalWidth === 2400 && img.naturalHeight === 360)) || !canShowAds()) return false;
   slot.style.setProperty('--tf-ad-native-width', nativeWidth(img.naturalWidth));
+  const code = String(content.dataset.tfAdCode || img.dataset.tfAdCode || '');
+  if (/^[0-9]{6}$/.test(code)) slot.dataset.tfAdCode=code;
+  else delete slot.dataset.tfAdCode;
   slot.replaceChildren(content);
   slot.classList.remove('tf158-has-promo');
   slot.classList.add('tf50-has-ad');
@@ -696,7 +710,8 @@ function createVerticalAd({placement, id, part}) {
     showingPromo = Boolean(selected.promo);
     const url = selected.destination;
     const link = url && sponsorLink(url, selected.ctaLabel);
-    label.textContent = 'Publicidad';
+    const visibleCode = /^[0-9]{6}$/.test(String(selected.adCode||'')) ? String(selected.adCode) : '';
+    label.textContent = visibleCode ? 'Publicidad · ADS '+visibleCode : 'Publicidad';
     if (link) link.append(node);
     destination.hidden = !url;
     if (url) destination.href = url;
@@ -784,6 +799,7 @@ function createVerticalAd({placement, id, part}) {
       type, src, destination: adUrl(input.destination, true),
       mediaWidth: Number(input.mediaWidth) || 0, mediaHeight: Number(input.mediaHeight) || 0,
       ctaLabel: String(input.ctaLabel || 'Conocer más').slice(0, 42), sound: type === 'video' && input.sound === true,
+      adCode: /^[0-9]{6}$/.test(String(input.adCode||'')) ? String(input.adCode) : '',
     } : null;
     return Boolean(creative);
   }
