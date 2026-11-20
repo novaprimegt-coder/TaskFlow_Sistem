@@ -257,13 +257,19 @@ function dateEligible(c){
  return (!c.start || /^\d{4}-\d{2}-\d{2}$/.test(c.start) && c.start <= today) &&
   (!c.end || /^\d{4}-\d{2}-\d{2}$/.test(c.end) && c.end >= today);
 }
+function comparableAdArea(value,kind) {
+ const text=normText(value);
+ if(kind==='region')return text.replace(/^(?:departamento\s+de(?:l)?|departamento|depto\.?|provincia\s+de|provincia|estado\s+de|estado|region\s+de|region)\s+/,'').trim();
+ if(kind==='city')return text.replace(/^(?:municipio\s+de|municipio|ciudad\s+de|ciudad)\s+/,'').trim();
+ return text;
+}
 function targetEligible(target) {
  const cc=countryCode(target.country),area=selectedAdArea();
  if(target.radius||target.neighborhood||target.ageMin>18||target.ageMax<65)return false;
  if(!cc||cc==='ALL')return !target.region&&!target.city;
  if(!area||cc!==area.country)return false;
- if(target.region&&normText(target.region)!==normText(area.region))return false;
- if(target.city&&normText(target.city)!==normText(area.city))return false;
+ if(target.region&&comparableAdArea(target.region,'region')!==comparableAdArea(area.region,'region'))return false;
+ if(target.city&&comparableAdArea(target.city,'city')!==comparableAdArea(area.city,'city'))return false;
  return true;
 }
 
