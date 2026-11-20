@@ -12,13 +12,11 @@ const bannerSlots = () => window.TaskFlowAdsV50?.slots || [];
 const VERTICAL_PLACEMENTS = ['entry', 'interaction'];
 const paidNoAds = () => Boolean(window.TaskFlowNoAds?.isActive?.());
 const adsPermitted = () => config.enabled && (window.TaskFlowNoAds?.canShowAds?.() ?? !paidNoAds());
-function sectionTopic() {
- const routine = document.querySelector('#windowContainer.open #windowContent[data-tf-routine]')?.dataset.tfRoutine;
- if (routine === 'sung') return 'sports';
- return ['legal','socrates','machiavelli','mentalist'].includes(routine) ? 'education' : '';
-}
+// V177: la actividad y las rutinas NO son señales de intereses publicitarios.
+const sectionTopic = () => '';
 const signedInAccount = () => String(window.TaskFlowFirebase?.getUser?.()?.uid || '');
-const selectedAdArea = () => window.TaskFlowAdsGeoConsent?.area?.() || null;
+// La ubicación aproximada, si existe y está autorizada, la calcula el servidor.
+const selectedAdArea = () => null;
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose/v161';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
@@ -115,10 +113,7 @@ async function loadRecommendations() {
    const response = await fetch(SELECTION_URL, {
     method: 'POST', mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
     signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
-    body: JSON.stringify({placement, slot, sessionId, audienceVersion: 1,
-     ...(topic ? {interests: [topic]} : {}),
-     ...(selectedAdArea() ? {area:selectedAdArea()} : {})
-    }),
+    body: JSON.stringify({placement, slot, sessionId, audienceVersion: 2}),
    });
    if (response.ok) {
     const {campaignId, adId, selectionToken, adCode} = await response.json();
@@ -169,7 +164,7 @@ async function deliveryToken() {
  } catch (_) { return null; } finally { clearTimeout(timer); }
 }
 
-const audienceKey = (account, topic) => account ? JSON.stringify([account,topic,selectedAdArea()]) : '';
+const audienceKey = account => account ? account : '';
 const audienceIsCurrent = () => adsPermitted() && navigator.onLine !== false && audienceState === 'available' &&
  audienceKey(signedInAccount(), sectionTopic()) === audienceScope;
 
@@ -263,26 +258,13 @@ function comparableAdArea(value,kind) {
  if(kind==='city')return text.replace(/^(?:municipio\s+de|municipio|ciudad\s+de|ciudad)\s+/,'').trim();
  return text;
 }
+// El servidor valida edad, ubicación aproximada, intereses por clics y autorización.
+// La precalificación local nunca usa datos de rutinas ni una zona escrita a mano.
 function targetEligible(target) {
- const cc=countryCode(target.country),area=selectedAdArea();
- const declaredAge=window.TaskFlowFirebase?.getAdsAge?.();
- if(target.radius||target.neighborhood)return false;
- if(target.ageMin>18||target.ageMax<65){
-  if(!Number.isInteger(declaredAge)||declaredAge<target.ageMin||declaredAge>target.ageMax)return false;
- }
- if(!cc||cc==='ALL')return !target.region&&!target.city;
- if(!area||cc!==area.country)return false;
- if(target.region&&comparableAdArea(target.region,'region')!==comparableAdArea(area.region,'region'))return false;
- if(target.city&&comparableAdArea(target.city,'city')!==comparableAdArea(area.city,'city'))return false;
- return true;
+ return !target.radius && !target.neighborhood;
 }
-
 function adEligible(ad) {
- if(!targetEligible(ad.target))return false;
- if(!ad.interestTopics.length||ad.interestTopics.includes(selectedTopic))return true;
- // El servidor selecciona las categorías aprendidas; el navegador nunca decide
- // qué categoría coincide con la persona y no recibe sus puntuaciones privadas.
- return window.TaskFlowFirebase?.getAdsConsent?.()===true;
+ return targetEligible(ad.target);
 }
 
 // Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
@@ -887,7 +869,7 @@ try{Object.defineProperty(window,'TaskFlowADS',{value:Object.freeze(API),writabl
 function updateAudience() {
  const account = signedInAccount();
  const topic = sectionTopic();
- const scope = audienceKey(account, topic);
+ const scope = audienceKey(account);
  if (scope !== audienceScope) {
   audienceScope = scope;
   clearSelections();
