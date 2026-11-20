@@ -265,7 +265,11 @@ function comparableAdArea(value,kind) {
 }
 function targetEligible(target) {
  const cc=countryCode(target.country),area=selectedAdArea();
- if(target.radius||target.neighborhood||target.ageMin>18||target.ageMax<65)return false;
+ const declaredAge=window.TaskFlowFirebase?.getAdsAge?.();
+ if(target.radius||target.neighborhood)return false;
+ if(target.ageMin>18||target.ageMax<65){
+  if(!Number.isInteger(declaredAge)||declaredAge<target.ageMin||declaredAge>target.ageMax)return false;
+ }
  if(!cc||cc==='ALL')return !target.region&&!target.city;
  if(!area||cc!==area.country)return false;
  if(target.region&&comparableAdArea(target.region,'region')!==comparableAdArea(area.region,'region'))return false;
@@ -318,14 +322,19 @@ function telemetryDiagnostic(kind,state,error){
   localStorage.setItem(ANALYTICS_DIAG_KEY,JSON.stringify(record));
  }catch(_){}
 }
-async function confirmAdEvent(payload){
+async function confirmAdEvent(payload,isClick=false){
  for(let attempt=0;attempt<3;attempt++){
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),9000);
   let response;
   try{
+   const headers={'Content-Type':'application/json'};
+   if(isClick&&window.TaskFlowFirebase?.getAdsConsent?.()===true){
+    const userToken=await deliveryToken().catch(()=>null);
+    if(userToken)headers.Authorization='Bearer '+userToken;
+   }
    response=await fetch(CONFIRM_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',
-    keepalive:true,headers:{'Content-Type':'application/json'},body:payload,signal:controller.signal});
+    keepalive:true,headers,body:payload,signal:controller.signal});
    if(response.ok){
     const confirmation=await response.json();
     if(confirmation?.ok===true)return;
@@ -349,7 +358,7 @@ function recordAdEvent(type,ad,slot){
  const job=(async()=>{
   // El servidor deduplica por evento y selección incluso si se perdió la primera respuesta.
   const payload=JSON.stringify({...base,event:type});
-  await confirmAdEvent(payload);
+  await confirmAdEvent(payload,type==='click');
   void fetch(ANALYTICS_URL,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',keepalive:true,
    headers:{'Content-Type':'application/json'},body:payload}).catch(()=>{});
   telemetryDiagnostic(type,'acknowledged');
@@ -933,6 +942,10 @@ document.addEventListener('taskflow:firebase-auth-changed', () => {
 });
 document.addEventListener('taskflow:permissions-ready', applyWhenReady);
 document.addEventListener('taskflow:ads-geo-preference-changed',()=>{
+ updateAudience();
+ void refreshRecommendations();
+});
+document.addEventListener('taskflow:ads-profile-updated',()=>{
  updateAudience();
  void refreshRecommendations();
 });
