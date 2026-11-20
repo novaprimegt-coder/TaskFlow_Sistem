@@ -90,6 +90,7 @@ function renderAdsAgeProfile(v){
  if($('tfProfileAdsInfo'))$('tfProfileAdsInfo').textContent=v?.ageNeedsReview?'Actualiza tu edad declarada para mantener tus preferencias.':
   v?.personalizationConsent?(tags.length?'Intereses aprendidos: '+tags.join(', ')+'.':'Personalización autorizada. Los intereses aparecerán con los clics confirmados.') :
   'Sin aprendizaje publicitario. La edad es declarada, no verificada, y no se personalizan anuncios sin autorización.';
+ try{document.dispatchEvent(new Event('taskflow:ads-profile-updated'))}catch(_){}
 }
 async function loadAdsAgeProfile(){
  const uid=st.user?.uid;if(!uid)return;
@@ -132,6 +133,7 @@ function bind(){ui();$('tfProfileButton')&&$('tfProfileButton').addEventListener
  $('tfProfileAgeEdit')?.addEventListener('input',updateAdsAgeControls);
  $('tfProfileSaveAdsProfile')?.addEventListener('click',()=>void saveAdsAgeEdit());
  $('tfProfileClearAdsLearning')?.addEventListener('click',()=>void clearAdsAgeLearning());$('tfProfilePassword')&&$('tfProfilePassword').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('tfProfileOverlay')&&$('tfProfileOverlay').classList.contains('open'))close()});render(null);init().catch(e=>{console.error(e);stateText('No se pudo conectar con el servicio.',false)})}
-window.TaskFlowFirebase={initialize:init,getUser:()=>st.user,getMode:()=>st.mode,getIdToken:getToken,isConfigured:()=>true,openProfile:open,closeProfile:close,getAdsConsent:()=>savedAdProfile?.personalizationConsent===true};
+window.TaskFlowFirebase={initialize:init,getUser:()=>st.user,getMode:()=>st.mode,getIdToken:getToken,isConfigured:()=>true,openProfile:open,closeProfile:close,getAdsConsent:()=>savedAdProfile?.personalizationConsent===true,
+ getAdsAge:()=>savedAdProfile?.personalizationConsent===true&&Number.isInteger(savedAdProfile.age)?savedAdProfile.age:null};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
