@@ -1,0 +1,269 @@
+/* TaskFlow V176 — adaptacion RESPONSIVA exclusiva para escritorio/tableta.
+   Baseline: main/V174. Solo presentacion: no altera estados, handlers, datos,
+   anuncios publicitarios ni reglas de tareas o rutinas.
+   Los telefonos (<768px) conservan las reglas originales. */
+
+@media screen and (min-width: 768px) {
+  html body.tf37-home,
+  html body.tf38-layout { overflow-x: clip; }
+
+  /* Romper el limite movil fijo de 760px, sin extender el contenido indefinidamente. */
+  html body .top-bar,
+  html body.tf37-home .top-bar {
+    width: calc(100% - 40px) !important;
+    max-width: 1360px !important;
+    min-width: 0 !important;
+    margin-inline: auto !important;
+    box-sizing: border-box !important;
+    border-radius: 0 0 18px 18px !important;
+  }
+  html body .wrap,
+  html body.tf37-home .wrap {
+    width: calc(100% - 40px) !important;
+    max-width: 1360px !important;
+    min-width: 0 !important;
+    margin-inline: auto !important;
+    padding: 20px 14px 48px !important;
+    box-sizing: border-box !important;
+  }
+  html body .wrap > :is(.reset-countdown-card,#v27MainHub,.v27-main-hub,
+    .kpi-grid,.v28-streak-card,#statUnifiedStreak,.dashboard,
+    .tf50-ad-slot,.v48-discipline-center) {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Encabezado: buscador utilizable con teclado y controles sin superposicion. */
+  html body .top-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) 54px !important;
+    grid-template-rows: auto 54px !important;
+    align-items: center !important;
+    gap: 12px 14px !important;
+    padding: 14px 20px !important;
+  }
+  html body .top-bar > .top-bar-left {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  html body .top-bar > .search-container {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    height: 54px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  html body .top-bar > .tf14-search-filter {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    width: 54px !important;
+    min-width: 0 !important;
+    height: 54px !important;
+  }
+  html body .search-container input {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 15px !important;
+  }
+
+  /* Paneles: el ancho nuevo se utiliza en tarjetas, sin cambiar su orden. */
+  html body .reset-countdown-card {
+    min-height: 220px !important;
+    padding: 22px 24px 19px !important;
+  }
+  html body .reset-countdown-header { max-width: 78% !important; }
+  html body .reset-countdown-title { font-size: clamp(23px,2.2vw,29px) !important; }
+  html body .reset-countdown-subtitle { font-size: 13px !important; }
+  html body .reset-countdown-time {
+    font-size: clamp(43px,5vw,66px) !important;
+    padding-right: 12% !important;
+  }
+  html body .reset-countdown-footer { font-size: 13px !important; }
+  html body #v27MainHub,
+  html body .v27-main-hub {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  html body #v27MainHub > #tfPairV117 { grid-column: 1 / -1 !important; }
+  html body #v27MainHub .v27-hub-button,
+  html body .v27-main-hub .v27-hub-button {
+    min-height: 116px !important;
+    min-width: 0 !important;
+  }
+  html body .kpi-grid.v27-habit-kpis,
+  html body .kpi-grid.v27-task-kpis {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 14px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  html body .kpi-grid.v27-habit-kpis > *,
+  html body .kpi-grid.v27-task-kpis > * { min-width: 0 !important; }
+  html body .kpi-grid.v27-habit-kpis .kpi-card,
+  html body .kpi-grid.v27-task-kpis .kpi-card {
+    min-height: 128px !important;
+    padding: 16px 12px !important;
+  }
+  html body .v28-streak-card,
+  html body #statUnifiedStreak { min-width: 0 !important; }
+  html body .dashboard.v48-discipline-center {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 20px !important;
+  }
+  html body .v48-week-strip {
+    grid-template-columns: repeat(7,minmax(0,1fr)) !important;
+    gap: 10px !important;
+  }
+  html body .v48-week-strip > * { min-width: 0 !important; }
+  html body .v48-analysis-grid {
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* Slots publicitarios: mantener formato 1200x180 (20:3), medios y CTA. */
+  html body .tf50-ad-slot {
+    width: min(100%,var(--tf-ad-native-width,1200px)) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    aspect-ratio: 20/3 !important;
+    margin-inline: auto !important;
+    flex-shrink: 0 !important;
+  }
+  html body .tf50-ad-slot > :is(a,img,video),
+  html body .tf50-ad-slot .tf-ads-cta-link,
+  html body .tf50-ad-slot .tf158-promo {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  html body .tf50-ad-slot :is(img,video) {
+    object-fit: contain !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+  /* Los anuncios verticales conservan su proporcion y su propia capa modal. */
+  html body .tf159-ad-shell { max-width: min(540px,100%) !important; }
+  html body .tf159-ad-stage { aspect-ratio: 9/16 !important; max-width: 100% !important; }
+
+  /* Menú lateral, formularios y textos largos en pantallas amplias. */
+  html body #sideMenu.side-menu {
+    width: min(400px,calc(100vw - 32px)) !important;
+    max-width: 400px !important;
+    box-sizing: border-box !important;
+  }
+  html body #sideMenu :is(.quick-actions-panel,.menu-item) { min-width: 0 !important; }
+  html body :is(#windowContent,#tfProfileOverlay,#tfManagerV117,#tfSoundV1304)
+    :is(input,select,textarea) { max-width: 100%; box-sizing: border-box; }
+  html body :is(#windowContent,#tfProfileOverlay) :is(table,.table-scroll) {
+    max-width: 100%;
+  }
+  html body #windowContainer.open > #windowContent {
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  html body #windowContainer.open > #windowContent :is(.v83-legal-list,
+    .v69-routine-modal,.v85-sung-list,.v96-mentalist-scroll,
+    .v79-store-shell,.v79-store-grid,.tf35-list) { min-width: 0 !important; max-width: 100% !important; }
+
+  /* Ventanas nativas: sin modificar rutas, acciones ni scroll de misiones. */
+  html body #windowContainer.window-container.open:not(.store-modal):not(.tf171-reward-view)
+    > #windowContent.window-content:not(:has(> .v32-reward-locked)) {
+    width: min(100%,1000px) !important;
+    max-width: min(1000px,calc(100vw - 48px)) !important;
+    margin-inline: auto !important;
+  }
+  html body #windowContainer.store-modal > #windowContent.store-mode.v79-store-mode {
+    width: min(100%,920px) !important;
+    max-width: min(920px,calc(100vw - 48px)) !important;
+  }
+  html body #windowContent .v79-store-grid {
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    gap: 14px !important;
+  }
+  html body #tfManagerV117 .tf119-sheet {
+    width: min(100%,760px) !important;
+    max-width: min(760px,calc(100vw - 48px)) !important;
+  }
+  html body #tfSoundV1304 .tf1304-sheet {
+    width: min(100%,640px) !important;
+    max-width: min(640px,calc(100vw - 48px)) !important;
+  }
+  html body #tfProfileOverlay .tf-profile-card {
+    width: min(100%,640px) !important;
+    max-width: min(640px,calc(100vw - 48px)) !important;
+  }
+  html body #tf503020Overlay.window-container.open .tf503020-content {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  html body #windowContainer.open :is(.v97-routine-card,.v69-routine-item,
+    .v83-legal-step,.v32-mission-item,.v94-mentalist-step) {
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Desktop: cabecera de una sola fila y mayor espacio real para paneles. */
+@media screen and (min-width: 1100px) {
+  html body .top-bar {
+    grid-template-columns: minmax(300px,.8fr) minmax(320px,1fr) 54px !important;
+    grid-template-rows: 56px !important;
+    gap: 18px !important;
+    padding: 12px 24px !important;
+  }
+  html body .top-bar > .top-bar-left {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+  html body .top-bar > .search-container {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    height: 54px !important;
+  }
+  html body .top-bar > .tf14-search-filter {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+  }
+  html body .wrap { padding: 24px 20px 56px !important; }
+  html body .reset-countdown-card { min-height: 242px !important; }
+  html body #v27MainHub .v27-hub-button,
+  html body .v27-main-hub .v27-hub-button { min-height: 130px !important; }
+  html body .kpi-grid.v27-habit-kpis .kpi-card,
+  html body .kpi-grid.v27-task-kpis .kpi-card { min-height: 145px !important; }
+  html body .v28-streak-card { min-height: 194px !important; }
+  html body .dashboard.v48-discipline-center { padding: 24px !important; }
+  html body #windowContainer.window-container.open:not(.store-modal):not(.tf171-reward-view)
+    > #windowContent.window-content:not(:has(> .v32-reward-locked)) {
+    width: min(100%,1100px) !important;
+    max-width: min(1100px,calc(100vw - 72px)) !important;
+  }
+  html body #windowContainer.store-modal > #windowContent.store-mode.v79-store-mode {
+    width: min(100%,1040px) !important;
+    max-width: min(1040px,calc(100vw - 72px)) !important;
+  }
+  html body #tfManagerV117 .tf119-sheet {
+    width: min(100%,860px) !important;
+    max-width: min(860px,calc(100vw - 72px)) !important;
+  }
+}
+
+/* Ventanas pequeñas de PC: el contenido debe caber verticalmente sin truncarse. */
+@media screen and (min-width: 768px) and (max-height: 780px) {
+  html body #tfManagerV117 .tf119-sheet,
+  html body #tfSoundV1304 .tf1304-sheet,
+  html body #tfProfileOverlay .tf-profile-card {
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+  }
+}
