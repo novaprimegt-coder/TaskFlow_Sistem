@@ -496,6 +496,104 @@ function tfDailyRewardRows(rows){
  }
  return list;
 }
+function tf171RewardIllustration(item){
+  const raw=String(item==null?'':item);
+  const term=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const choices=[
+    [/yogur|yoghurt|yogurt|kefir/,'yogur'],
+    [/helado|paleta helada|sorbete/,'helado'],
+    [/chocolate|cacao/,'chocolate'],
+    [/galleta|cookie/,'galleta'],
+    [/manzana|pera|fruta/,'fruta'],
+    [/platano|banana|banano/,'banana'],
+    [/jugo|zumo|refresco natural|licuado|batido|smoothie/,'jugo'],
+    [/agua|botella/,'agua'],
+    [/cafe|capuchino|latte/,'cafe'],
+    [/\bte\b|\binfusion\b/,'te'],
+    [/leche/,'leche'],
+    [/pan|croissant|bollito|tostada/,'pan'],
+    [/cereal|granola|avena|barra energetica/,'cereal'],
+    [/nuez|almendra|mani|cacahuate|semilla/,'nueces'],
+    [/sandwich|emparedado|torta|bocadillo/,'sandwich'],
+    [/ensalada|vegetal|verdura/,'ensalada'],
+    [/pizza/,'pizza'],
+    [/hamburguesa|burger/,'burger'],
+    [/caramelo|dulce|gomita/,'dulces'],
+    [/gaseosa|soda/,'gaseosa'],
+    [/cuaderno|libreta|agenda|block de notas/,'cuaderno'],
+    [/libro|lectura|novela/,'libro'],
+    [/lapiz|lapicero|boligrafo|pluma|marcador/,'lapiz'],
+    [/camiseta|playera|camisa|ropa|sueter|sudadera/,'camiseta'],
+    [/gorra|sombrero/,'gorra'],
+    [/calcetin|media|medias/,'calcetines'],
+    [/zapato|zapatilla|tenis|sandalia/,'zapato'],
+    [/audifono|auricular|headphone/,'audifonos'],
+    [/cine|pelicula|entrada|boleto/,'cine'],
+    [/videojuego|juego|game/,'juego'],
+    [/planta|flor|maceta/,'planta'],
+    [/jabon|shampoo|champu|crema|gel/,'cuidado'],
+    [/peluche|juguete/,'juguete'],
+    [/pulsera|collar|anillo|accesorio/,'accesorio'],
+    [/lapicera|estuche|mochila|bolso/,'mochila'],
+    [/transporte|bus|pasaje/,'transporte'],
+    [/pastel|tarta|cupcake|postre/,'pastel'],
+    [/huevo/,'huevo'],
+    [/arroz|comida|almuerzo|cena|desayuno/,'comida']
+  ];
+  const type=(choices.find(([matcher])=>matcher.test(term))||[])[1]||'desconocida';
+  const shapes={
+    yogur:`<ellipse cx="76" cy="72" rx="37" ry="14" fill="#8ceaff" opacity=".35"/><path d="M41 72 53 122q23 14 46 0l11-50Z" fill="url(#tf171cup)" stroke="#d0ffff" stroke-width="2.6"/><ellipse cx="76" cy="72" rx="35" ry="13" fill="#dcfffa" stroke="#e8fffe" stroke-width="2"/><path d="M47 72q10-13 26-3 18-17 30 2" fill="none" stroke="#2ecfc9" stroke-width="6" stroke-linecap="round"/><path d="m86 59 29-35q5-8 10-3 4 4-1 10L98 66" fill="url(#tf171glass)" stroke="#d8ffff" stroke-width="2.4"/><ellipse cx="122" cy="23" rx="6" ry="11" transform="rotate(32 122 23)" fill="#7ceef1" stroke="#dcffff" stroke-width="2"/><path d="M51 89q25 12 49-1" fill="none" stroke="#e2ffff" stroke-width="2" opacity=".55"/>`,
+    helado:`<path d="m54 85 23 51 23-51" fill="url(#tf171gold)" stroke="#e0f9ff" stroke-width="3"/><path d="M44 87c-6-9-1-21 10-23-3-12 6-23 20-22 12-15 38-5 37 13 15 7 16 24 4 32Z" fill="url(#tf171cup)" stroke="#e9ffff" stroke-width="3"/><circle cx="88" cy="51" r="5" fill="#ff9baf"/>`,
+    chocolate:`<rect x="39" y="36" width="76" height="94" rx="9" fill="#543546" stroke="#c3f8ff" stroke-width="3" transform="rotate(-12 77 83)"/><g fill="#a45b64" stroke="#ffd39f" stroke-width="2" transform="rotate(-12 77 83)"><rect x="46" y="43" width="28" height="24" rx="3"/><rect x="80" y="43" width="28" height="24" rx="3"/><rect x="46" y="74" width="28" height="24" rx="3"/><rect x="80" y="74" width="28" height="24" rx="3"/><rect x="46" y="104" width="62" height="18" rx="3"/></g>`,
+    galleta:`<circle cx="76" cy="79" r="46" fill="url(#tf171gold)" stroke="#fff7ce" stroke-width="3"/><path d="M70 37c5 16 11 10 18 13 7 10 16 10 25 11" fill="none" stroke="#e9b981" stroke-width="3"/><g fill="#81565b"><circle cx="53" cy="64" r="6"/><circle cx="84" cy="60" r="5"/><circle cx="70" cy="95" r="7"/><circle cx="98" cy="91" r="5"/><circle cx="46" cy="90" r="4"/></g>`,
+    fruta:`<path d="M77 58c-12-20-34-16-41 8-11 38 12 67 31 62 8-2 12-2 20 1 27 9 47-32 32-63-11-23-33-25-42-8Z" fill="url(#tf171fruit)" stroke="#e7ffec" stroke-width="3"/><path d="M76 58q-5-17 5-25" fill="none" stroke="#bdf8e7" stroke-width="4" stroke-linecap="round"/><path d="M82 40q24-20 34-8-12 22-34 8Z" fill="#59eeb4" stroke="#d8ffef" stroke-width="2"/><ellipse cx="55" cy="75" rx="8" ry="15" transform="rotate(19 55 75)" fill="#fff" opacity=".22"/>`,
+    banana:`<path d="M38 45q-4 46 38 68 40 12 62-16-34 9-61-14-20-18-21-40Z" fill="url(#tf171gold)" stroke="#f7ffcc" stroke-width="3"/><path d="M38 45 32 37m106 60 8 4" fill="none" stroke="#e0b97b" stroke-width="8" stroke-linecap="round"/>`,
+    jugo:`<path d="M43 56h71l-8 73H52Z" fill="url(#tf171cup)" stroke="#cafff9" stroke-width="3"/><ellipse cx="78" cy="56" rx="36" ry="8" fill="#7bffe8" stroke="#e5fffb" stroke-width="2"/><path d="m92 62 11-44h22" stroke="#d5fff5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M52 88q23 12 53 0" stroke="#e7ffff" stroke-width="2" fill="none" opacity=".6"/><circle cx="49" cy="44" r="13" fill="#e6b66b" stroke="#fff7d5" stroke-width="2"/>`,
+    agua:`<path d="M61 33h32v13l10 14v63q-25 15-52 0V60l10-14Z" fill="url(#tf171glass)" stroke="#d8ffff" stroke-width="3"/><path d="M58 32V24h38v8" fill="none" stroke="#e5ffff" stroke-width="5"/><path d="M54 81q23-8 46 0v31q-22 13-46 0Z" fill="#39cde8" opacity=".47"/>`,
+    cafe:`<path d="M32 59h78v44q-5 18-38 18-35 0-40-18Z" fill="url(#tf171cup)" stroke="#daffff" stroke-width="3"/><path d="M110 67h14q16 3 9 18-5 10-23 9" fill="none" stroke="#d5ffff" stroke-width="6"/><ellipse cx="72" cy="59" rx="40" ry="10" fill="#805b67" stroke="#edffff" stroke-width="2"/><path d="M50 42q-10-11 0-22m23 23q-8-11 0-22m23 23q-9-11 0-22" fill="none" stroke="#cafff5" stroke-width="3" stroke-linecap="round"/>`,
+    te:`<path d="M32 58h78v48q-7 15-39 15-30 0-39-15Z" fill="url(#tf171glass)" stroke="#dcffff" stroke-width="3"/><path d="M111 65h12q17 6 6 24-7 8-18 5" fill="none" stroke="#d8ffff" stroke-width="5"/><path d="M74 25v40m0 0 17 14" stroke="#a8ffcb" stroke-width="3"/><rect x="80" y="75" width="23" height="19" rx="4" fill="#83dfbc" stroke="#e0ffff" stroke-width="2"/>`,
+    leche:`<path d="M51 44h50l10 18v67H42V62Z" fill="url(#tf171glass)" stroke="#dcffff" stroke-width="3"/><path d="M51 44V22h50v22H51ZM42 62h69" fill="none" stroke="#cffff9" stroke-width="3"/><path d="M55 82q17-10 31 0t15 0" stroke="#80f8e2" stroke-width="4" fill="none"/>`,
+    pan:`<path d="M31 75q-4-33 21-36 16-16 32 1 21-12 39 12 11 30-9 51-42 19-75 0Z" fill="url(#tf171gold)" stroke="#fff2cc" stroke-width="3"/><path d="m50 64 9 20m20-28 10 23m17-21 4 20" stroke="#f8d293" stroke-width="4" stroke-linecap="round"/>`,
+    cereal:`<rect x="38" y="40" width="78" height="90" rx="8" fill="url(#tf171gold)" stroke="#eafff1" stroke-width="3"/><path d="M38 57h78" stroke="#9aebc0" stroke-width="4"/><path d="M50 86q21-19 52 0-15 23-52 0Z" fill="#ad7771" stroke="#ffe3bf" stroke-width="3"/><g fill="#fff2ad"><circle cx="62" cy="83" r="3"/><circle cx="77" cy="91" r="4"/><circle cx="92" cy="83" r="3"/></g>`,
+    nueces:`<ellipse cx="61" cy="86" rx="24" ry="33" fill="url(#tf171gold)" stroke="#f8ffdb" stroke-width="3" transform="rotate(-22 61 86)"/><ellipse cx="92" cy="81" rx="22" ry="31" fill="#d1a476" stroke="#fff3c9" stroke-width="3" transform="rotate(24 92 81)"/><path d="M55 62q-17 19 2 44m35-44q19 20-2 39" stroke="#e9bd8f" stroke-width="3" fill="none"/>`,
+    sandwich:`<path d="m32 77 44-48 49 48-13 42H43Z" fill="url(#tf171gold)" stroke="#eaffee" stroke-width="3"/><path d="M37 84h82M44 96h68" stroke="#68e9a8" stroke-width="9"/><path d="M46 108h67" stroke="#cc8574" stroke-width="7"/>`,
+    ensalada:`<path d="M25 78h105l-13 44q-42 17-80 0Z" fill="url(#tf171cup)" stroke="#d6ffff" stroke-width="3"/><g fill="#49dd9d" stroke="#d7ffe5" stroke-width="2"><ellipse cx="53" cy="67" rx="20" ry="14" transform="rotate(-30 53 67)"/><ellipse cx="85" cy="56" rx="20" ry="14" transform="rotate(15 85 56)"/><ellipse cx="106" cy="74" rx="19" ry="12" transform="rotate(24 106 74)"/></g><circle cx="76" cy="77" r="10" fill="#fa899e"/>`,
+    pizza:`<path d="m24 32 109 16-77 85Z" fill="url(#tf171gold)" stroke="#fff1c7" stroke-width="4"/><path d="M25 32q59-20 110 15" fill="none" stroke="#e7a080" stroke-width="14"/><g fill="#e16b79"><circle cx="67" cy="68" r="8"/><circle cx="102" cy="57" r="8"/><circle cx="58" cy="101" r="7"/></g>`,
+    burger:`<path d="M30 75q7-49 46-49t48 49Z" fill="url(#tf171gold)" stroke="#fff2db" stroke-width="3"/><path d="M30 82h94" stroke="#50e7a3" stroke-width="9"/><path d="M30 96h94" stroke="#a85e66" stroke-width="12"/><path d="M30 109q44 15 94 0v15q-44 21-94 0Z" fill="#e8b67a" stroke="#fff1d0" stroke-width="3"/><g fill="#fff"><circle cx="57" cy="53" r="3"/><circle cx="80" cy="44" r="3"/><circle cx="103" cy="59" r="3"/></g>`,
+    dulces:`<path d="M39 68 22 52l3 26-3 25 18-13h75l19 15-4-27 4-26-19 16Z" fill="url(#tf171fruit)" stroke="#dffff7" stroke-width="3"/><rect x="40" y="53" width="72" height="52" rx="15" fill="url(#tf171glass)" stroke="#e1fffa" stroke-width="3"/><path d="M56 76h40" stroke="#fff" stroke-width="7" opacity=".5"/>`,
+    gaseosa:`<path d="M54 39h50l-5 88H59Z" fill="url(#tf171fruit)" stroke="#dffff7" stroke-width="3"/><path d="M60 36h38l3-10H57Z" fill="#96eff2" stroke="#f4ffff" stroke-width="3"/><path d="M74 60v44m11-44v44" stroke="#e9ffff" stroke-width="5" opacity=".8"/>`,
+    cuaderno:`<path d="M43 25h74v112H43q-6-10 0-20V45q-7-12 0-20Z" fill="url(#tf171glass)" stroke="#d7ffff" stroke-width="3"/><path d="M61 25v112" stroke="#80eaff" stroke-width="4"/><path d="M74 51h32M74 68h32M74 85h32M74 103h22" stroke="#cbffff" stroke-width="3"/><g fill="#e8ffff"><circle cx="59" cy="43" r="4"/><circle cx="59" cy="62" r="4"/><circle cx="59" cy="81" r="4"/></g>`,
+    libro:`<path d="M75 34Q53 20 24 29v94q28-8 51 7 25-15 53-7V29q-30-10-53 5Z" fill="url(#tf171glass)" stroke="#ddffff" stroke-width="3"/><path d="M75 34v96M35 49h29M35 67h29m22-18h29M86 67h29" stroke="#e0ffff" stroke-width="3"/>`,
+    lapiz:`<path d="M49 118 113 31q10-13 22-4t1 20L65 129l-27 10Z" fill="url(#tf171gold)" stroke="#e5ffff" stroke-width="3"/><path d="m101 45 25 20M49 118l16 11" stroke="#fff0d1" stroke-width="3"/>`,
+    camiseta:`<path d="m47 28-26 19 13 29 18-8v60h53V68l18 8 13-29-26-19q-28 28-63 0Z" fill="url(#tf171glass)" stroke="#e9ffff" stroke-width="3"/><path d="M67 32q10 18 22 0" stroke="#bafff0" stroke-width="3" fill="none"/>`,
+    gorra:`<path d="M34 81q-5-50 44-53 52 3 48 53Z" fill="url(#tf171glass)" stroke="#d7ffff" stroke-width="3"/><path d="M74 82q34-8 65 10-18 14-65 7" fill="#2cd9d1" stroke="#e9ffff" stroke-width="3"/>`,
+    calcetines:`<path d="M45 26h34v55q21 15 11 29-12 19-48 17-18-1-14-21l17-23Z" fill="url(#tf171glass)" stroke="#ddffff" stroke-width="3"/><path d="M92 29h33v47q17 13 7 30-11 13-31 14" fill="none" stroke="#83f1e3" stroke-width="9"/>`,
+    zapato:`<path d="M26 88q14-8 22-34l16 4 22 26q21 11 38 10 16 2 17 20v13H20v-22Z" fill="url(#tf171glass)" stroke="#e2ffff" stroke-width="3"/><path d="M22 115h116M58 75h24M67 84h23" stroke="#dffff8" stroke-width="4"/>`,
+    audifonos:`<path d="M36 85V66q0-41 40-41t40 41v19" fill="none" stroke="#a4fbff" stroke-width="12"/><rect x="24" y="76" width="28" height="44" rx="10" fill="url(#tf171cup)" stroke="#e3ffff" stroke-width="3"/><rect x="100" y="76" width="28" height="44" rx="10" fill="url(#tf171cup)" stroke="#e3ffff" stroke-width="3"/>`,
+    cine:`<rect x="24" y="33" width="105" height="91" rx="10" fill="url(#tf171glass)" stroke="#daffff" stroke-width="3"/><path d="M24 53h105M43 33v20m25-20v20m25-20v20" stroke="#b6ffff" stroke-width="3"/><path d="m62 68 36 20-36 20Z" fill="#60efd7"/>`,
+    juego:`<path d="M38 62h77q21 0 22 26l3 18q0 23-25 18l-17-15H55l-17 15q-22 4-24-16l3-23q4-23 21-23Z" fill="url(#tf171glass)" stroke="#e0ffff" stroke-width="3"/><path d="M43 76v25M30 88h26" stroke="#ddffff" stroke-width="7" stroke-linecap="round"/><circle cx="102" cy="80" r="5" fill="#69eec3"/><circle cx="116" cy="98" r="5" fill="#b695ff"/>`,
+    planta:`<path d="M43 84h69l-10 47H53Z" fill="url(#tf171gold)" stroke="#deffef" stroke-width="3"/><path d="M77 91V32" stroke="#7cf4ba" stroke-width="6"/><path d="M78 60Q25 60 29 29q38-3 49 31Zm0 18q55-3 48-39-37-4-48 39Z" fill="#56e5ad" stroke="#e6fff0" stroke-width="3"/>`,
+    cuidado:`<rect x="49" y="42" width="62" height="88" rx="10" fill="url(#tf171glass)" stroke="#e0ffff" stroke-width="3"/><path d="M61 42V27h38v15M80 25V14h36" stroke="#dbffff" stroke-width="5" fill="none"/><path d="M67 84q13-14 25 0-13 25-25 0Z" fill="#66f4cf"/>`,
+    juguete:`<circle cx="75" cy="79" r="36" fill="url(#tf171gold)" stroke="#fff1e1" stroke-width="3"/><circle cx="42" cy="41" r="20" fill="#d7a3a7" stroke="#fff3f0" stroke-width="3"/><circle cx="109" cy="41" r="20" fill="#d7a3a7" stroke="#fff3f0" stroke-width="3"/><circle cx="60" cy="72" r="5" fill="#35415f"/><circle cx="90" cy="72" r="5" fill="#35415f"/><ellipse cx="75" cy="93" rx="12" ry="10" fill="#855d78"/>`,
+    accesorio:`<circle cx="76" cy="79" r="45" fill="none" stroke="#d4ffff" stroke-width="8"/><path d="M51 43 62 20h28l11 23-25 31Z" fill="url(#tf171glass)" stroke="#ddffff" stroke-width="3"/><path d="m62 20 14 54 14-54" fill="none" stroke="#c5ffff" stroke-width="2"/>`,
+    mochila:`<rect x="35" y="48" width="82" height="85" rx="20" fill="url(#tf171glass)" stroke="#ddffff" stroke-width="3"/><path d="M55 48V29q20-16 40 0v19" fill="none" stroke="#c9ffff" stroke-width="5"/><rect x="52" y="85" width="48" height="31" rx="8" fill="#29bdd3" stroke="#e1ffff" stroke-width="2"/>`,
+    transporte:`<rect x="28" y="35" width="103" height="82" rx="13" fill="url(#tf171glass)" stroke="#ddffff" stroke-width="3"/><rect x="39" y="47" width="81" height="38" rx="5" fill="#25738b" stroke="#b4ffff" stroke-width="2"/><circle cx="52" cy="119" r="9" fill="#b3ffff"/><circle cx="105" cy="119" r="9" fill="#b3ffff"/>`,
+    pastel:`<path d="M35 75h82v50H35Z" fill="url(#tf171gold)" stroke="#fff2db" stroke-width="3"/><path d="M32 75q10-18 20 0 10-18 21 0 11-18 22 0 11-18 24 0" fill="#e8fff4" stroke="#f1ffff" stroke-width="3"/><path d="M77 60V31" stroke="#b9f3ff" stroke-width="4"/><path d="M77 18q-12 14 0 18 14-7 0-18Z" fill="#ffe17d"/>`,
+    huevo:`<ellipse cx="76" cy="82" rx="41" ry="53" fill="url(#tf171gold)" stroke="#fff9d9" stroke-width="3"/><ellipse cx="76" cy="86" rx="25" ry="25" fill="#fff6d8"/><circle cx="76" cy="86" r="15" fill="#e9b34f"/>`,
+    comida:`<circle cx="76" cy="80" r="53" fill="url(#tf171glass)" stroke="#e6ffff" stroke-width="4"/><circle cx="76" cy="80" r="39" fill="#193b52" stroke="#8cebc3" stroke-width="2"/><path d="M22 42v88M16 42v26m12-26v26M132 42v88" stroke="#d9ffff" stroke-width="5" fill="none"/>`,
+    desconocida:`<path d="M47 46h58l11 19v62H36V65Z" fill="url(#tf171glass)" stroke="#dbffff" stroke-width="3"/><path d="M36 65h80M47 46v19m58-19v19" stroke="#9cf6e4" stroke-width="3"/><path d="M58 91h38" stroke="#bffffa" stroke-width="6" stroke-linecap="round"/><path d="M58 107h27" stroke="#bffffa" stroke-width="4" stroke-linecap="round"/>`
+  };
+  const glyph=shapes[type];
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 154 154" fill="none" aria-hidden="true" focusable="false">'+
+   '<defs><linearGradient id="tf171cup" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2de7df"/><stop offset=".48" stop-color="#0f91b1"/><stop offset="1" stop-color="#24527d"/></linearGradient>'+
+   '<linearGradient id="tf171glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c2fffa" stop-opacity=".87"/><stop offset=".42" stop-color="#46e8e9" stop-opacity=".53"/><stop offset="1" stop-color="#4972a6" stop-opacity=".82"/></linearGradient>'+
+   '<linearGradient id="tf171gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffebac"/><stop offset="1" stop-color="#d49064"/></linearGradient>'+
+   '<linearGradient id="tf171fruit" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#86ffe6"/><stop offset="1" stop-color="#0fbcba"/></linearGradient>'+
+   '<filter id="tf171glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter></defs>'+
+   '<ellipse cx="79" cy="124" rx="47" ry="10" fill="#04d7dd" opacity=".20" filter="url(#tf171glow)"/>'+
+   '<g stroke-linecap="round" stroke-linejoin="round">'+glyph+'</g></svg>';
+  return {type,svg};
+}
 function v30OpenDailyRewards(){
  v32EnsureMeta();
  const {iso,rows,eligible}=tfDailyRewardRequirements(),rec=meta.dailyReward[iso]||{};
@@ -515,11 +613,22 @@ function v30OpenDailyRewards(){
   const choice=rec.choice||v32DailyRewardChoice();
   const hero=SafeDOM.createElement('div','v30-reward-hero');
   hero.innerHTML='<div class="v30-muted">RECOMPENSA DE DÍA PERFECTO</div><div class="v30-reward-budget">Q'+Number(choice.budget)+'</div><div class="v30-muted">El sistema ya eligió exactamente qué puedes comprar hoy. No eliges otro producto.</div>';
+  const medal=SafeDOM.createElement('span','tf171-award-medal');
+  medal.setAttribute('aria-hidden','true');
+  medal.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 122" fill="none" aria-hidden="true"><defs><linearGradient id="tf171medal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0bfdff"/><stop offset="1" stop-color="#5683fd"/></linearGradient></defs><path d="m39 77-4 39 20-11 20 11-4-39" stroke="url(#tf171medal)" stroke-width="3" stroke-linejoin="round"/><path d="M55 7 67 12 80 9 89 19 99 26 98 39 104 51 98 63 99 76 88 82 80 93 66 91 55 98 44 91 30 93 22 82 10 76 12 63 6 51 12 39 10 26 22 19 30 9 43 12Z" fill="#0ba6cd33" stroke="url(#tf171medal)" stroke-width="3"/><path d="M55 28 62 43 80 46 67 59 70 77 55 68 39 77 43 59 30 46 48 43Z" fill="#9fffff" stroke="#c4ffff" stroke-width="1.5"/></svg>';
+  hero.appendChild(medal);
   modal.appendChild(hero);
   const card=SafeDOM.createElement('div','v32-exact-reward');
   card.append(SafeDOM.createElement('div','v30-muted','COMPRA ASIGNADA POR EL SISTEMA'),
    SafeDOM.createElement('div','item',choice.item),SafeDOM.createElement('p','',choice.note),
    SafeDOM.createElement('span','price','Presupuesto máximo Q'+choice.budget));
+  const artwork=tf171RewardIllustration(choice.item);
+  const picture=SafeDOM.createElement('span','tf171-reward-illustration');
+  picture.setAttribute('role','img');
+  picture.setAttribute('aria-label',String(choice.item||'Recompensa asignada'));
+  picture.dataset.rewardType=artwork.type;
+  picture.innerHTML=artwork.svg;
+  card.appendChild(picture);
   modal.appendChild(card);
   if(rows.length)modal.appendChild(tfDailyRewardRows(rows));
   if(rec.claimed){
@@ -538,13 +647,13 @@ function v30OpenDailyRewards(){
    modal.appendChild(claim);
   }
  }
- frame.classList.add('open');
+ frame.classList.add('open','tf171-reward-view');
 }
 function tfInstallDailyReward(source){
  const start=source.indexOf('function v30OpenDailyRewards(){');
  const end=source.indexOf('function v32CycleRequirementsForDate(iso){',start);
  if(start<0||end<=start)throw new Error('No se encontró la pantalla de recompensa diaria.');
- const functions=[tfDailyRewardRequirements,tfDailyRewardRows,v30OpenDailyRewards].map(fn=>fn.toString()).join('\n');
+ const functions=[tfDailyRewardRequirements,tfDailyRewardRows,tf171RewardIllustration,v30OpenDailyRewards].map(fn=>fn.toString()).join('\n');
  let html=source.slice(0,start)+functions+'\n            '+source.slice(end);
  html=html.replace('function v32DailyRewardChoice(){const req=v32CurrentRequirements(),','function v32DailyRewardChoice(){const req={iso:v30IsoToday()},');
  return html.replace("if(!hub)return;SafeDOM.clear(hub);const req=v32CurrentRequirements(),rec=meta.dailyReward?.[req.iso]||{};",

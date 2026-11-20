@@ -747,3 +747,628 @@
 #windowContent .tf166-routine-icon svg { width:21px; height:21px; }
 #windowContent .tf166-routines b { font-variant-numeric:tabular-nums; white-space:nowrap; }
 #windowContent .tf166-routines .ok { color:#68efc4; }
+
+/*
+ * TaskFlow V170 — Recompensa diaria, presentación visual únicamente.
+ * Base prevista: TaskFlow V169 (commit e872e4dc56178f666b65b2d242da8d89d70402e3).
+ * Alcance: ventana de recompensa diaria desbloqueada. No modifica la lógica
+ * de elegibilidad, importes, registros, premios ni el comportamiento del botón.
+ * Los selectores :has() se utilizan ya en las hojas existentes de TaskFlow.
+ */
+
+/* Superficie del diálogo: el contenido usa su altura real, sin espacio vacío. */
+#windowContainer.window-container.open:has(> #windowContent > .v30-reward-hero):not(.store-modal) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  box-sizing: border-box !important;
+  background: radial-gradient(ellipse at 48% 8%, rgba(25, 57, 99, .40), transparent 58%), rgba(2, 7, 19, .93) !important;
+}
+
+#windowContainer.open:not(.store-modal) > #windowContent.window-content:has(> .v30-reward-hero) {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 19px !important;
+  width: min(100%, 548px) !important;
+  max-width: 548px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 34px) !important;
+  margin: auto !important;
+  padding: clamp(18px, 4vw, 28px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(100, 135, 199, .34) !important;
+  border-radius: 27px !important;
+  color: #f5faff !important;
+  background:
+    radial-gradient(ellipse at 98% 0%, rgba(61, 72, 164, .20), transparent 49%),
+    radial-gradient(ellipse at 0% 65%, rgba(10, 154, 163, .08), transparent 55%),
+    linear-gradient(157deg, #151b39 0%, #10182e 55%, #0d1429 100%) !important;
+  box-shadow: 0 32px 95px rgba(0, 0, 0, .55), inset 0 1px rgba(255, 255, 255, .08) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(113, 184, 211, .55) transparent;
+}
+
+/* Cabecera compacta, tipografía clara y cierre con área táctil suficiente. */
+#windowContent:has(> .v30-reward-hero) > .window-header-main {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  margin: 0 0 2px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+#windowContent:has(> .v30-reward-hero) > .window-header-main h2 {
+  flex: 1 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #e9faff !important;
+  font-size: clamp(22px, 5.6vw, 30px) !important;
+  font-weight: 850 !important;
+  line-height: 1.16 !important;
+  letter-spacing: -.035em !important;
+  text-shadow: none !important;
+}
+#windowContent:has(> .v30-reward-hero) > .window-header-main .window-close {
+  position: static !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(146, 167, 215, .30) !important;
+  border-radius: 15px !important;
+  color: #ecf5ff !important;
+  background: rgba(147, 166, 220, .08) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.04) !important;
+}
+
+/* Presupuesto asignado: jerarquía fuerte y texto respirable. */
+#windowContent:has(> .v30-reward-hero) > .v30-reward-hero {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: clamp(21px, 5vw, 29px) !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(47, 207, 212, .29) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(27, 207, 208, .12), transparent 68%),
+    linear-gradient(130deg, rgba(18, 47, 66, .94), rgba(10, 16, 33, .97)) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.07), 0 12px 26px rgba(0, 0, 0, .13) !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-reward-hero .v30-muted {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #b2c4d1 !important;
+  font-size: clamp(12px, 3vw, 14px) !important;
+  line-height: 1.62 !important;
+  letter-spacing: .01em !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-reward-hero .v30-muted:first-child {
+  color: #83d5db !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+  letter-spacing: .10em !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-reward-hero .v30-reward-budget {
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  color: #20e2d4 !important;
+  font-size: clamp(52px, 11vw, 76px) !important;
+  font-weight: 900 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -.06em !important;
+  font-variant-numeric: tabular-nums !important;
+  text-shadow: 0 0 35px rgba(25, 223, 210, .12) !important;
+}
+
+/* Producto asignado: separación entre etiqueta, artículo, explicación y tope. */
+#windowContent:has(> .v30-reward-hero) > .v32-exact-reward {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 14px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: clamp(21px, 5vw, 28px) !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(82, 214, 160, .30) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(ellipse at 96% 0%, rgba(45, 134, 112, .10), transparent 65%),
+    linear-gradient(150deg, rgba(20, 43, 59, .98), rgba(18, 32, 52, .98)) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.06), 0 12px 26px rgba(0,0,0,.11) !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v32-exact-reward .v30-muted {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #8fbcbd !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+  letter-spacing: .09em !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v32-exact-reward .item {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #69f1b2 !important;
+  font-size: clamp(21px, 5.4vw, 28px) !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -.035em !important;
+  overflow-wrap: anywhere !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v32-exact-reward p {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #bbccd5 !important;
+  font-size: clamp(13px, 3vw, 15px) !important;
+  line-height: 1.55 !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v32-exact-reward .price {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  min-height: 34px !important;
+  margin: 1px 0 0 !important;
+  padding: 8px 13px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(71, 227, 158, .20) !important;
+  border-radius: 999px !important;
+  color: #76efb5 !important;
+  background: rgba(12, 124, 91, .19) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+}
+
+/* Hábitos/tareas: barra aislada, legible y con indicador de estado. */
+#windowContent:has(> .v30-reward-hero) > .tf166-routines {
+  display: grid !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 46px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 15px !important;
+  min-width: 0 !important;
+  min-height: 79px !important;
+  margin: 0 !important;
+  padding: 15px 17px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(110, 134, 187, .19) !important;
+  border-radius: 19px !important;
+  background: linear-gradient(135deg, rgba(34, 42, 71, .95), rgba(25, 31, 55, .95)) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.04) !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(148, 170, 202, .16);
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row:has(b.ok)::after {
+  background: linear-gradient(90deg, #12d8d3, #69ebb1);
+  opacity: .72;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .tf166-routine-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 46px !important;
+  height: 46px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(48, 218, 218, .31) !important;
+  border-radius: 15px !important;
+  color: #63ebe4 !important;
+  background: rgba(11, 103, 122, .30) !important;
+  box-shadow: 0 0 15px rgba(8, 208, 201, .08) !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .tf166-routine-icon svg {
+  width: 23px !important;
+  height: 23px !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row > span:not(.tf166-routine-icon) {
+  min-width: 0 !important;
+  margin: 0 !important;
+  color: #f2f7ff !important;
+  font-size: clamp(14px, 3.6vw, 16px) !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  overflow-wrap: anywhere !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row b {
+  min-width: 59px !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(105, 231, 177, .20) !important;
+  border-radius: 999px !important;
+  color: #91f0ba !important;
+  background: rgba(9, 135, 97, .13) !important;
+  text-align: center !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+}
+#windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row b.bad {
+  border-color: rgba(246, 177, 102, .23) !important;
+  color: #f4be9f !important;
+  background: rgba(147, 78, 44, .16) !important;
+}
+
+/* Acción principal: zona exclusiva y 20 px más de separación respecto a la lista. */
+#windowContent:has(> .v30-reward-hero) > .v30-action.primary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 66px !important;
+  height: auto !important;
+  margin: 13px 0 4px !important;
+  padding: 16px 20px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(114, 255, 230, .57) !important;
+  border-radius: 18px !important;
+  color: #052731 !important;
+  background: linear-gradient(106deg, #31dfd9, #17c9d7 57%, #27acd5) !important;
+  box-shadow: 0 12px 28px rgba(7, 182, 194, .20), inset 0 1px rgba(255,255,255,.38) !important;
+  font-size: clamp(14px, 3.5vw, 16px) !important;
+  font-weight: 850 !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
+  text-wrap: balance;
+  white-space: normal !important;
+  cursor: pointer !important;
+  touch-action: manipulation;
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-action.primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 14px 34px rgba(7, 182, 194, .30) !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-action.primary:active {
+  transform: scale(.985);
+}
+#windowContent:has(> .v30-reward-hero) > .v30-action.primary:focus-visible,
+#windowContent:has(> .v30-reward-hero) > .window-header-main .window-close:focus-visible {
+  outline: 3px solid #fff !important;
+  outline-offset: 3px !important;
+}
+#windowContent:has(> .v30-reward-hero) > .v30-window-intro {
+  width: 100% !important;
+  margin: 10px 0 3px !important;
+  padding: 15px 17px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(96, 223, 168, .28) !important;
+  border-radius: 16px !important;
+  background: rgba(21, 90, 74, .16) !important;
+  color: #d9f9e9 !important;
+  line-height: 1.55 !important;
+}
+
+@media (max-width: 600px) {
+  #windowContainer.window-container.open:has(> #windowContent > .v30-reward-hero):not(.store-modal) {
+    align-items: flex-start !important;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)) !important;
+  }
+  #windowContainer.open:not(.store-modal) > #windowContent.window-content:has(> .v30-reward-hero) {
+    gap: 16px !important;
+    padding: 17px !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 23px !important;
+  }
+  #windowContent:has(> .v30-reward-hero) > .v30-reward-hero,
+  #windowContent:has(> .v30-reward-hero) > .v32-exact-reward { padding: 20px !important; }
+  #windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    gap: 11px !important;
+    min-height: 72px !important;
+    padding: 12px !important;
+  }
+  #windowContent:has(> .v30-reward-hero) > .tf166-routines .tf166-routine-icon {
+    width: 42px !important; height: 42px !important; border-radius: 13px !important;
+  }
+  #windowContent:has(> .v30-reward-hero) > .v30-action.primary {
+    min-height: 62px !important;
+    margin-top: 12px !important;
+  }
+}
+@media (max-width: 360px) {
+  #windowContainer.open:not(.store-modal) > #windowContent.window-content:has(> .v30-reward-hero) {
+    gap: 14px !important;
+    padding: 13px !important;
+  }
+  #windowContent:has(> .v30-reward-hero) > .v30-reward-hero,
+  #windowContent:has(> .v30-reward-hero) > .v32-exact-reward { padding: 16px !important; }
+  #windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row { gap: 8px !important; padding: 10px !important; }
+  #windowContent:has(> .v30-reward-hero) > .tf166-routines .v32-perfect-row b {
+    min-width: 48px !important;
+    padding: 7px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #windowContent:has(> .v30-reward-hero) > .v30-action.primary { transition: none !important; }
+}
+
+/*
+ * TaskFlow V171 — Réplica visual de Recompensa diaria según 105241.png.
+ * Aplicar DESPUÉS de las reglas V170 incluidas en el paquete.
+ * Esta capa modifica exclusivamente el modal de recompensa diaria desbloqueada.
+ * Los elementos de producto/ilustración siguen siendo dinámicos.
+ */
+#windowContainer.open.tf171-reward-view:has(> #windowContent > .v30-reward-hero):not(.store-modal){
+ display:flex!important; align-items:flex-start!important; justify-content:center!important;
+ padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;
+ overflow-x:hidden!important; overflow-y:auto!important; box-sizing:border-box!important;
+ background:radial-gradient(ellipse at 48% 8%,rgba(50,18,97,.20),transparent 53%),#050615ed!important;
+}
+#windowContainer.open.tf171-reward-view:not(.store-modal)>#windowContent.window-content:has(> .v30-reward-hero){
+ position:relative!important; isolation:isolate!important;
+ display:flex!important; flex-direction:column!important; align-items:stretch!important; justify-content:flex-start!important;
+ width:min(100%,540px)!important; max-width:540px!important;
+ min-height:calc(100dvh - max(24px,env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px))!important;
+ max-height:calc(100dvh - max(24px,env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px))!important;
+ height:auto!important; margin:0 auto!important;
+ gap:clamp(16px,3vw,24px)!important;
+ padding:clamp(18px,4.1vw,29px)!important;
+ overflow-x:hidden!important; overflow-y:auto!important;
+ border:1.5px solid #a459e4!important; border-radius:clamp(25px,5vw,36px)!important;
+ box-shadow:0 0 0 1px #a660df42,0 0 20px #a755eb68,0 30px 75px #000b,inset 0 0 24px #8c50ff19!important;
+ color:#f5fbff!important;
+ background:
+  radial-gradient(ellipse at 97% 0%,rgba(81,38,122,.26),transparent 39%),
+  radial-gradient(ellipse at 0% 90%,rgba(11,150,214,.12),transparent 37%),
+  linear-gradient(165deg,#171b3a 0%,#111a39 43%,#101936 78%,#131636 100%)!important;
+ scrollbar-width:thin; scrollbar-color:#7965bb transparent;
+}
+/* Dos superficies de luz forman la onda inferior de la referencia. */
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)::before,
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)::after{
+ content:""!important; display:block!important; position:absolute!important;
+ pointer-events:none!important; z-index:0!important; left:0!important; right:0!important;
+ bottom:0!important; width:100%!important; height:clamp(110px,19%,215px)!important;
+ border-radius:0 0 27px 27px!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)::before{
+ background:linear-gradient(100deg,#0ba3c73b 0%,#07558b0f 40%,#874bcb6b 100%)!important;
+ clip-path:polygon(0% 43%,19% 60%,41% 86%,65% 76%,84% 43%,100% 22%,100% 100%,0% 100%)!important;
+ filter:drop-shadow(0 -10px 24px #4aafff42)!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)::after{
+ height:clamp(115px,17%,185px)!important;
+ background:radial-gradient(ellipse at 100% 40%,#783bbf7a,transparent 61%),linear-gradient(100deg,#03cef016,#07447609 46%,#7f4bcd30)!important;
+ clip-path:polygon(0 76%,20% 81%,44% 95%,63% 77%,83% 44%,100% 16%,100% 100%,0 100%)!important;
+ border-top:1px solid #8d6fff15!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>*{position:relative!important;z-index:1!important;min-width:0!important;}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.window-header-main{
+ width:100%!important; display:flex!important; align-items:center!important;justify-content:space-between!important;
+ padding:0 0 3px!important; margin:0 0 2px!important; min-height:58px!important; gap:14px!important;
+ background:none!important;border:0!important;box-shadow:none!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.window-header-main h2{
+ flex:1!important;min-width:0!important;margin:0!important;
+ font-size:clamp(23px,5.1vw,32px)!important;font-weight:900!important;
+ line-height:1.17!important;letter-spacing:-.045em!important;
+ color:#22e9f2!important;
+ background:linear-gradient(95deg,#02edfa 0%,#3ce4d0 47%,#dcf278 99%)!important;
+ -webkit-background-clip:text!important;background-clip:text!important;
+ -webkit-text-fill-color:transparent!important; text-shadow:none!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.window-header-main .window-close{
+ position:static!important;display:grid!important;place-items:center!important;
+ flex:0 0 clamp(48px,12vw,60px)!important;width:clamp(48px,12vw,60px)!important;
+ height:clamp(48px,12vw,60px)!important;margin:0!important;padding:0!important;
+ color:#fff!important;border:1px solid #8993d54d!important;border-radius:19px!important;
+ background:linear-gradient(145deg,#2a275b,#1c294e)!important;
+ box-shadow:inset 0 1px #fff2,0 6px 22px #0004!important;
+}
+/* Tarjeta turquesa / violeta con insignia de recompensa. */
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero{
+ position:relative!important; isolation:isolate!important; display:flex!important;flex-direction:column!important;
+ align-items:flex-start!important;gap:clamp(10px,2.2vw,15px)!important;
+ width:100%!important;margin:0!important;
+ padding:clamp(20px,4.4vw,29px)!important;
+ border:1.5px solid transparent!important;border-radius:25px!important;
+ background:radial-gradient(ellipse at 0 0,#00dfed3b,transparent 43%) padding-box,
+  linear-gradient(125deg,#075773,#081d3b 69%,#181539) padding-box,
+  linear-gradient(125deg,#10edfd 0%,#087fa8 40%,#9951ed 100%) border-box!important;
+ box-shadow:-6px -3px 30px #06e6f132,0 14px 30px #0003,9px 8px 26px #9955f42e!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero .v30-muted:first-child{
+ margin:0!important;padding:0!important;
+ max-width:calc(100% - 65px)!important;
+ color:#d7e0ed!important;
+ font-size:clamp(11px,2.65vw,14px)!important;
+ letter-spacing:.04em!important;font-weight:750!important;
+ line-height:1.3!important;text-transform:uppercase!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero .v30-reward-budget{
+ font-size:clamp(56px,13vw,86px)!important;line-height:1.04!important;
+ margin:0!important;padding:0!important;letter-spacing:-.065em!important;
+ color:#00edf2!important;font-weight:950!important;
+ text-shadow:0 0 28px #00dbe57a!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero .v30-muted:last-of-type{
+ margin:0!important;padding:0!important;color:#d9e1f2!important;
+ font-size:clamp(13px,3.1vw,16px)!important;line-height:1.48!important;
+ max-width:100%!important;letter-spacing:0!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero .tf171-award-medal{
+ position:absolute!important;z-index:0!important;right:clamp(17px,4vw,30px)!important;top:clamp(31px,7vw,52px)!important;
+ width:clamp(68px,15vw,101px)!important;height:clamp(68px,15vw,101px)!important;
+ display:block!important;filter:drop-shadow(0 0 12px #00fdffbb)!important;
+ opacity:.92!important;pointer-events:none!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero .tf171-award-medal svg{display:block;width:100%;height:100%;}
+/* Producto asignado: verde nítido, icono vectorial representativo a la derecha. */
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward{
+ position:relative!important;isolation:isolate!important;display:flex!important;flex-direction:column!important;
+ align-items:flex-start!important;gap:clamp(9px,2.1vw,14px)!important;
+ width:100%!important;margin:0!important;
+ padding:clamp(21px,4.4vw,29px)!important;
+ border:1.5px solid transparent!important;border-radius:25px!important;
+ background:radial-gradient(circle at 5% 0%,#04bb9342,transparent 35%) padding-box,
+   linear-gradient(136deg,#0b363c 0%,#102a35 42%,#0c1d34 100%) padding-box,
+   linear-gradient(130deg,#18e3a2 0%,#196d6a 55%,#02caa7 100%) border-box!important;
+ box-shadow:-5px -4px 25px #08e8b833,7px 7px 23px #00e5b81f!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .v30-muted{
+ margin:0!important;padding:0!important;color:#d5dde8!important;
+ font-size:clamp(11px,2.65vw,14px)!important;letter-spacing:.045em!important;
+ line-height:1.3!important;font-weight:750!important;text-transform:uppercase!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .item{
+ position:relative!important;z-index:2!important;
+ display:block!important;max-width:100%!important;
+ margin:0!important;padding:0!important;
+ color:#55ffb0!important;font-size:clamp(20px,4.95vw,30px)!important;
+ font-weight:900!important;line-height:1.23!important;letter-spacing:-.035em!important;
+ text-shadow:0 0 16px #2cff9a21!important;overflow-wrap:break-word!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward p{
+ max-width:calc(100% - clamp(76px,19vw,118px))!important;
+ margin:0!important;padding:0!important;color:#d0dbe4!important;
+ font-size:clamp(12px,2.95vw,15px)!important;line-height:1.47!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .price{
+ display:inline-flex!important;align-items:center!important;gap:11px!important;
+ max-width:100%!important;min-height:36px!important;width:fit-content!important;
+ margin:1px 0 0!important;padding:8px 14px!important;
+ box-sizing:border-box!important;color:#56ffc0!important;
+ background:linear-gradient(100deg,#045a55aa,#0c836e54)!important;
+ border:1px solid #0ecc9761!important;border-radius:999px!important;
+ font-size:clamp(11px,2.7vw,14px)!important;font-weight:850!important;
+ line-height:1.25!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .price::before{
+ content:"";display:inline-block;flex:none;width:20px;height:20px;
+ background:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2359ffc3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M20 12V4H12L3 13l8 8 9-9Z"/%3E%3Ccircle cx="16" cy="8" r="1"/%3E%3C/svg%3E') center/contain no-repeat;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .tf171-reward-illustration{
+ position:absolute!important;z-index:1!important;display:block!important;
+ width:clamp(78px,22vw,128px)!important;height:clamp(78px,22vw,128px)!important;
+ right:clamp(14px,3.2vw,27px)!important;top:clamp(64px,16vw,103px)!important;
+ pointer-events:none!important;filter:drop-shadow(0 0 12px #3effdc5b)!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .tf171-reward-illustration svg{
+ display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+}
+/* Separación visible entre barra de hábitos, información y la acción. */
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines{
+ display:grid!important;gap:12px!important;margin:0!important;padding:0!important;width:100%!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row{
+ display:grid!important;grid-template-columns:50px minmax(0,1fr) auto!important;align-items:center!important;
+ min-height:74px!important;gap:16px!important;margin:0!important;
+ padding:14px 17px!important;border-radius:20px!important;
+ border:1px solid #8c9cde49!important;background:linear-gradient(135deg,#232b50,#17223d)!important;
+ box-shadow:inset 0 1px #d1eaff16,0 6px 15px #0003!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .tf166-routine-icon{
+ display:grid!important;place-items:center!important;width:50px!important;height:50px!important;
+ border-radius:15px!important;border:1px solid #12e5e488!important;
+ color:#16fbf5!important;background:linear-gradient(145deg,#07627e,#06324e)!important;
+ box-shadow:0 0 13px #04c9ec44,inset 0 0 16px #00d0f41b!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .tf166-routine-icon svg{width:27px!important;height:27px!important;}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row>span:not(.tf166-routine-icon){
+ color:#f4faff!important;font-size:clamp(15px,3.5vw,18px)!important;font-weight:730!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row b{
+ min-width:0!important;padding:0!important;margin:0!important;border:0!important;
+ border-radius:0!important;background:none!important;color:#24f9b6!important;
+ font-size:clamp(17px,3.6vw,21px)!important;font-weight:900!important;line-height:1.2!important;
+ text-shadow:0 0 16px #06eda13a!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row b.bad{color:#ffb29e!important;}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row::after{display:none!important;}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary{
+ display:flex!important;align-items:center!important;justify-content:center!important;gap:14px!important;
+ width:100%!important;max-width:none!important;min-height:66px!important;height:auto!important;
+ margin:4px 0 0!important;padding:16px 17px!important;flex:0 0 auto!important;
+ border:1.5px solid #ccfff7!important;border-radius:999px!important;
+ color:#042b37!important;background:linear-gradient(103deg,#00e4fd 0%,#18e2d5 51%,#48f9a5 100%)!important;
+ box-shadow:0 0 12px #0deef0aa,0 0 29px #18efa25b,inset 0 2px #fff7,0 12px 27px #03e2dd24!important;
+ font-size:clamp(13px,3.0vw,17px)!important;font-weight:900!important;
+ line-height:1.35!important;text-align:center!important;white-space:normal!important;cursor:pointer!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary::before{
+ content:"✓";display:grid;place-items:center;flex:none;width:30px;height:30px;
+ border:3px solid #052d40;border-radius:50%;box-sizing:border-box;
+ color:#052d40;font-size:21px;line-height:1;font-weight:900;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary:hover{
+ filter:brightness(1.05)!important;box-shadow:0 0 38px #1ff9c4a3!important;
+}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary:active{transform:scale(.99)!important;}
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary:focus-visible,
+#windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.window-header-main .window-close:focus-visible{
+ outline:3px solid #fff!important;outline-offset:3px!important;
+}
+@media(max-width:450px){
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero){
+  gap:17px!important;padding:14px!important;border-radius:26px!important;
+ }
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero,
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward{
+  padding:19px!important;border-radius:21px!important;
+ }
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .item{max-width:100%!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward p{max-width:calc(100% - 75px)!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .v32-perfect-row{
+  grid-template-columns:46px minmax(0,1fr) auto!important;padding:12px!important;gap:11px!important;
+ }
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.tf166-routines .tf166-routine-icon{
+  width:46px!important;height:46px!important;
+ }
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary{min-height:65px!important;padding:13px 15px!important;}
+}
+@media(max-width:350px){
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero){gap:14px!important;padding:12px!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-reward-hero,
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward{padding:15px!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .item{max-width:100%!important;font-size:20px!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v32-exact-reward .tf171-reward-illustration{right:9px!important;width:78px!important;height:78px!important;}
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary{gap:9px!important;font-size:12px!important;}
+}
+@media(prefers-reduced-motion:reduce){
+ #windowContainer.open.tf171-reward-view>#windowContent:has(> .v30-reward-hero)>.v30-action.primary{transition:none!important;}
+}
