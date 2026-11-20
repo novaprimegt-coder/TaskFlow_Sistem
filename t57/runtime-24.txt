@@ -14,7 +14,10 @@ const bodyExtras='<script id="tfBootDefaultsT49">'+TF_T49_BOOT_DEFAULTS_JS+'<'+'
  '<link id="tfAgeStyleV172" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-age-v172.css')+'&release=172')+'">'+
  '<script id="tfAgeModuleV172" src="'+htmlAttr(assetUrl('taskflow-age-v172.js')+'&release=172')+'"><'+'/script>'+
  '<link id="tfProfileEditorStyleV173" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-profile-editor-v173.css')+'&release=174')+'">'+
- '<script id="tfProfileEditorV173" src="'+htmlAttr(assetUrl('taskflow-profile-editor-v173.js')+'&release=173')+'"><'+'/script>':name==='taskflow-v1304-sound.js'?'<script id="tfAudioStorageT34">'+TF_AUDIO_STORAGE_T34_JS+'<'+'/script>':name==='taskflow-v1303-routine-guard-restore.js'?'<script id="tfRoutineGuardRestoreT49">'+TF_T49_ROUTINE_GUARD_RESTORE_JS+'<'+'/script>':'<script src="'+htmlAttr(assetUrl(name)+(name==='taskflow-v1305-search-results.js'?'&ui=158':''))+'"><'+'/script>').join('')+
+ '<script id="tfProfileEditorV173" src="'+htmlAttr(assetUrl('taskflow-profile-editor-v173.js')+'&release=173')+'"><'+'/script>'+
+  '<link id="tfInstitutionalStyleV175" rel="stylesheet" href="'+htmlAttr(assetUrl('institutional-ui.css')+'&release=175')+'">'+
+  '<script id="tfInstitutionalCoreV175" src="'+htmlAttr(assetUrl('institutional-core.js')+'&release=175')+'"><'+'/script>'+
+  '<script id="tfInstitutionalUIV175" src="'+htmlAttr(assetUrl('institutional-ui.js')+'&release=175')+'"><'+'/script>':name==='taskflow-v1304-sound.js'?'<script id="tfAudioStorageT34">'+TF_AUDIO_STORAGE_T34_JS+'<'+'/script>':name==='taskflow-v1303-routine-guard-restore.js'?'<script id="tfRoutineGuardRestoreT49">'+TF_T49_ROUTINE_GUARD_RESTORE_JS+'<'+'/script>':'<script src="'+htmlAttr(assetUrl(name)+(name==='taskflow-v1305-search-results.js'?'&ui=158':''))+'"><'+'/script>').join('')+
  '<script id="tfPayPalNoAdsClient" src="'+htmlAttr(PAGES+'payments/paypal/client.js?revision=18-reactivar-v168')+'"><'+'/script>'+
  '<script id="tfPolicyV161">window.TaskFlowPoliciesV161?.install();<'+'/script>'+
  '<script id="tfProtocolLockT12">'+TF_PROTOCOL_T12_JS+'<'+'/script>'+
