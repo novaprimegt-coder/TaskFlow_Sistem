@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 if (window.TaskFlowPoliciesV161) return;
-const VERSION = '2026-11-12.v162';
+const VERSION = '2026-11-19.v163';
 const STORAGE_KEY = 'taskflow_policy_acceptance';
 const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="true" aria-label="Políticas de TaskFlow">
         <header class="policy-page-bar">
@@ -84,6 +84,7 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                             <li>Puntos, EXP, niveles, rangos, rachas, penalizaciones y recompensas.</li>
                             <li>Estado de la misión económica diaria de Q100 y progreso del ciclo de la tienda.</li>
                             <li>Preferencias y otros datos necesarios para conservar el progreso personal.</li>
+                            <li>Si creas una cuenta: edad declarada por ti y autorización voluntaria para segmentación publicitaria. La edad no se verifica mediante documentos.</li>
                         </ul>
                         <p>No deben registrarse contraseñas bancarias, números completos de tarjeta, claves privadas, PIN, credenciales financieras ni documentos de identidad en campos de notas o textos personales.</p>
                     </section>
@@ -251,7 +252,10 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                     </section>
                     <section class="policy-section" id="pol-ads-topics">
                         <h4>20. Publicidad en TaskFlow</h4>
-                        <p>En el plan gratuito, TaskFlow puede mostrar anuncios relacionados con la sección abierta. Por ejemplo, una rutina de ejercicio puede mostrar anuncios de deportes. El motor de anuncios usa únicamente el tema general de la sección en ese momento. TaskFlow no conserva un perfil de intereses ni usa para publicidad el contenido de tus hábitos, tareas, presupuesto o ubicación del reloj.</p>
+                        <p>En el plan gratuito, TaskFlow puede mostrar anuncios relacionados con la sección abierta, como anuncios deportivos en una rutina de ejercicio. Al crear una cuenta se solicita una edad declarada (no verificada documentalmente). Si eres mayor de 18 años y autorizas expresamente la personalización, los anuncios también podrán seleccionarse según esa edad y categorías de interés aprendidas únicamente de clics publicitarios confirmados.</p>
+                        <p>El perfil de intereses se almacena de forma privada en categorías acumuladas, sin guardar un historial adicional de anuncios o sitios visitados. Las categorías sin actividad reciente dejan de utilizarse después de 90 días. En tu perfil puedes cambiar el permiso o eliminar los intereses aprendidos. Los menores no participan en este aprendizaje publicitario.</p>
+                        <p>La ubicación utilizada para el reloj permanece en tu dispositivo y no se utiliza para publicidad. Por separado, si activas la opción de zona publicitaria, TaskFlow podrá utilizar el país, departamento y municipio que declares voluntariamente para seleccionar anuncios. Puedes retirar esta autorización desde Privacidad publicitaria en el menú.</p>
+                        <p>No se utilizan para perfilado publicitario el contenido de tus hábitos, tareas, presupuesto ni la ubicación del reloj.</p>
                         <p>Los anunciantes reciben métricas agregadas de su campaña. Si tienes la membresía Sin anuncios activa, TaskFlow omite la publicidad.</p>
                     </section>
                     <section class="policy-section" id="pol-membership">
