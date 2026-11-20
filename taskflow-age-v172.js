@@ -56,12 +56,13 @@ function show(modeNext){
  previousFocus=document.activeElement;
  if(el.hidden){overflowBefore=document.body.style.overflow||'';el.hidden=false;document.body.style.overflow='hidden'}
  const isRequired=mode!=='register';
- $('tfAgeTitle').textContent=isRequired?'Completa tu edad':'¿Cuántos años tienes?';
- $('tfAgeDescription').textContent=isRequired?'Para continuar usando TaskFlow, indica tu edad. Solo es necesario registrarla una vez por cuenta.':'Selecciona tu edad antes de crear tu cuenta TaskFlow.';
- $('tfAgeConfirm').textContent=isRequired?'Guardar y continuar':'Usar esta edad';
- $('tfAgeAlternate').textContent=isRequired?'Cerrar sesión':'Volver al registro';
+ const editing=mode==='edit';
+ $('tfAgeTitle').textContent=editing?'Editar edad':isRequired?'Completa tu edad':'¿Cuántos años tienes?';
+ $('tfAgeDescription').textContent=editing?'Actualiza tu edad declarada. La nueva edad se guardará en la misma cuenta.':isRequired?'Para continuar usando TaskFlow, indica tu edad. Solo es necesario registrarla una vez por cuenta.':'Selecciona tu edad antes de crear tu cuenta TaskFlow.';
+ $('tfAgeConfirm').textContent=editing?'Guardar nueva edad':isRequired?'Guardar y continuar':'Usar esta edad';
+ $('tfAgeAlternate').textContent=editing?'Cancelar':isRequired?'Cerrar sesión':'Volver al registro';
  $('tfAgeAlternate').hidden=false;
- updateValue(mode==='register'?selectedAge:null);
+ updateValue(mode==='edit'?getVerifiedAge():mode==='register'?selectedAge:null);
  setError('');setBusy(false);focusAge();
 }
 function hide(){
@@ -83,6 +84,7 @@ async function saveRemote(uid,age){
  const confirmed=await cloudRequest(uid,'get');
  if(validAge(confirmed?.age)!==age)throw new Error('AGE_NOT_PERSISTED');
  cacheAge(uid,age);
+ try{document.dispatchEvent(new CustomEvent('taskflow:age-updated',{detail:{uid,age}}))}catch(_){}
  return true;
 }
 
@@ -97,7 +99,7 @@ async function checkAccount(uid,force=false){
   const saved=await cloudRequest(uid,'get');
   if(epoch!==checkSeq||getUser()?.uid!==uid)return;
   const age=validAge(saved?.age);
-  if(age!==null){cacheAge(uid,age);setProfileAge(age);if(mode==='required'||mode==='offline')hide();return}
+  if(age!==null){const previous=readLocal(uid)?.age;cacheAge(uid,age);setProfileAge(age);if(mode==='required'||mode==='offline')hide();if(previous!==age)try{document.dispatchEvent(new CustomEvent('taskflow:age-updated',{detail:{uid,age}}))}catch(_){}return}
   setProfileAge(null);
   if(typeof window.TaskFlowFirebase?.closeProfile==='function')window.TaskFlowFirebase.closeProfile();
   show('required');
@@ -124,7 +126,7 @@ async function confirm(){
   const done=resolvePicker;resolvePicker=null;hide();if(done)done(age);
   return;
  }
- if(mode!=='required')return;
+ if(mode!=='required'&&mode!=='edit')return;
  const uid=getUser()?.uid;if(!uid)return;
  setBusy(true);setError('Guardando tu edad en la cuenta...');
  try{
@@ -136,6 +138,7 @@ async function confirm(){
 }
 function signout(){
  if(mode==='register'){stopRegistration();return}
+ if(mode==='edit'){hide();return}
  if(working)return;
  const button=$('tfProfileSignOut');
  if(button){button.click();return}
@@ -156,6 +159,12 @@ function buildUI(){
  wrap.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(mode==='register')stopRegistration()}});
  }
 
+}
+function getVerifiedAge(){const uid=getUser()?.uid;return uid?readLocal(uid)?.age??null:null}
+function editAge(){
+ const uid=getUser()?.uid;
+ if(!uid||working||mode==='required'||mode==='offline'||mode==='register')return false;
+ buildUI();show('edit');return true;
 }
 function requireAge(openAlways=false){
  if(!openAlways&&validAge(selectedAge)!==null)return Promise.resolve(selectedAge);
@@ -182,6 +191,6 @@ function start(){
  window.addEventListener('online',()=>{if(activeUid)void checkAccount(activeUid,true)});
  setInterval(scan,4000);
 }
-window.TaskFlowAgeV172={requireAge,saveNewAge,getSelectedAge:()=>selectedAge,checkAccount,validAge};
+window.TaskFlowAgeV172={requireAge,saveNewAge,getSelectedAge:()=>selectedAge,checkAccount,validAge,editAge,getVerifiedAge};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

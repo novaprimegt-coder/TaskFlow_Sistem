@@ -1,0 +1,24 @@
+/* TaskFlow V173 — edición del perfil. Estilos estrictamente contenidos. */
+#tfProfileOverlay .tfpe-user-row{position:relative!important;padding-right:95px!important;min-width:0!important}
+#tfProfileOverlay .tfpe-user-row strong{overflow-wrap:anywhere!important;min-width:0!important;max-width:100%!important}
+#tfProfileOverlay .tfpe-edit-button{position:absolute!important;top:50%!important;right:10px!important;transform:translateY(-50%)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;min-height:36px!important;min-width:70px!important;padding:7px 9px!important;border:1px solid rgba(29,222,221,.56)!important;border-radius:11px!important;background:linear-gradient(125deg,rgba(3,109,142,.39),rgba(31,46,109,.53))!important;color:#6af5ef!important;font:800 11px system-ui,sans-serif!important;cursor:pointer!important}
+#tfProfileOverlay .tfpe-edit-button svg{width:16px!important;height:16px!important;flex:none!important}
+#tfProfileOverlay .tfpe-edit-button:focus-visible,#tfProfileOverlay .tfpe-save:focus-visible,#tfProfileOverlay .tfpe-panel input:focus-visible,#tfProfileOverlay #tfpeCancel:focus-visible{outline:2px solid #98fff7!important;outline-offset:2px!important}
+#tfProfileOverlay .tfpe-panel[hidden],#tfProfileOverlay .tfpe-form[hidden]{display:none!important}
+#tfProfileOverlay .tfpe-panel{display:grid!important;gap:13px!important;padding:17px!important;margin:5px 0!important;border:1px solid rgba(29,222,221,.47)!important;border-radius:17px!important;background:radial-gradient(ellipse at 100% 0%,rgba(68,32,157,.22),transparent 60%),linear-gradient(135deg,#101d3b,#0b172d)!important;box-shadow:0 7px 22px #020c1a50!important;color:#edfaff!important}
+#tfProfileOverlay .tfpe-panel-heading{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:9px!important}
+#tfProfileOverlay .tfpe-panel-heading strong{font:900 15px system-ui,sans-serif!important;background:linear-gradient(95deg,#37ecf2,#62efbb,#c79aff);background-clip:text;-webkit-background-clip:text;color:transparent!important}
+#tfProfileOverlay #tfpeCancel{width:34px!important;height:34px!important;flex:none!important;border:1px solid rgba(113,138,199,.4)!important;border-radius:10px!important;background:#15274a!important;color:#fff!important;font-size:22px!important;cursor:pointer!important}
+#tfProfileOverlay .tfpe-form{display:grid!important;gap:9px!important;min-width:0!important}
+#tfProfileOverlay .tfpe-form label{font:800 11px system-ui,sans-serif!important;color:#c5d9f7!important}
+#tfProfileOverlay .tfpe-form input{display:block!important;width:100%!important;min-width:0!important;min-height:46px!important;padding:10px 13px!important;border:1px solid rgba(88,165,213,.52)!important;border-radius:12px!important;background:#07172c!important;color:#edfaff!important;font:600 13px system-ui,sans-serif!important;outline:none!important}
+#tfProfileOverlay .tfpe-form input:focus{border-color:#49f1ea!important;box-shadow:0 0 0 2px #1ef3ef22!important}
+#tfProfileOverlay .tfpe-note{margin:4px 0 1px!important;color:#b0c5dd!important;font:500 11px/1.5 system-ui,sans-serif!important}
+#tfProfileOverlay .tfpe-save{display:flex!important;justify-content:center!important;align-items:center!important;width:100%!important;min-height:46px!important;margin:4px 0 0!important;border:1px solid #85f9f1!important;border-radius:13px!important;background:linear-gradient(105deg,#06cde5,#0de9c3,#53f6aa)!important;color:#052b39!important;font:900 13px system-ui,sans-serif!important;cursor:pointer!important;box-shadow:0 0 17px #0decdd36!important}
+#tfProfileOverlay .tfpe-message:empty{display:none!important}
+#tfProfileOverlay .tfpe-message{margin:0!important;font:600 12px/1.55 system-ui,sans-serif!important;color:#c2dbef!important}
+#tfProfileOverlay .tfpe-message[data-tone=error]{color:#ffc0cc!important}
+#tfProfileOverlay .tfpe-message[data-tone=ok]{color:#6df6bd!important}
+#tfProfileOverlay .tfpe-panel :disabled,#tfProfileOverlay .tfpe-edit-button:disabled{opacity:.48!important;cursor:wait!important}
+@media(max-width:360px){#tfProfileOverlay .tfpe-user-row{padding-right:82px!important}#tfProfileOverlay .tfpe-edit-button{min-width:65px!important;right:6px!important;font-size:10px!important}#tfProfileOverlay .tfpe-panel{padding:13px!important}}
+@media(prefers-reduced-motion:reduce){#tfProfileOverlay .tfpe-panel *{transition:none!important;animation:none!important}}
