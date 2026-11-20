@@ -18,6 +18,7 @@ function sectionTopic() {
  return ['legal','socrates','machiavelli','mentalist'].includes(routine) ? 'education' : '';
 }
 const signedInAccount = () => String(window.TaskFlowFirebase?.getUser?.()?.uid || '');
+const selectedAdArea = () => window.TaskFlowAdsGeoConsent?.area?.() || null;
 // The client receives only campaign references, never commercial weighting or budget data.
 const SELECTION_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/choose/v161';
 const CONFIRM_URL='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-delivery/confirm';
@@ -116,6 +117,7 @@ async function loadRecommendations() {
     signal: abort.signal, headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token},
     body: JSON.stringify({placement, slot, sessionId, audienceVersion: 1,
      ...(topic ? {interests: [topic]} : {}),
+     ...(selectedAdArea() ? {area:selectedAdArea()} : {})
     }),
    });
    if (response.ok) {
@@ -167,7 +169,7 @@ async function deliveryToken() {
  } catch (_) { return null; } finally { clearTimeout(timer); }
 }
 
-const audienceKey = (account, topic) => account ? JSON.stringify([account,topic]) : '';
+const audienceKey = (account, topic) => account ? JSON.stringify([account,topic,selectedAdArea()]) : '';
 const audienceIsCurrent = () => adsPermitted() && navigator.onLine !== false && audienceState === 'available' &&
  audienceKey(signedInAccount(), sectionTopic()) === audienceScope;
 
@@ -186,7 +188,7 @@ function clearSelections() {
 
 function withdrawPreviousArea() {
  const account = signedInAccount();
- if (!account || !config.enabled || areaSyncRequest || navigator.onLine === false) return;
+ if (!account || !config.enabled || areaSyncRequest || navigator.onLine === false || selectedAdArea()) return;
  const key = 'taskflow_ads_area_withdrawn_v162:' + account;
  if (account === withdrawnUid) return;
  try { if (localStorage.getItem(key) === '1') return; } catch (_) {}
@@ -256,9 +258,13 @@ function dateEligible(c){
   (!c.end || /^\d{4}-\d{2}-\d{2}$/.test(c.end) && c.end >= today);
 }
 function targetEligible(target) {
- const cc = countryCode(target.country);
- return (!cc || cc === 'ALL') && !target.region && !target.city && !target.neighborhood &&
-  !target.radius && target.ageMin <= 18 && target.ageMax >= 65;
+ const cc=countryCode(target.country),area=selectedAdArea();
+ if(target.radius||target.neighborhood||target.ageMin>18||target.ageMax<65)return false;
+ if(!cc||cc==='ALL')return !target.region&&!target.city;
+ if(!area||cc!==area.country)return false;
+ if(target.region&&normText(target.region)!==normText(area.region))return false;
+ if(target.city&&normText(target.city)!==normText(area.city))return false;
+ return true;
 }
 
 function adEligible(ad) {
@@ -920,6 +926,10 @@ document.addEventListener('taskflow:firebase-auth-changed', () => {
  void recoverOwnedAds();
 });
 document.addEventListener('taskflow:permissions-ready', applyWhenReady);
+document.addEventListener('taskflow:ads-geo-preference-changed',()=>{
+ updateAudience();
+ void refreshRecommendations();
+});
 document.addEventListener('taskflow:noads-status-updated', e => {
  if (!adsPermitted()) { stopLiveCatalog(); apply(); }
  else { void connectLiveCatalog(); void refresh(); }
