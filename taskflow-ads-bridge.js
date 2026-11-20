@@ -278,8 +278,11 @@ function targetEligible(target) {
 }
 
 function adEligible(ad) {
- return targetEligible(ad.target) && (!ad.interestTopics.length ||
-  ad.interestTopics.includes(selectedTopic));
+ if(!targetEligible(ad.target))return false;
+ if(!ad.interestTopics.length||ad.interestTopics.includes(selectedTopic))return true;
+ // El servidor selecciona las categorías aprendidas; el navegador nunca decide
+ // qué categoría coincide con la persona y no recibe sus puntuaciones privadas.
+ return window.TaskFlowFirebase?.getAdsConsent?.()===true;
 }
 
 // Eventos de anuncios servidos. Los clics e impresiones se cuentan en el servidor.
