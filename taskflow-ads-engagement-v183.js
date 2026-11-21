@@ -130,9 +130,9 @@
   const h=new Date().getHours();
   return h<6?'night':h<12?'morning':h<18?'afternoon':'evening';
  };
- async function pulse(){
+ async function pulse(flushing=false){
   const uid=account()?.uid;
-  if(!consentActivity||!allowed()||uid!==owner||document.hidden||!visibleSince||!lastTick)return;
+  if(!consentActivity||!allowed()||uid!==owner||(!flushing&&document.hidden)||!visibleSince||!lastTick)return;
   const now=Date.now(),seconds=Math.floor((now-lastTick)/1000);
   if(seconds<30)return;
   lastTick=now;
@@ -145,7 +145,7 @@
  }
  function visibility(){
   if(document.hidden){
-   void pulse();visibleSince=0;lastTick=0;
+   void pulse(true);visibleSince=0;lastTick=0;
   }else{
    visibleSince=allowed()&&consentActivity?Date.now():0;
    lastTick=visibleSince;
@@ -165,7 +165,7 @@
   document.addEventListener('click',e=>{
    if(e.target?.closest?.('#tfProfileButton'))setTimeout(()=>{owner='';void load()},160);
   },true);
-  window.addEventListener('pagehide',()=>{void pulse();visibleSince=0;lastTick=0});
+  window.addEventListener('pagehide',()=>{void pulse(true);visibleSince=0;lastTick=0});
   setInterval(()=>{if(!document.hidden)void pulse()},60000);
   // Firebase y el perfil se crean de forma diferida en TaskFlow.
   setInterval(()=>{if(!window.TaskFlowFirebase||!$('tfAdsExtraPanel'))ensure();if(!owner&&allowed())void load()},10000);
