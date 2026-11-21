@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 if (window.TaskFlowPoliciesV161) return;
-const VERSION = '2026-11-19.v163';
+const VERSION = '2026-11-21.v183';
 const STORAGE_KEY = 'taskflow_policy_acceptance';
 const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="true" aria-label="Políticas de TaskFlow">
         <header class="policy-page-bar">
@@ -256,7 +256,9 @@ const policyMarkup = `<section class="policy-page" id="policyPage" aria-hidden="
                         <p>El perfil de intereses se almacena de forma privada en categorías acumuladas, sin guardar un historial adicional de anuncios o sitios visitados. Las categorías sin actividad reciente dejan de utilizarse después de 90 días. En tu perfil puedes cambiar el permiso o eliminar los intereses aprendidos. Los menores no participan en este aprendizaje publicitario.</p>
                         <p>La ubicación del GPS o del reloj no se utiliza para publicidad. No se solicita introducir país, departamento ni ciudad. Con tu consentimiento de personalización y solo cuando la información está disponible, el servidor puede estimar el país y, si la infraestructura lo proporciona, la región o ciudad a partir de la conexión de red; puede ser inexacta. No se conserva un historial de ubicaciones de anuncios. Si no hay información suficiente, solo se muestran anuncios compatibles con una ubicación no determinada. Puedes retirar el consentimiento desde tu perfil.</p>
                         <p>No se utilizan para perfilado publicitario el contenido de tus hábitos, tareas, presupuesto ni la ubicación del reloj.</p>
-                        <p>Los anunciantes reciben métricas agregadas de su campaña. Si tienes la membresía Sin anuncios activa, TaskFlow omite la publicidad.</p>
+                        <p>El usuario adulto que ya haya autorizado la personalización publicitaria puede aceptar otros dos permisos <strong>separados y opcionales</strong> desde su perfil: declarar su país y región o departamento de residencia, sin calle ni coordenadas; y permitir un resumen del tiempo que TaskFlow permanece visible, expresado en segundos acumulados y franjas generales del día. Ninguno está activado de forma predeterminada. La región declarada no se infiere de la IP.</p>
+                        <p>Estos dos permisos pueden rechazarse o retirarse sin impedir el uso de TaskFlow. Al retirarlos, se eliminarán la ubicación voluntaria y los resúmenes de actividad relacionados, mediante el servicio privado. El tiempo visible puede diferir del uso efectivo; no registra títulos de tareas, contenido de hábitos, rutas, GPS ni páginas externas. Los registros diarios se conservarán como máximo 90 días y las claves temporales de idempotencia como máximo 2 días cuando se active la depuración automática del servidor. Si el servicio no puede confirmar el permiso, no recopila esos datos. Los menores de 18 años no pueden activarlos.</p>
+                        <p>Los anunciantes reciben únicamente estadísticas agregadas de sus campañas, nunca perfiles individuales, edades vinculadas a identidades, ubicaciones de residencia ni horas personales de conexión. Si tienes la membresía Sin anuncios activa, TaskFlow omite la publicidad.</p>
                     </section>
                     <section class="policy-section" id="pol-membership">
                         <h4>21. Membresía Sin anuncios</h4>
