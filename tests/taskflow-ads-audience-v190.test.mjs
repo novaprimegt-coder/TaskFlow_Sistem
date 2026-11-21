@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {Script} from "node:vm";
+import {Script,runInNewContext} from "node:vm";
+import {webcrypto} from "node:crypto";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
 const index=read("index.html");
@@ -17,7 +18,7 @@ test("Sintaxis de controles y políticas",()=>{
 });
 test("Preservar versión de pagos y actualizar solamente el recurso de audiencia",()=>{
  assert.match(index,/v=189-ads-vertical-fallback/);
- assert.match(index,/v=190-ads-audience-optin/);
+ assert.match(index,/v=191-ads-audience-reliability/);
  assert.match(index,/runtime-19\.txt/);
 });
 test("Cargar el consentimiento después del puente existente",()=>{
@@ -42,7 +43,37 @@ test("Consentimientos independientes y política explicativa",()=>{
  assert.ok(policies.includes("Analítica de actividad opcional."));
  assert.ok(policies.includes("90 días"));
 });
-test("Compatibilidad de región y WebCrypto limitado",()=>{
+test("Compatibilidad de región y recuperación sin randomUUID en WebViews",()=>{
  assert.ok(audience.includes(".normalize('NFC')"));
- assert.ok(audience.includes("globalThis.crypto?.randomUUID?.()"));
+ assert.ok(audience.includes("function secureSessionId()"));
+ assert.ok(audience.includes("getRandomValues(new Uint8Array(16))"));
+ assert.ok(!audience.includes("Math.random"));
+ assert.ok(audience.includes("lastHiddenAt>=15*60*1000"));
+ assert.ok(audience.includes("result?.recorded===false)void load()"));
+ assert.ok(audience.includes("user()?.uid!==nowUid"));
+});
+function syntheticSession({randomUUID,getRandomValues}={}){
+ const window={};
+ const exported=audience.replace(
+  "window.TaskFlowAdsAudienceV178=Object.freeze({refresh:load});",
+  "window.TaskFlowAdsAudienceV178=Object.freeze({refresh:load,secureSessionId});"
+ );
+ assert.notEqual(exported,audience,"Test hook not found");
+ const crypto={};
+ if(randomUUID)crypto.randomUUID=randomUUID;
+ if(getRandomValues)crypto.getRandomValues=getRandomValues;
+ runInNewContext(exported,{window,crypto,document:{readyState:"loading",addEventListener(){}}});
+ return window.TaskFlowAdsAudienceV178.secureSessionId();
+}
+test("UUID criptográfico compatible con navegadores sin crypto.randomUUID",()=>{
+ const c=webcrypto;
+ const id=syntheticSession({getRandomValues:c.getRandomValues.bind(c)});
+ assert.match(id,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
+});
+test("Nunca envía una sesión generada con aleatoriedad insegura",()=>{
+ assert.equal(syntheticSession({}),"");
+});
+test("Prioriza UUID nativo en navegadores compatibles",()=>{
+ const known="a5b682d1-16bc-4949-98ff-2bc3ad1bb171";
+ assert.equal(syntheticSession({randomUUID:()=>known}),known);
 });
