@@ -1,8 +1,8 @@
 /* TaskFlow: disponibilidad sin conexión. Solo se guardan archivos públicos,
    nunca respuestas privadas de Firebase, contraseñas ni datos de usuarios. */
 'use strict';
-const SHELL_CACHE='taskflow-offline-shell-t143-ad-ampliado-v179';
-const RUNTIME_CACHE='taskflow-offline-runtime-t118-ad-ampliado-v179';
+const SHELL_CACHE='taskflow-offline-shell-t144-rutinas-v180';
+const RUNTIME_CACHE='taskflow-offline-runtime-t119-rutinas-v180';
 const MEDIA_CACHE='taskflow-offline-media-v130104';
 const SDK_CACHE='taskflow-offline-sdk-firebase-12.18.0';
 const PREFIX='taskflow-offline-';

@@ -43,29 +43,29 @@ function installSharedRoutineLayout(){
    scroll:'.v85-sung-list',row:'.v32-mission-item',icon:'.v32-mission-icon',copy:'.v32-mission-info',check:'.v32-check',
    subtitle:'Disciplina · Cuerpo · Mente · Hábitos',
    rule:['Regla Sung Jin-Woo','Completa todas las tareas en el orden propuesto. La constancia es clave para ver resultados reales.'],
-   start:'Comenzar protocolo Sung Jin-Woo', progressLabel:'Disciplina', duration:[90,120],
+   start:'Comenzar protocolo Sung Jin-Woo', progressLabel:'Disciplina', duration:120,
   },
   legal:{
    scroll:'.v83-legal-list',row:'.v83-legal-step',icon:'.v83-legal-step-icon',copy:'.v83-legal-step-copy',check:'.v83-legal-check',
    subtitle:'Norma · Caso · Argumento · Defensa · Escritura',
    rule:['Regla jurídica','Razona con estructura, sustento y claridad. Cada prueba fortalece tu criterio.'],
-   start:'Comenzar protocolo jurídico',progressLabel:'Dominio jurídico',duration:[30,45],
+   start:'Comenzar protocolo jurídico',progressLabel:'Dominio jurídico',duration:45,
   },
   socrates:{
    scroll:'.v69-routine-modal:has(.v69-routine-card.socrates)',row:'.v69-routine-item',icon:'.v69-routine-check',copy:'.v69-routine-copy',
    kicker:'Rutina de pensamiento',subtitle:'Cuestiona · Analiza · Aprende · Mejora',
    rule:['Regla del protocolo','Completa todas las actividades del día, en el orden que prefieras.'],
-   start:'Comenzar protocolo',progressLabel:'Progreso',
+   start:'Comenzar protocolo',progressLabel:'Progreso',duration:30,
   },
   machiavelli:{
    scroll:'.v69-routine-modal:has(.v69-routine-card.machiavelli)',row:'.v69-routine-item',icon:'.v69-routine-check',copy:'.v69-routine-copy',
    subtitle:'Criterio, estrategia y ejecución.',
    rule:['Regla del protocolo','Completa las 5 actividades del día en el orden que prefieras.'],
-   start:'Comenzar protocolo',progressLabel:'Progreso',
+   start:'Comenzar protocolo',progressLabel:'Progreso',duration:25,
   },
   mentalist:{
    scroll:'.v96-mentalist-scroll',row:'.v94-mentalist-step',icon:'.v94-mentalist-step-icon',copy:'.v94-mentalist-step-copy',check:'.v94-mentalist-check',
-   title:'Mentalista',start:'Comenzar protocolo Mentalista',progressLabel:'Precisión actual',duration:[25,35],
+   title:'Mentalista',start:'Comenzar protocolo Mentalista',progressLabel:'Precisión actual',duration:35,
   },
  };
  const glyphs={
@@ -94,7 +94,25 @@ function installSharedRoutineLayout(){
   return card;
  }
 
- const deadline=key=>window.TaskFlowCloudViewV162?.getDeadline(key)||0;
+ const TIMER_STORAGE_PREFIX='taskflow_routine_deadline_v180:';
+ const timerMemory=Object.create(null);
+ const timerOwner=()=>{
+  try{return String(window.TaskFlowFirebase?.getUser?.()?.uid||'guest')}catch(_){return 'guest'}
+ };
+ const timerStorageKey=key=>TIMER_STORAGE_PREFIX+timerOwner()+':'+key;
+ const deadline=key=>{
+  const storageKey=timerStorageKey(key);
+  let value=timerMemory[storageKey]||0;
+  try{value=Math.max(value,Number(localStorage.getItem(storageKey))||0)}catch(_){}
+  try{value=Math.max(value,Number(window.TaskFlowCloudViewV162?.getDeadline?.(key))||0)}catch(_){}
+  return Number.isFinite(value)&&value>0?value:0;
+ };
+ const saveDeadline=(key,value)=>{
+  const storageKey=timerStorageKey(key);
+  timerMemory[storageKey]=value;
+  try{localStorage.setItem(storageKey,String(value))}catch(_){}
+  try{window.TaskFlowCloudViewV162?.setDeadline?.(key,value)}catch(_){}
+ };
  let timerFrame=0;
  let visibleTimer=null;
  function drawTimer(){
@@ -122,34 +140,15 @@ function installSharedRoutineLayout(){
   card.innerHTML='<div class="tf161-timer-heading"><span aria-hidden="true">'+svg('clock')+'</span><div><strong>Cronómetro del protocolo</strong><small role="status"></small></div><time role="timer" aria-live="off" hidden></time></div>';
   const clock=card.querySelector('time');
   const status=card.querySelector('small');
-  const form=element('form','tf161-timer-form');
-  form.hidden=true;
-  form.innerHTML='<label>Minutos de la sesión<input type="number" inputmode="numeric" min="1" max="1440" step="1" required></label><button type="submit">Iniciar</button>';
-  card.append(form);
   visibleTimer={card,key,clock,status};
-  const start=minutes=>{
-   if(!Number.isInteger(minutes)||minutes<1||minutes>1440)return;
-   if(deadline(key)<=Date.now())window.TaskFlowCloudViewV162?.setDeadline(key,Date.now()+minutes*60000);
-   clock.hidden=false;
-   form.hidden=true;
-   drawTimer();
-  };
-  form.addEventListener('submit',event=>{
-   event.preventDefault();
-   start(Number(form.querySelector('input').value));
-   card.focus({preventScroll:true});
-  });
   const open=()=>{
-   if(deadline(key)>Date.now()||profile.duration){
-    start(profile.duration?.at(-1)||1);
-    card.focus({preventScroll:true});
-   }else{
-    card.hidden=false;
-    clock.hidden=true;
-    status.textContent='Elige la duración';
-    form.hidden=false;
-    form.querySelector('input').focus({preventScroll:true});
-   }
+   const minutes=profile.duration;
+   if(!Number.isInteger(minutes)||minutes<1||minutes>1440)return;
+   if(deadline(key)<=Date.now())saveDeadline(key,Date.now()+minutes*60000);
+   card.hidden=false;
+   clock.hidden=false;
+   drawTimer();
+   card.focus({preventScroll:true});
    card.scrollIntoView({behavior:'auto',block:'center'});
   };
   if(deadline(key)>Date.now()){
@@ -186,7 +185,7 @@ function installSharedRoutineLayout(){
   progress.querySelector('.tf15-stats').append(
    stat('flame',String(done),'Completadas','de '+total+(mentalist?' pruebas':' tareas')),
    stat('target',mentalist?(done?'—':'0%'):percent,profile.progressLabel,mentalist?'Mínimo: 90%':'Progreso actual'),
-   profile.duration?stat('chart','~'+profile.duration.join('–')+' min','Tiempo estimado','Completo'):stat('chart','Diaria','Frecuencia','Lunes a lunes'),
+   profile.duration?stat('chart',String(profile.duration)+' min','Tiempo asignado','Por sesión'):stat('chart','Diaria','Frecuencia','Lunes a lunes'),
   );
   return progress;
  }
