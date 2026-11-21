@@ -6,7 +6,7 @@ if(window.TaskFlowNoAds)return;
 const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).href;
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
 let settings=null,settingsRequest=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
-let noAdsExpiryTimer=0,statusRequest=null,accountUid=null,accountEpoch=0,verified=false,lastAdAccess='';
+let noAdsExpiryTimer=0,statusRequest=null,accountUid=null,accountEpoch=0,verified=false,lastAdAccess='',lastStatusError='';
 const currentUid=()=>String(window.TaskFlowFirebase?.getUser?.()?.uid||'');
 const isActive=()=>active&&accountUid===currentUid()&&Number(subscriptionStatus?.paidUntil)>Date.now();
 const canShowAds=()=>verified&&accountUid===currentUid()&&!active;
@@ -169,10 +169,10 @@ async function config(){
  if(!/^\d+\.\d{2}$/.test(plan.total)||Number(plan.total)<6||Number(plan.total)>12||!plan.planId||!plan.recurring||plan.frequency!=='MONTH'||plan.price!=='6.00'||plan.currency!=='USD')throw new Error('INVALID_SUBSCRIPTION_PLAN');
  enabled=true;return settings;
 }
-async function authToken(){
+async function authToken(force=false){
  const api=window.TaskFlowFirebase;
  if(!api||typeof api.getIdToken!=='function')throw new Error('LOGIN_REQUIRED');
- const token=await api.getIdToken(false);
+ const token=await api.getIdToken(!!force);
  if(!token||typeof token!=='string')throw new Error('LOGIN_REQUIRED');
  return token;
 }
@@ -186,10 +186,23 @@ async function request(method,path,payload){
   method,mode:'cors',cache:'no-store',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
   body:method==='POST'?JSON.stringify(payload||{}):undefined
  };
- const r=method==='GET'?await fetchWithin(url,options,16000):await fetch(url,options);
+ const send=()=>method==='GET'?fetchWithin(url,options,11000):fetch(url,options);
+ let r=await send();
+ // No se repite ningún POST: solo se permite renovar autenticación para leer.
+ if(method==='GET'&&r.status===401){
+  const fresh=await authToken(true);
+  if(fresh&&uid===currentUid()&&epoch===accountEpoch){
+   options.headers.Authorization='Bearer '+fresh;
+   r=await send();
+  }
+ }
  const data=await r.json().catch(()=>({}));
  if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
- if(!r.ok)throw Object.assign(new Error(data.error||'PAYMENT_UNAVAILABLE'),{status:r.status});
+ if(!r.ok){
+  const failure=[429,502,503,504,546].includes(r.status)?'MEMBERSHIP_SERVER_UNAVAILABLE':
+   String(data.error||'PAYMENT_UNAVAILABLE');
+  throw Object.assign(new Error(failure),{status:r.status});
+ }
  return data;
 }
 async function verifyStatus(){
@@ -212,12 +225,14 @@ async function verifyStatus(){
    if(data.active&&!confirmedActive)return false;
    const changed=!subscriptionStatus || ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
    subscriptionStatus=data;
+   lastStatusError='';
    if(changed&&enabled&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
    verified=true;
    setActive(confirmedActive);
    return isActive();
   }catch(error){
    if(epoch!==accountEpoch||uid!==currentUid())return false;
+   lastStatusError=String(error?.message||'PAYMENT_UNAVAILABLE');
    if(error?.status===401||error?.status===403){verified=false;subscriptionStatus=null;setActive(false)}
    return isActive();
   }finally{
@@ -375,8 +390,11 @@ async function showCheckout(){
   return true;
  }catch(_){
   buy.hidden=false;
-  buy.textContent='Reintentar verificación de PayPal';
-  statusText('No se pudo verificar el estado de PayPal. Reintenta antes de iniciar un cobro.','error');
+  const unavailable=['DATABASE_UNAVAILABLE','MEMBERSHIP_SERVER_UNAVAILABLE','PAYMENT_UNAVAILABLE'].includes(lastStatusError);
+  buy.textContent=unavailable?'Reintentar verificación de membresía':'Reintentar verificación de PayPal';
+  statusText(unavailable
+   ?'El servidor de membresías no responde. No es seguro iniciar un cobro hasta verificar tu cuenta. No se ha realizado ningún cargo.'
+   :'No se pudo verificar tu cuenta. Inicia sesión nuevamente e inténtalo sin crear otro pago.','error');
   return false;
  }
 }
@@ -473,7 +491,7 @@ async function beginPurchase(){
    'El plan de US$6.00/mes todavía no está habilitado para compras.':
    code==='PAYPAL_SDK_UNAVAILABLE'||code==='PAYPAL_NOT_ELIGIBLE'?
    'PayPal no pudo mostrar el formulario de pago en este navegador. Comprueba que PayPal esté disponible e inténtalo de nuevo. No se ha realizado ningún cargo.':
-   'No se pudo verificar la cuenta o iniciar el pago con el servidor. No se ha realizado ningún cargo.','error');
+   (['DATABASE_UNAVAILABLE','MEMBERSHIP_SERVER_UNAVAILABLE','PAYMENT_UNAVAILABLE'].includes(code)?'El servidor de membresías no responde. El cobro queda bloqueado hasta verificar tu cuenta para evitar cargos duplicados.':'No se pudo verificar la cuenta o iniciar el pago con el servidor. No se ha realizado ningún cargo.'),'error');
   return false;
  }finally{buy.disabled=false}
 }
@@ -495,7 +513,8 @@ async function initialize(){
  document.addEventListener('taskflow:firebase-auth-changed',accountChanged);
  document.addEventListener('taskflow:account-state-updated',accountChanged);
  window.addEventListener('storage',e=>{if(e.key==='taskflow_billing_revision_v165')void verifyStatus()});
- setInterval(()=>{if(!document.hidden)void verifyStatus()},20000);
+ // Evitar verificaciones frecuentes mientras PostgreSQL no responde; no bloquear el reintento manual.
+ setInterval(()=>{if(!document.hidden)void verifyStatus()},90000);
  void verifyStatus();
  try{await config()}catch(_){return false}
  return enabled;

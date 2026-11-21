@@ -55,7 +55,23 @@ function fail(message, status = 503) {
   e.status = status;
   return e;
 }
+// Reutilizar el cliente PostgREST sin asociarlo a usuarios ni a sesiones.
+let paypalDbClient = null;
+async function boundedDatabaseFetch(input, init = {}) {
+  const controller = new AbortController();
+  const upstream = init.signal;
+  const onAbort = () => controller.abort();
+  if (upstream?.aborted) controller.abort();
+  else upstream?.addEventListener("abort", onAbort, { once: true });
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try { return await fetch(input, { ...init, signal: controller.signal }); }
+  finally {
+    clearTimeout(timeout);
+    upstream?.removeEventListener("abort", onAbort);
+  }
+}
 function db() {
+  if (paypalDbClient) return paypalDbClient;
   let key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   try {
     const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
@@ -63,7 +79,11 @@ function db() {
   } catch (_) { /* legacy key fallback */ }
   const url = Deno.env.get("SUPABASE_URL") || "";
   if (!key || !url) throw fail("DATABASE_NOT_READY");
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  paypalDbClient = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: boundedDatabaseFetch }
+  });
+  return paypalDbClient;
 }
 async function requireFirebaseUser(req) {
   const match = (req.headers.get("Authorization") || "").match(/^Bearer ([^\s]+)$/i);
@@ -638,6 +658,7 @@ Deno.serve(async (req) => {
     return respond(req, e?.status || 503, {
       error: e?.status === 401 ? "AUTH_REQUIRED" :
         ["TRIAL_ALREADY_USED","ALREADY_SUBSCRIBED","OFFER_CHANGED","CHECKOUT_VERIFYING"].includes(e?.message) ? e.message :
+        e?.message === "DATABASE_UNAVAILABLE" || e?.message === "DATABASE_NOT_READY" ? "DATABASE_UNAVAILABLE" :
         e?.message?.startsWith("INVALID") ? e.message : "PAYMENT_UNAVAILABLE"
     });
   }
