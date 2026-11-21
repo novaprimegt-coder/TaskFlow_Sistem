@@ -893,7 +893,7 @@ function prepareLoader(source){
     }
   `;
   const views=[TF_T37_NATIVE_VIEW_JS,routineLineIcons,iconInstallation,TF_T39_NOTICE_NATIVE_JS].join('\n');
-  window.__tfT57BootPatches={protectStoreMarkup,releaseLegacyCountdownMarkup,tf20StabilizeCore,tfRegionalizeHabitCycleSource,views,baseTag,headExtras:headExtras+routineStyle+'<link id="tfDesktopResponsiveV176" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-responsive-pc-v176.css')+'&release=178')+'">',permissionPrefix:TF_T52_PERMISSION_PREFIX,bodyExtras};
+  window.__tfT57BootPatches={protectStoreMarkup,releaseLegacyCountdownMarkup,tf20StabilizeCore,tfRegionalizeHabitCycleSource,views,baseTag,headExtras:headExtras+routineStyle+'<link id="tfDesktopResponsiveV176" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-responsive-pc-v176.css')+'&release=179')+'">',permissionPrefix:TF_T52_PERMISSION_PREFIX,bodyExtras};
   const dom=new DOMParser().parseFromString(source,'text/html');
   const parts=[...dom.querySelectorAll('script:not([src])')];
   const entry=parts.find(el=>el.textContent.includes('const expectedHash=')&&el.textContent.includes('function boot()'));
