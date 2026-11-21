@@ -430,7 +430,7 @@ html body #sideMenu.side-menu :is(.menu-item,.v27-menu-hub,.quick-action-btn){
 }
 @media screen and (max-width:480px),(max-height:620px){
   :is(#tfEntryAdV56,#tfInteractionAdV57).open .tf159-ad-shell{
-    height:calc(100dvh - 12px)!important;
+    height:min(calc(100dvh - 12px),700px)!important;
     padding:8px!important;
     border-radius:12px!important;
     gap:7px!important;
