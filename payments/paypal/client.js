@@ -186,7 +186,25 @@ async function request(method,path,payload){
   method,mode:'cors',cache:'no-store',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
   body:method==='POST'?JSON.stringify(payload||{}):undefined
  };
- const r=method==='GET'?await fetchWithin(url,options,16000):await fetch(url,options);
+ // Solo /status (lectura sin cobro) puede reintentarse una vez por fallos transitorios.
+ // Nunca reintentar automáticamente /checkout, /confirm ni ninguna petición POST.
+ let r;
+ for(let attempt=0;attempt<2;attempt++){
+  if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
+  try{
+   r=method==='GET'?await fetchWithin(url,options,16000):await fetch(url,options);
+  }catch(error){
+   if(method!=='GET'||path!=='/status'||attempt!==0)throw error;
+   await new Promise(resolve=>setTimeout(resolve,1200));
+   continue;
+  }
+  if(method==='GET'&&path==='/status'&&attempt===0&&
+     ([408,429,500,502,503,504,520,521,522,523,524].includes(r.status))){
+   await new Promise(resolve=>setTimeout(resolve,1200));
+   continue;
+  }
+  break;
+ }
  const data=await r.json().catch(()=>({}));
  if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
  if(!r.ok)throw Object.assign(new Error(data.error||'PAYMENT_UNAVAILABLE'),{status:r.status});
