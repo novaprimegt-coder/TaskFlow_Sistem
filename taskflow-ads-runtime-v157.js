@@ -35,7 +35,8 @@ const BANNER_CSS = `
   background: #071728 !important;
   isolation: isolate;
 }
-.tf50-ad-slot:not(.tf50-has-ad,.tf158-has-promo) { display: none !important; }
+.tf50-ad-slot:not(.tf50-has-ad,.tf158-has-promo,.tf50-reserved) { display: none !important; }
+.tf50-ad-slot.tf50-reserved{display:grid!important;place-items:center!important;border:1px solid rgba(77,148,177,.34)!important;color:#c1d7e8!important;background:linear-gradient(125deg,#0d2239,#071728)!important;text-align:center;font:700 clamp(10px,2.8vw,14px)/1.3 system-ui,sans-serif;}
 #sideMenu > .tf50-ad-slot { width: calc(100% - 24px) !important; }
 .tf50-ad-slot::before {
   content: 'Publicidad';
@@ -402,10 +403,20 @@ function promoLink(placement) {
   return link;
 }
 
+function renderReserved(slot) {
+  if (slot.classList.contains('tf50-reserved')) return;
+  delete slot.dataset.tfAdCode;
+  slot.classList.remove('tf50-has-ad','tf158-has-promo');
+  slot.style.removeProperty('--tf-ad-native-width');
+  const message=document.createElement('span');
+  message.textContent='Espacio publicitario';
+  slot.replaceChildren(message);
+  slot.classList.add('tf50-reserved');
+}
 function renderPromo(slot) {
   if (slot.classList.contains('tf158-has-promo')) return;
   delete slot.dataset.tfAdCode;
-  slot.classList.remove('tf50-has-ad');
+  slot.classList.remove('tf50-has-ad','tf50-reserved');
   slot.style.removeProperty('--tf-ad-native-width');
   slot.replaceChildren(promoLink('banner'));
   slot.classList.add('tf158-has-promo');
@@ -424,7 +435,7 @@ function createBanner(id, label) {
 }
 
 function mountBanners() {
-  const blocked = !canShowAds();
+  const blocked = paidNoAds();
   for (const [id, label, selector, appendToPanel] of BANNER_PLACEMENTS) {
     let slot = document.getElementById(id);
     const anchor = blocked || !promosEnabled ? null : document.querySelector(selector);
@@ -435,6 +446,7 @@ function mountBanners() {
     if (!slot) slot = createBanner(id, label);
     if (appendToPanel && anchor !== slot) anchor.parentElement.append(slot);
     if (!appendToPanel && anchor.nextElementSibling !== slot) anchor.after(slot);
+    if (!canShowAds()) { renderReserved(slot); continue; }
     // V186: mantener el anuncio de reserva ORIGINAL en este mismo espacio
     // hasta que el servidor entregue un creativo aprobado. No crear nuevos slots.
     if (!slot.classList.contains('tf50-has-ad') &&
@@ -447,10 +459,11 @@ function renderBanner(id, content, showPromo = true) {
   if (!slot) return false;
   if (!content) {
     delete slot.dataset.tfAdCode;
-    if (!canShowAds() || !promosEnabled) slot.remove();
+    if (!promosEnabled || paidNoAds()) slot.remove();
+    else if (!canShowAds()) renderReserved(slot);
     else if (showPromo) renderPromo(slot);
     else if (slot.childElementCount) {
-      slot.classList.remove('tf50-has-ad', 'tf158-has-promo');
+      slot.classList.remove('tf50-has-ad', 'tf158-has-promo', 'tf50-reserved');
       slot.style.removeProperty('--tf-ad-native-width');
       slot.replaceChildren();
     }
@@ -466,7 +479,7 @@ function renderBanner(id, content, showPromo = true) {
   if (/^[0-9]{6}$/.test(code)) slot.dataset.tfAdCode=code;
   else delete slot.dataset.tfAdCode;
   slot.replaceChildren(content);
-  slot.classList.remove('tf158-has-promo');
+  slot.classList.remove('tf158-has-promo','tf50-reserved');
   slot.classList.add('tf50-has-ad');
   return true;
 }

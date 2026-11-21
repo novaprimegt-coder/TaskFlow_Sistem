@@ -63,7 +63,8 @@ async function boundedDatabaseFetch(input, init = {}) {
   const onAbort = () => controller.abort();
   if (upstream?.aborted) controller.abort();
   else upstream?.addEventListener("abort", onAbort, { once: true });
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  // Las lecturas de PostgREST pueden superar 8 s; conservar el bloqueo seguro de cobros.
+  const timeout = setTimeout(() => controller.abort(), 25000);
   try { return await fetch(input, { ...init, signal: controller.signal }); }
   finally {
     clearTimeout(timeout);
