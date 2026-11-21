@@ -893,7 +893,7 @@ function prepareLoader(source){
     }
   `;
   const views=[TF_T37_NATIVE_VIEW_JS,routineLineIcons,iconInstallation,TF_T39_NOTICE_NATIVE_JS].join('\n');
-  window.__tfT57BootPatches={protectStoreMarkup,releaseLegacyCountdownMarkup,tf20StabilizeCore,tfRegionalizeHabitCycleSource,views,baseTag,headExtras:headExtras+routineStyle+'<link id="tfDesktopResponsiveV176" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-responsive-pc-v176.css')+'&release=176')+'">',permissionPrefix:TF_T52_PERMISSION_PREFIX,bodyExtras};
+  window.__tfT57BootPatches={protectStoreMarkup,releaseLegacyCountdownMarkup,tf20StabilizeCore,tfRegionalizeHabitCycleSource,views,baseTag,headExtras:headExtras+routineStyle+'<link id="tfDesktopResponsiveV176" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-responsive-pc-v176.css')+'&release=178')+'">',permissionPrefix:TF_T52_PERMISSION_PREFIX,bodyExtras};
   const dom=new DOMParser().parseFromString(source,'text/html');
   const parts=[...dom.querySelectorAll('script:not([src])')];
   const entry=parts.find(el=>el.textContent.includes('const expectedHash=')&&el.textContent.includes('function boot()'));
@@ -979,6 +979,7 @@ var editable=function(el){return !!(el&&el.closest&&el.closest('input,textarea,[
 document.addEventListener('selectstart',function(e){if(!editable(e.target)){e.preventDefault();e.stopImmediatePropagation()}},true);
 ['gesturestart','gesturechange','gestureend'].forEach(function(type){document.addEventListener(type,function(e){if(e.cancelable)e.preventDefault()}, {capture:true,passive:false})});
 document.addEventListener('wheel',function(e){if(e.ctrlKey&&e.cancelable)e.preventDefault()},{capture:true,passive:false});
+document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1&&e.cancelable)e.preventDefault()},{capture:true,passive:false});
 document.addEventListener('dblclick',function(e){if(!editable(e.target)&&e.cancelable)e.preventDefault()},true);
 document.addEventListener('keydown',function(e){if(!(e.ctrlKey||e.metaKey))return;var k=String(e.key||'').toLowerCase();if(['c','x','s','p','u','+','=','-','0'].includes(k)){e.preventDefault();e.stopImmediatePropagation()}},true);
 })();
