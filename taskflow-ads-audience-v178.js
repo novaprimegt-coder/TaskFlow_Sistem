@@ -6,7 +6,16 @@ const BASE='https://vgjpzvkfzahziwzwwkbx.supabase.co/functions/v1/taskflow-ads-a
 const $=id=>document.getElementById(id),user=()=>window.TaskFlowFirebase?.getUser?.();
 const REGION=/^[\p{L}\p{M} .'’()-]{2,80}$/u;
 let uid='',eligible=false,enabled=false,loaded=false,pending=false,busy=false;
-let lastInput=Date.now(),lastSent=0,session='';
+let lastInput=Date.now(),lastSent=0,session='',lastHiddenAt=0;
+function secureSessionId(){
+ const c=globalThis.crypto;
+ if(typeof c?.randomUUID==='function')return c.randomUUID();
+ if(typeof c?.getRandomValues!=='function')return '';
+ const b=c.getRandomValues(new Uint8Array(16));
+ b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;
+ const hex=Array.from(b,v=>v.toString(16).padStart(2,'0')).join('');
+ return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+}
 function notice(s,warn=false){const x=$('tfAudMsg');if(x){x.textContent=s;x.classList.toggle('warn',warn)}}
 async function request(path,payload){
  const u=user(),uidNow=u?.uid;
@@ -49,7 +58,10 @@ function build(){
 }
 function paint(v){
  build();if(!$('tfAudActive'))return;
+ const previousEnabled=enabled;
  eligible=v?.adultEligible===true;enabled=eligible&&v?.activityConsent===true;
+ if(!enabled){session='';lastSent=0}
+ else if(!previousEnabled){session='';lastSent=0;lastInput=Date.now()}
  $('tfAudActive').checked=enabled;$('tfAudArea').checked=eligible&&v?.areaConsent===true;
  $('tfAudActive').disabled=!eligible;$('tfAudArea').disabled=!eligible;
  $('tfAudCountry').value=v?.areaConsent?String(v.country||''):'';
@@ -61,12 +73,16 @@ function paint(v){
 }
 async function load(){
  const nowUid=user()?.uid||'';
- if(!nowUid){uid='';enabled=false;eligible=false;loaded=false;return}
+ if(!nowUid){uid='';enabled=false;eligible=false;loaded=false;session='';lastSent=0;return}
  if(pending)return;
  uid=nowUid;pending=true;
  try{const v=await request('profile');if(user()?.uid!==nowUid)return;paint(v);loaded=true}
  catch{enabled=false;eligible=false;loaded=false;notice('No se confirmaron los permisos. La medición permanece desactivada.',true)}
- finally{pending=false}
+ finally{
+  pending=false;
+  // Si cambió la cuenta durante la petición, releer inmediatamente la nueva.
+  if(user()?.uid&&user()?.uid!==nowUid){enabled=false;loaded=false;void load()}
+ }
 }
 function buttons(disabled){
  for(const id of ['tfAudSave','tfAudForget'])if($(id))$(id).disabled=disabled;
@@ -100,11 +116,15 @@ async function beat(){
   document.visibilityState!=='visible'||navigator.onLine===false||
   window.TaskFlowNoAds?.isActive?.()===true||Date.now()-lastInput>120000||
   Date.now()-lastSent<59000)return;
- if(!session)session=globalThis.crypto?.randomUUID?.()||'';
+ if(!session)session=secureSessionId();
  if(!session)return;
  lastSent=Date.now();busy=true;
  const actorUid=user()?.uid;
- try{const result=await request('heartbeat',{sessionId:session});if(actorUid===user()?.uid&&result?.ok!==true)enabled=false}
+ try{
+  const result=await request('heartbeat',{sessionId:session});
+  if(actorUid===user()?.uid&&result?.ok!==true){enabled=false;loaded=false}
+  else if(actorUid===user()?.uid&&result?.recorded===false)void load();
+ }
  catch{/* Nunca fabricar minutos de actividad cuando el servidor falla. */}
  finally{busy=false}
 }
@@ -113,9 +133,14 @@ function start(){
  const touching=()=>{lastInput=Date.now()};
  for(const event of ['pointerdown','touchstart','keydown'])
   document.addEventListener(event,touching,{capture:true,passive:true});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)lastInput=Date.now()});
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){lastHiddenAt=Date.now();return}
+  // Una pausa larga inicia una nueva sesión, sin contar tiempo en segundo plano.
+  if(lastHiddenAt&&Date.now()-lastHiddenAt>=15*60*1000)session='';
+  lastHiddenAt=0;lastInput=Date.now()
+ });
  document.addEventListener('taskflow:firebase-auth-changed',()=>{
-  enabled=false;eligible=false;loaded=false;uid='';session='';void load()
+  enabled=false;eligible=false;loaded=false;uid='';session='';lastSent=0;void load()
  });
  document.addEventListener('taskflow:ads-profile-updated',()=>{if(user())void load()});
  document.addEventListener('click',e=>{
