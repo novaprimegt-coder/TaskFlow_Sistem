@@ -7,7 +7,7 @@ const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).hre
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
 let settings=null,settingsRequest=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
 let noAdsExpiryTimer=0,statusRequest=null,accountUid=null,accountEpoch=0,verified=false,lastAdAccess='',lastStatusError='';
-let adAccessVerified=false,adAccessAllowed=false,adAccessRequest=null,adAccessCheckedAt=0;
+let adAccessVerified=false,adAccessAllowed=false,adAccessRequest=null,adAccessRetryAt=0,adAccessFailures=0;
 const currentUid=()=>String(window.TaskFlowFirebase?.getUser?.()?.uid||'');
 const isActive=()=>active&&accountUid===currentUid()&&Number(subscriptionStatus?.paidUntil)>Date.now();
 const canShowAds=()=>accountUid===currentUid()&&!active&&(verified||(adAccessVerified&&adAccessAllowed));
@@ -100,7 +100,7 @@ function bindAccount(uid){
  accountUid=uid;
  accountEpoch++;
  verified=false;
- adAccessVerified=false;adAccessAllowed=false;adAccessRequest=null;adAccessCheckedAt=0;
+ adAccessVerified=false;adAccessAllowed=false;adAccessRequest=null;adAccessRetryAt=0;adAccessFailures=0;
  const modal=document.getElementById(MODAL_ID);
  if(modal){modal.hidden=true;modal.querySelector('#tfPayPalButtons')?.replaceChildren()}
  subscriptionStatus=null;
@@ -178,7 +178,7 @@ async function authToken(force=false){
  if(!token||typeof token!=='string')throw new Error('LOGIN_REQUIRED');
  return token;
 }
-async function request(method,path,payload){
+async function request(method,path,payload,retryGet=false){
  const uid=currentUid(),epoch=accountEpoch;
  if(!uid)throw new Error('LOGIN_REQUIRED');
  const token=await authToken();
@@ -189,14 +189,28 @@ async function request(method,path,payload){
   body:method==='POST'?JSON.stringify(payload||{}):undefined
  };
  const send=()=>method==='GET'?fetchWithin(url,options,11000):fetch(url,options);
- let r=await send();
- // No se repite ningún POST: solo se permite renovar autenticación para leer.
+ const sameAccount=()=>uid===currentUid()&&epoch===accountEpoch;
+ const retryPause=()=>new Promise(resolve=>setTimeout(resolve,800));
+ let retried=false,r;
+ try{r=await send()}
+ catch(error){
+  if(method!=='GET'||!retryGet)throw error;
+  await retryPause();
+  if(!sameAccount())throw new Error('ACCOUNT_CHANGED');
+  retried=true;r=await send();
+ }
+ // Sólo lecturas iniciadas manualmente pueden repetirse. Nunca repetir POST.
  if(method==='GET'&&r.status===401){
   const fresh=await authToken(true);
-  if(fresh&&uid===currentUid()&&epoch===accountEpoch){
+  if(fresh&&sameAccount()){
    options.headers.Authorization='Bearer '+fresh;
    r=await send();
   }
+ }
+ if(method==='GET'&&retryGet&&!retried&&[429,502,503,504,546].includes(r.status)){
+  await retryPause();
+  if(!sameAccount())throw new Error('ACCOUNT_CHANGED');
+  r=await send();
  }
  const data=await r.json().catch(()=>({}));
  if(uid!==currentUid()||epoch!==accountEpoch)throw new Error('ACCOUNT_CHANGED');
@@ -210,23 +224,30 @@ async function request(method,path,payload){
 
 async function verifyAdAccess(){
  const uid=currentUid(),epoch=accountEpoch;
- if(!uid||accountUid!==uid)return false;
+ if(!uid||accountUid!==uid||isActive())return false;
  if(adAccessRequest)return adAccessRequest;
- if(Date.now()-adAccessCheckedAt<60000)return canShowAds();
- adAccessCheckedAt=Date.now();
+ if(Date.now()<adAccessRetryAt)return canShowAds();
+ // Reintento progresivo: se recupera tras una caída sin saturar PostgreSQL.
+ adAccessRetryAt=Date.now()+12000;
  adAccessRequest=(async()=>{
   try{
    if(!(await loadSettings()).enabled)return false;
    const data=await request('GET','/ads/access');
    if(epoch!==accountEpoch||uid!==currentUid()||typeof data.canShowAds!=='boolean')return false;
    adAccessVerified=true;adAccessAllowed=data.canShowAds===true&&data.active===false;
+   adAccessFailures=0;adAccessRetryAt=Date.now()+60000;
    setActive(isActive());
    return canShowAds();
-  }catch(_){return false}
+  }catch(_){
+   if(epoch!==accountEpoch||uid!==currentUid())return false;
+   adAccessFailures=Math.min(4,adAccessFailures+1);
+   adAccessRetryAt=Date.now()+Math.min(90000,6000*2**adAccessFailures);
+   return false;
+  }
  })().finally(()=>{adAccessRequest=null});
  return adAccessRequest;
 }
-async function verifyStatus(){
+async function verifyStatus(retryGet=false){
  const auth=window.TaskFlowFirebase;
  if(!auth?.initialize)return false;
  try{await auth.initialize()}catch(_){return false}
@@ -240,13 +261,14 @@ async function verifyStatus(){
  pending.promise=(async()=>{
   try{
    if(!(await loadSettings()).enabled||epoch!==accountEpoch||uid!==currentUid())return false;
-   const data=await request('GET','/status');
+   const data=await request('GET','/status',undefined,retryGet);
    if(epoch!==accountEpoch||uid!==currentUid()||typeof data.active!=='boolean')return false;
    const confirmedActive=data.active===true&&Number(data.paidUntil)>Date.now();
    if(data.active&&!confirmedActive)return false;
    const changed=!subscriptionStatus || ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
    subscriptionStatus=data;
    adAccessVerified=true;adAccessAllowed=!confirmedActive;
+   adAccessFailures=0;adAccessRetryAt=Date.now()+60000;
    lastStatusError='';
    if(changed&&enabled&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
    verified=true;
@@ -404,7 +426,7 @@ async function showCheckout(){
    return false;
   }
   const uid=currentUid();
-  await verifyStatus();
+  await verifyStatus(true);
   if(!uid||currentUid()!==uid||!verified||!subscriptionStatus)throw new Error('ACCOUNT_NOT_VERIFIED');
   if(pendingApproval&&!subscriptionStatus.active&&!subscriptionStatus.scheduled){
    buy.hidden=true;statusText('Estamos verificando la autorización de PayPal.');return false;
@@ -434,7 +456,7 @@ async function beginPurchase(){
   await authToken();
   // En una compra, exigir respuesta del servidor: un fallo de red no significa que
   // la cuenta esté libre de suscripción, y no debe arriesgarse un cobro duplicado.
-  const current=await request('GET','/status');
+  const current=await request('GET','/status',undefined,true);
   subscriptionStatus=current;
   setActive(current.active===true);
   if(!presentAccount(root))return true;
@@ -538,6 +560,9 @@ async function initialize(){
  window.addEventListener('storage',e=>{if(e.key==='taskflow_billing_revision_v165')void verifyStatus()});
  // Evitar verificaciones frecuentes mientras PostgreSQL no responde; no bloquear el reintento manual.
  setInterval(()=>{if(!document.hidden)void verifyStatus()},90000);
+ // La publicidad se recupera cuando un servidor temporalmente caído vuelve.
+ // Sólo cuentas verificadas por servidor podrán mostrar anuncios pagados.
+ setInterval(()=>{if(!document.hidden&&currentUid()&&!canShowAds()&&!isActive())void verifyAdAccess()},17000);
  void verifyStatus();
  try{await config()}catch(_){return false}
  return enabled;
