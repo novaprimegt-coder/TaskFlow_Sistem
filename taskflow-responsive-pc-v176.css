@@ -445,3 +445,46 @@ html body #sideMenu.side-menu :is(.menu-item,.v27-menu-hub,.quick-action-btn){
   body *{display:none!important;}
 }
 
+/* V179: ampliar exclusivamente la publicidad vertical (ingreso/interaccion).
+   La cuadrícula del dialogo debe tener una columna de ancho real; sin ella,
+   el ancho porcentual del anuncio se encoge al tamaño intrínseco del contenido. */
+:is(#tfEntryAdV56,#tfInteractionAdV57).open{
+  grid-template-columns:minmax(0,1fr)!important;
+  justify-items:center!important;
+}
+:is(#tfEntryAdV56,#tfInteractionAdV57).open .tf159-ad-shell{
+  width:min(calc(100vw - 16px),560px)!important;
+  max-width:100%!important;
+  height:min(calc(100dvh - 16px),840px)!important;
+  max-height:calc(100dvh - 16px)!important;
+  min-width:0!important;
+  padding:8px!important;
+  gap:7px!important;
+  justify-self:center!important;
+  align-self:center!important;
+}
+:is(#tfEntryAdV56,#tfInteractionAdV57).open .tf159-ad-viewport{
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  place-items:center!important;
+}
+:is(#tfEntryAdV56,#tfInteractionAdV57).open .tf159-ad-stage{
+  /* Tamaño limitado por el alto UTIL del viewport, no por píxeles de imagen/DPR
+     ni por un contenedor con ancho intrínseco. Mantener creatividad 9:16. */
+  width:min(100%,max(70px,calc(56.25dvh - 73.125px)))!important;
+  max-width:100%!important;
+  height:auto!important;
+  max-height:100%!important;
+  aspect-ratio:9/16!important;
+  justify-self:center!important;
+}
+:is(#tfEntryAdV56,#tfInteractionAdV57).open .tf159-ad-footer{
+  padding-top:5px!important;
+}
+/* Cuando aparece un enlace publicitario secundario, reservar su espacio sin
+   tapar el contador, la acción Continuar ni la creatividad. */
+:is(#tfEntryAdV56,#tfInteractionAdV57).open
+  .tf159-ad-shell:has(.tf-ad-goal-link:not([hidden])) .tf159-ad-stage{
+  width:min(100%,max(70px,calc(56.25dvh - 98px)))!important;
+}
