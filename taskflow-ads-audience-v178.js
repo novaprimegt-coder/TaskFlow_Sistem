@@ -74,7 +74,7 @@ function buttons(disabled){
 async function save(){
  if(!loaded||!eligible||busy)return notice('Es necesario confirmar una cuenta adulta.',true);
  const country=String($('tfAudCountry').value||'').trim().toUpperCase();
- const region=String($('tfAudRegion').value||'').trim().replace(/\s+/g,' ');
+ const region=String($('tfAudRegion').value||'').normalize('NFC').trim().replace(/\s+/g,' ');
  const areaConsent=$('tfAudArea').checked,activityConsent=$('tfAudActive').checked;
  if(areaConsent&&(!/^[A-Z]{2}$/.test(country)||!REGION.test(region)))
   return notice('Escribe un país y una región general; no ingreses una dirección.',true);
@@ -100,7 +100,7 @@ async function beat(){
   document.visibilityState!=='visible'||navigator.onLine===false||
   window.TaskFlowNoAds?.isActive?.()===true||Date.now()-lastInput>120000||
   Date.now()-lastSent<59000)return;
- if(!session)session=typeof crypto?.randomUUID==='function'?crypto.randomUUID():'';
+ if(!session)session=globalThis.crypto?.randomUUID?.()||'';
  if(!session)return;
  lastSent=Date.now();busy=true;
  const actorUid=user()?.uid;
