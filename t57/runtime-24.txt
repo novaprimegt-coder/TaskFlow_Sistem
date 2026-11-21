@@ -15,7 +15,7 @@ const bodyExtras='<script id="tfBootDefaultsT49">'+TF_T49_BOOT_DEFAULTS_JS+'<'+'
  '<script id="tfAgeModuleV172" src="'+htmlAttr(assetUrl('taskflow-age-v172.js')+'&release=172')+'"><'+'/script>'+
  '<link id="tfProfileEditorStyleV173" rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-profile-editor-v173.css')+'&release=174')+'">'+
  '<script id="tfProfileEditorV173" src="'+htmlAttr(assetUrl('taskflow-profile-editor-v173.js')+'&release=173')+'"><'+'/script>':name==='taskflow-v1304-sound.js'?'<script id="tfAudioStorageT34">'+TF_AUDIO_STORAGE_T34_JS+'<'+'/script>':name==='taskflow-v1303-routine-guard-restore.js'?'<script id="tfRoutineGuardRestoreT49">'+TF_T49_ROUTINE_GUARD_RESTORE_JS+'<'+'/script>':'<script src="'+htmlAttr(assetUrl(name)+(name==='taskflow-v1305-search-results.js'?'&ui=158':''))+'"><'+'/script>').join('')+
- '<script id="tfPayPalNoAdsClient" src="'+htmlAttr(PAGES+'payments/paypal/client.js?revision=19-estabilidad-db-v183')+'"><'+'/script>'+
+ '<script id="tfPayPalNoAdsClient" src="'+htmlAttr(PAGES+'payments/paypal/client.js?revision=20-paypal-ads-bridge-v184')+'"><'+'/script>'+
  '<script id="tfAdsRuntimeV177" src="'+htmlAttr(assetUrl('taskflow-ads-runtime-v157.js')+'&release=177-runtime')+'"><'+'/script>'+
  '<script id="tfRetireManualGeoV177" src="'+htmlAttr(assetUrl('taskflow-ads-geo-consent.js')+'&release=177-retirar-formulario')+'"><'+'/script>'+
  '<script id="tfAdsBridgeV177" src="'+htmlAttr(assetUrl('taskflow-ads-bridge.js')+'&release=177-aprendizaje-clics')+'"><'+'/script>'+

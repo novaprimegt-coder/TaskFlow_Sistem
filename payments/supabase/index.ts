@@ -261,12 +261,26 @@ async function updateCheckout(row, changes) {
   if (error) throw fail("DATABASE_UNAVAILABLE");
 }
 async function getStatus(uid) {
-  const [ent,used,checkout] = await Promise.all([one("taskflow_paypal_entitlements","uid",uid),trialUsed(uid),openCheckout(uid)]);
-  const status = showStatus(ent);
-  const approved = checkout?.checkout_state === "approved";
-  const scheduled = approved && Date.parse(checkout.starts_at || "") > Date.now();
-  return { ...status, trialUsed: used, scheduled, startsAt: scheduled ? Date.parse(checkout.starts_at) : null,
-    awaitingPayment: approved && !scheduled && checkout.agreement_id !== ent?.subscription_id };
+  // One authorized Postgres snapshot instead of four separate network queries.
+  const {data,error}=await db().rpc("taskflow_paypal_status_snapshot_v184",{p_uid:uid});
+  let ent,used,checkout;
+  if(!error&&data&&typeof data.trialUsed==="boolean"){
+    ent=data.entitlement||null;used=data.trialUsed;checkout=data.checkout||null;
+  }else if(error&&["PGRST202","42883"].includes(String(error.code||""))){
+    // Safe fallback until the SQL function becomes visible in the Data API.
+    [ent,used,checkout]=await Promise.all([one("taskflow_paypal_entitlements","uid",uid),trialUsed(uid),openCheckout(uid)]);
+  }else throw fail("DATABASE_UNAVAILABLE");
+  const status=showStatus(ent);
+  const approved=checkout?.checkout_state==="approved";
+  const scheduled=approved&&Date.parse(checkout.starts_at||"")>Date.now();
+  return {...status,trialUsed:used,scheduled,startsAt:scheduled?Date.parse(checkout.starts_at):null,
+    awaitingPayment:approved&&!scheduled&&checkout.agreement_id!==ent?.subscription_id};
+}
+// Server-only entitlement check for advertisements; never authorizes payment.
+async function getAdAccess(uid){
+  const ent=await one("taskflow_paypal_entitlements","uid",uid);
+  const active=paid(ent);
+  return {active,canShowAds:!active,paidUntil:ent?.paid_until?Date.parse(ent.paid_until):null};
 }
 async function getSubscription(id, expectedPlan = "") {
   if (!/^I-[A-Za-z0-9-]{8,64}$/.test(id)) throw fail("INVALID_SUBSCRIPTION", 400);
@@ -639,6 +653,8 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/paypal/webhook")
       return respond(req, 200, await webhook(req));
     const uid = await requireFirebaseUser(req);
+    if (req.method === "GET" && path === "/ads/access")
+      return respond(req,200,await getAdAccess(uid));
     if (req.method === "GET" && path === "/status")
       return respond(req, 200, await getStatus(uid));
     await ready();

@@ -7,9 +7,10 @@ const CFG_URL=new URL('payments/paypal/public-config.json',document.baseURI).hre
 const CSS_ID='tfPayPalNoAdsStyle',MODAL_ID='tfPayPalNoAdsModal';
 let settings=null,settingsRequest=null,plan=null,enabled=false,active=false,busy=false,ready=null,sdkPromise=null,pendingIntent=null,subscriptionStatus=null,pendingApproval=false;
 let noAdsExpiryTimer=0,statusRequest=null,accountUid=null,accountEpoch=0,verified=false,lastAdAccess='',lastStatusError='';
+let adAccessVerified=false,adAccessAllowed=false,adAccessRequest=null,adAccessCheckedAt=0;
 const currentUid=()=>String(window.TaskFlowFirebase?.getUser?.()?.uid||'');
 const isActive=()=>active&&accountUid===currentUid()&&Number(subscriptionStatus?.paidUntil)>Date.now();
-const canShowAds=()=>verified&&accountUid===currentUid()&&!active;
+const canShowAds=()=>accountUid===currentUid()&&!active&&(verified||(adAccessVerified&&adAccessAllowed));
 function safeBase(value){
  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return '';return u.href.replace(/\/$/,'')}catch(_){return ''}
 }
@@ -99,6 +100,7 @@ function bindAccount(uid){
  accountUid=uid;
  accountEpoch++;
  verified=false;
+ adAccessVerified=false;adAccessAllowed=false;adAccessRequest=null;adAccessCheckedAt=0;
  const modal=document.getElementById(MODAL_ID);
  if(modal){modal.hidden=true;modal.querySelector('#tfPayPalButtons')?.replaceChildren()}
  subscriptionStatus=null;
@@ -205,6 +207,25 @@ async function request(method,path,payload){
  }
  return data;
 }
+
+async function verifyAdAccess(){
+ const uid=currentUid(),epoch=accountEpoch;
+ if(!uid||accountUid!==uid)return false;
+ if(adAccessRequest)return adAccessRequest;
+ if(Date.now()-adAccessCheckedAt<60000)return canShowAds();
+ adAccessCheckedAt=Date.now();
+ adAccessRequest=(async()=>{
+  try{
+   if(!(await loadSettings()).enabled)return false;
+   const data=await request('GET','/ads/access');
+   if(epoch!==accountEpoch||uid!==currentUid()||typeof data.canShowAds!=='boolean')return false;
+   adAccessVerified=true;adAccessAllowed=data.canShowAds===true&&data.active===false;
+   setActive(isActive());
+   return canShowAds();
+  }catch(_){return false}
+ })().finally(()=>{adAccessRequest=null});
+ return adAccessRequest;
+}
 async function verifyStatus(){
  const auth=window.TaskFlowFirebase;
  if(!auth?.initialize)return false;
@@ -225,6 +246,7 @@ async function verifyStatus(){
    if(data.active&&!confirmedActive)return false;
    const changed=!subscriptionStatus || ['active','renewalStatus','trialUsed','scheduled','awaitingPayment','paidUntil'].some(k=>subscriptionStatus[k]!==data[k]);
    subscriptionStatus=data;
+   adAccessVerified=true;adAccessAllowed=!confirmedActive;
    lastStatusError='';
    if(changed&&enabled&&!busy){const modal=document.getElementById(MODAL_ID);if(modal&&!modal.hidden){modal.querySelector('#tfPayPalButtons')?.replaceChildren();presentAccount(modal)}}
    verified=true;
@@ -234,6 +256,7 @@ async function verifyStatus(){
    if(epoch!==accountEpoch||uid!==currentUid())return false;
    lastStatusError=String(error?.message||'PAYMENT_UNAVAILABLE');
    if(error?.status===401||error?.status===403){verified=false;subscriptionStatus=null;setActive(false)}
+   if(error?.status!==401&&error?.status!==403)void verifyAdAccess();
    return isActive();
   }finally{
    if(statusRequest===pending)statusRequest=null;
