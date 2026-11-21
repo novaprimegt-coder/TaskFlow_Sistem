@@ -1,0 +1,33 @@
+name: TaskFlow V184 audience integration checks
+on:
+  push:
+    branches:
+      - preparacion-ads-audience-v184-20261121
+    paths:
+      - 'taskflow-ads-audience-v178.js'
+      - 'taskflow-ads-audience-v178.css'
+      - 'taskflow-policies-v161.js'
+      - 't57/runtime-19.txt'
+      - 'index.html'
+      - 'tests/taskflow-ads-audience-v184.test.mjs'
+  pull_request:
+    paths:
+      - 'taskflow-ads-audience-v178.js'
+      - 'taskflow-ads-audience-v178.css'
+      - 'taskflow-policies-v161.js'
+      - 't57/runtime-19.txt'
+      - 'index.html'
+      - 'tests/taskflow-ads-audience-v184.test.mjs'
+permissions:
+  contents: read
+jobs:
+  audience-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test privacy consent and preserved payment code
+        run: node --test tests/taskflow-ads-audience-v184.test.mjs
