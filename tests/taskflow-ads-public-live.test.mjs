@@ -18,16 +18,15 @@ async function read(path){
  throw last;
 }
 
-test("La versión pública de TaskFlow sirve el runtime actual y conserva V189",async()=>{
+test("La versión pública de TaskFlow entrega efectivamente V191 y conserva V189",async()=>{
  const html=await read("index.html");
- assert.match(html,/v=(190-ads-audience-optin|191-ads-audience-reliability)/);
+ assert.match(html,/v=191-ads-audience-reliability/);
  assert.match(html,/v=189-ads-vertical-fallback/);
 });
 test("La carga real del runtime conserva anuncios y añade consentimiento",async()=>{
  const html=await read("index.html");
- const version=html.match(/v=(190-ads-audience-optin|191-ads-audience-reliability)/)?.[1];
- assert.ok(version,"No se publicó una versión conocida del runtime");
- const txt=await read("t57/runtime-19.txt?v="+version);
+ assert.match(html,/v=191-ads-audience-reliability/);
+ const txt=await read("t57/runtime-19.txt?v=191-ads-audience-reliability");
  assert.ok(txt.includes("taskflow-ads-bridge.js"));
  assert.ok(txt.includes("3.10-vertical-fallback-priority"));
  assert.ok(txt.includes("taskflow-ads-audience-v178.css"));
@@ -40,11 +39,9 @@ test("El JS de analítica está publicado y protege sesión y menores",async()=>
   assert.ok(js.includes(value),"Falta "+value);
  }
  assert.ok(!/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS|TF_ADS_ACTIVITY_HASH_KEY/.test(js),"Nunca enviar secretos al cliente");
- const html=await read("index.html");
- if(html.includes("v=191-ads-audience-reliability")){
-  assert.ok(js.includes("function secureSessionId()"),"El cliente V191 no incorpora la corrección de sesiones");
-  assert.ok(js.includes("getRandomValues(new Uint8Array(16))"),"Falta recuperación criptográfica segura");
- }
+ assert.ok(js.includes("function secureSessionId()"),"El cliente V191 no incorpora la corrección de sesiones");
+ assert.ok(js.includes("getRandomValues(new Uint8Array(16))"),"Falta recuperación criptográfica segura");
+ assert.ok(js.includes("result?.recorded===false)void load()"),"Falta reválida de permisos tras latido rechazado");
 });
 test("Estilos y políticas de consentimiento están publicados",async()=>{
  const [css,privacy]=await Promise.all([read("taskflow-ads-audience-v178.css"),read("taskflow-policies-v161.js")]);
