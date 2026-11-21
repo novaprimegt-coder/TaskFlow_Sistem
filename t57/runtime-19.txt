@@ -131,7 +131,7 @@ const headExtras='<style id="tfPermissionsT52Style">'+TF_T52_PERMISSION_CSS+'</s
  '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-onboarding-v161.css'))+'">'+
  '<script src="'+htmlAttr(assetUrl('taskflow-selects-v159.js'))+'"><'+'/script>'+
  '<script src="'+htmlAttr(assetUrl('taskflow-icons-v158.js')+'&ui=159')+'"><'+'/script>'+
- '<script defer src="'+htmlAttr(assetUrl('taskflow-ads-runtime-v157.js')+'&ui=163-ad-report-code')+'"><'+'/script>'+
+ '<script defer src="'+htmlAttr(assetUrl('taskflow-ads-runtime-v157.js')+'&ui=187-espacios-publicitarios')+'"><'+'/script>'+
  '<script defer src="'+htmlAttr(assetUrl('taskflow-ads-geo-consent.js')+'&privacy=1-opt-in')+'"><'+'/script>'+
  '<script defer src="'+htmlAttr(assetUrl('taskflow-ads-bridge.js')+'&ads=3.9-consented-age-interest')+'"><'+'/script>';
 // Mantener el orden de carga de los módulos de la aplicación, como en index.html.

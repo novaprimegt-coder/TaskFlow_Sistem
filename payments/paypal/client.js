@@ -23,19 +23,14 @@ async function fetchWithin(url,options,ms){
 function style(){
  if(document.getElementById(CSS_ID))return;
  const s=document.createElement('style');s.id=CSS_ID;
- s.textContent=`/* Los tres banners, sus etiquetas y las ventanas publicitarias desaparecen
-   mientras el servidor comprueba o confirma el acceso sin anuncios. */
+ s.textContent=`/* Ocultar banners y anuncios para miembros activos; la comprobación mantiene
+   solamente espacios neutros, sin contenido comercial ni enlaces. */
 html.tf-paypal-noads body .tf50-ad-slot,
 html.tf-paypal-noads body [data-ad-slot],
-html.tf-paypal-noads-checking body .tf50-ad-slot,
-html.tf-paypal-noads-checking body [data-ad-slot],
 body.tf-paypal-noads .tf50-ad-slot,
 html.tf-paypal-noads #tfAdBannerTimer,
 html.tf-paypal-noads #tfAdBannerHabitsTasks,
-html.tf-paypal-noads #tfAdBannerFooter,
-html.tf-paypal-noads-checking #tfAdBannerTimer,
-html.tf-paypal-noads-checking #tfAdBannerHabitsTasks,
-html.tf-paypal-noads-checking #tfAdBannerFooter{display:none!important;visibility:hidden!important;max-height:0!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;overflow:hidden!important}
+html.tf-paypal-noads #tfAdBannerFooter{display:none!important;visibility:hidden!important;max-height:0!important;min-height:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;overflow:hidden!important}
 html.tf-paypal-noads #tfEntryAdV56,
 html.tf-paypal-noads #tfInteractionAdV57,
 html.tf-paypal-noads-checking #tfEntryAdV56,
@@ -188,7 +183,7 @@ async function request(method,path,payload,retryGet=false){
   method,mode:'cors',cache:'no-store',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
   body:method==='POST'?JSON.stringify(payload||{}):undefined
  };
- const send=()=>method==='GET'?fetchWithin(url,options,11000):fetch(url,options);
+ const send=()=>method==='GET'?fetchWithin(url,options,30000):fetch(url,options);
  const sameAccount=()=>uid===currentUid()&&epoch===accountEpoch;
  const retryPause=()=>new Promise(resolve=>setTimeout(resolve,800));
  let retried=false,r;
