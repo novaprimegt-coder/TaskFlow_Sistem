@@ -1,0 +1,26 @@
+name: TaskFlow ADS public release smoke
+on:
+  push:
+    branches:
+      - qa/taskflow-ads-public-assets-20261121
+      - main
+    paths:
+      - 'tests/taskflow-ads-public-live.test.mjs'
+      - '.github/workflows/taskflow-ads-public-live.yml'
+  pull_request:
+    paths:
+      - 'tests/taskflow-ads-public-live.test.mjs'
+      - '.github/workflows/taskflow-ads-public-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-public-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/taskflow-ads-public-live.test.mjs
