@@ -435,6 +435,10 @@ function mountBanners() {
     if (!slot) slot = createBanner(id, label);
     if (appendToPanel && anchor !== slot) anchor.parentElement.append(slot);
     if (!appendToPanel && anchor.nextElementSibling !== slot) anchor.after(slot);
+    // V186: mantener el anuncio de reserva ORIGINAL en este mismo espacio
+    // hasta que el servidor entregue un creativo aprobado. No crear nuevos slots.
+    if (!slot.classList.contains('tf50-has-ad') &&
+        !slot.classList.contains('tf158-has-promo')) renderPromo(slot);
   }
 }
 

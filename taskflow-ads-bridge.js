@@ -548,12 +548,11 @@ function bannerNode(ad,img){
  return a;
 }
 function canShowPromo(placement, slot) {
- if (!adsPermitted()) return false;
- if (!lastRefresh && !lastError) return false;
- const inventory = catalog.filter(ad => ad.placement === placement);
- if (!inventory.length || audienceState === 'unavailable' || navigator.onLine === false) return true;
- if (!audienceIsCurrent()) return false;
- return checkedSlots.has(slot) || !inventory.some(ad => adEligible(ad));
+ // V186: el inventario remoto puede tardar; mantener la promoción ya
+ // existente hasta recibir un anuncio aprobado. Sin alterar la ubicación.
+ // Nunca mostrar publicidad si la cuenta tiene la exención verificada o
+ // mientras su permiso publicitario permanezca sin confirmar.
+ return adsPermitted();
 }
 
 async function displayBanner(slot) {
