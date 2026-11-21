@@ -1,0 +1,18 @@
+/* TaskFlow ADS Audience V178 — solo en el perfil de cuenta. */
+#tfAudienceV178{display:grid;gap:12px;margin:15px 0;padding:16px;border:1px solid rgba(87,201,224,.4);border-radius:16px;background:radial-gradient(ellipse at 98% 0%,rgba(48,188,220,.13),transparent 55%),linear-gradient(140deg,#0f3653,#071e36);color:#edfaff}
+#tfAudienceV178 h3{margin:0;color:#f2fcff;font:800 14px/1.4 system-ui,sans-serif}
+#tfAudienceV178 p{margin:0;color:#b4d7e9;font:11px/1.56 system-ui,sans-serif}
+#tfAudienceV178>label{display:flex;align-items:flex-start;gap:10px;color:#e0f5ff;font:550 11px/1.5 system-ui,sans-serif}
+#tfAudienceV178>label input{flex:none;width:19px;height:19px;margin:0;accent-color:#34d1e9}
+#tfAudienceV178 .tf-aud-fields{display:grid;gap:7px}
+#tfAudienceV178 .tf-aud-fields[hidden]{display:none}
+#tfAudienceV178 .tf-aud-fields label{font:750 11px/1.4 system-ui,sans-serif;color:#a9e5f2}
+#tfAudienceV178 .tf-aud-fields input{box-sizing:border-box;width:100%;min-width:0;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid #347e9e;background:#133b57;color:#f1fdff;font:12px system-ui,sans-serif}
+#tfAudienceV178 .tf-aud-fields input::placeholder{color:#96b2c8}
+#tfAudienceV178 .tf-aud-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#tfAudienceV178 .tf-aud-actions button{padding:10px;min-height:45px;border-radius:10px;border:1px solid rgba(96,197,225,.45);background:#135474;color:#f2fbff;font:760 11px/1.4 system-ui,sans-serif;cursor:pointer}
+#tfAudienceV178 .tf-aud-actions button:last-child{background:#102d47;border-color:#4f7395}
+#tfAudienceV178 .tf-aud-actions button:disabled{opacity:.48;cursor:not-allowed}
+#tfAudienceV178 small{display:block;color:#a5d1e1;font:10px/1.5 system-ui,sans-serif}
+#tfAudienceV178 small.warn{color:#ffd1ab}
+@media(max-width:375px){#tfAudienceV178 .tf-aud-actions{grid-template-columns:1fr}}
