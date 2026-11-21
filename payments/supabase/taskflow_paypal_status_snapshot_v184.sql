@@ -10,3 +10,8 @@ select jsonb_build_object(
 $fn$;
 revoke all on function public.taskflow_paypal_status_snapshot_v184(text) from public,anon,authenticated;
 grant execute on function public.taskflow_paypal_status_snapshot_v184(text) to service_role;
+
+-- TaskFlow V188: solamente esta lectura de membresía puede superar los 8 s
+-- heredados del rol authenticator; no cambiar límites generales ni cobros.
+alter function public.taskflow_paypal_status_snapshot_v184(text)
+set statement_timeout to '20s';
