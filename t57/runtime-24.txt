@@ -18,7 +18,7 @@ const bodyExtras='<script id="tfBootDefaultsT49">'+TF_T49_BOOT_DEFAULTS_JS+'<'+'
  '<script id="tfPayPalNoAdsClient" src="'+htmlAttr(PAGES+'payments/paypal/client.js?revision=22-membership-latency-v187')+'"><'+'/script>'+
  '<script id="tfAdsRuntimeV177" src="'+htmlAttr(assetUrl('taskflow-ads-runtime-v157.js')+'&release=187-espacios-publicitarios')+'"><'+'/script>'+
  '<script id="tfRetireManualGeoV177" src="'+htmlAttr(assetUrl('taskflow-ads-geo-consent.js')+'&release=177-retirar-formulario')+'"><'+'/script>'+
- '<script id="tfAdsBridgeV177" src="'+htmlAttr(assetUrl('taskflow-ads-bridge.js')+'&release=186-original-ad-placements')+'"><'+'/script>'+
+ '<script id="tfAdsBridgeV177" src="'+htmlAttr(assetUrl('taskflow-ads-bridge.js')+'&release=189-vertical-fallback-priority')+'"><'+'/script>'+
  '<script id="tfPolicyV161">window.TaskFlowPoliciesV161?.install();<'+'/script>'+
  '<script id="tfProtocolLockT12">'+TF_PROTOCOL_T12_JS+'<'+'/script>'+
  '<script id="tfClockSmoothT18">'+TF_CLOCK_T13_JS+'<'+'/script>'+

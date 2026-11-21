@@ -86,6 +86,27 @@ jobs:
           const runtimeSource=activeParts.map(read).join('');
           assert.ok(!runtimeSource.includes('const TF_T38_ICON_LIBRARY_JS=')&&runtimeSource.includes('TaskFlowIconsV158.install'),'El selector debe utilizar vectores locales');
           assert.ok(adsRuntime.includes('function promoLink(placement)')&&bridge.includes('enableUnfilledVerticalPromos'),'Falta la promoción de inventario disponible');
+          // V189: probar prioridad segmentada y promoción de reserva tanto en ingreso como interacción.
+          const promoBody=bridge.match(/function enableUnfilledVerticalPromos\(placement, creative\) \{([\s\S]*?)\n\}/)?.[1];
+          assert.ok(promoBody,'Falta selección de anuncios verticales');
+          const promoTest=new Function('catalog','lastRefresh','lastError','navigator','placement','checkedSlots',
+            'audienceIsCurrent','creative','canShowPromo','window','adEligible',promoBody);
+          function expectPromo(placement,{catalog=[],checked=false,ready=true,creative=false,permitted=true,expected=false}={}){
+            let actual=null;
+            promoTest(catalog,ready?1:0,'',{onLine:true},placement,
+              checked?new Set([placement]):new Set(),()=>true,creative,()=>permitted,
+              {TaskFlowAdsV50:{setPromoReady:(_,value)=>{actual=value}}},()=>true);
+            assert.equal(actual,expected,'Promoción vertical inesperada: '+placement);
+          }
+          for(const placement of ['entry','interaction']){
+            expectPromo(placement,{ready:false,expected:false});
+            expectPromo(placement,{ready:true,expected:true});
+            expectPromo(placement,{catalog:[{placement}],ready:true,checked:false,expected:false});
+            expectPromo(placement,{catalog:[{placement}],ready:true,checked:true,expected:true});
+            expectPromo(placement,{catalog:[{placement}],ready:true,checked:true,creative:true,expected:false});
+            expectPromo(placement,{ready:true,permitted:false,expected:false});
+          }
+
           const startChunks=['00','01','02'].map(id=>read('t57/runtime-'+id+'.txt')).join('');
           assert.ok(!startChunks.includes('aria-label="Cargando TaskFlow"')&&!startChunks.includes('Preparando TaskFlow…'),'Se reintrodujo la pantalla de carga antigua');
           assert.ok(!startChunks.includes('filter:blur(24px) brightness(.46)')&&startChunks.includes('#boot.error'),'Recursos pesados de splash o recuperación ausente');

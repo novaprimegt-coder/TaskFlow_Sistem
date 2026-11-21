@@ -1,4 +1,4 @@
-/* TaskFlow ADS Bridge v3.8.0
+/* TaskFlow ADS Bridge v3.9.0
    Conecta TaskFlow_Sistem con el catálogo público aprobado de TaskFlow ADS Manager.
    No envía uid, email, hábitos, tareas, contraseñas ni datos administrativos. */
 (function(){
@@ -603,7 +603,13 @@ function runtimeReady() {
 }
 
 function enableUnfilledVerticalPromos(placement, creative) {
- window.TaskFlowAdsV50.setPromoReady(placement, !creative && canShowPromo(placement, placement));
+ // V189: preferir anuncios segmentados aprobados, reservando la promoción ADS
+ // para ubicaciones sin creativo disponible (incluida la entrega fallida).
+ const catalogChecked = lastRefresh > 0 || Boolean(lastError) || navigator.onLine === false;
+ const eligible = catalog.some(ad => ad.placement === placement && adEligible(ad));
+ const selectionChecked = !eligible || checkedSlots.has(placement) || !audienceIsCurrent();
+ window.TaskFlowAdsV50.setPromoReady(placement,
+  !creative && canShowPromo(placement, placement) && catalogChecked && selectionChecked);
 }
 
 function apply() {
@@ -848,7 +854,7 @@ function schedule(){
  const ms=Math.max(10000,Number(config.refreshMs)||10000);refreshTimer=setInterval(()=>{if(!document.hidden)void refresh()},ms)
 }
 const API={
- version:'3.8.0',
+ version:'3.9.0',
  types:LEGACY_TYPES,
  configure(options){
    if(!options||typeof options!=='object')return false;
