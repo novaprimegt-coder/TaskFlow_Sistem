@@ -78,9 +78,10 @@ async function save(){
  const areaConsent=$('tfAudArea').checked,activityConsent=$('tfAudActive').checked;
  if(areaConsent&&(!/^[A-Z]{2}$/.test(country)||!REGION.test(region)))
   return notice('Escribe un país y una región general; no ingreses una dirección.',true);
+ const actorUid=user()?.uid;
  busy=true;buttons(true);
  try{const v=await request('preferences',{activityConsent,areaConsent,country:areaConsent?country:'',region:areaConsent?region:''});
-  if(user()?.uid===uid){paint(v.profile);loaded=true;notice('Autorizaciones guardadas correctamente.')}
+  if(user()?.uid===actorUid&&uid===actorUid){paint(v.profile);loaded=true;notice('Autorizaciones guardadas correctamente.')}
  }catch{enabled=false;notice('No se confirmaron los permisos. No se enviará actividad.',true)}
  finally{busy=false;buttons(false)}
 }
@@ -102,7 +103,8 @@ async function beat(){
  if(!session)session=typeof crypto?.randomUUID==='function'?crypto.randomUUID():'';
  if(!session)return;
  lastSent=Date.now();busy=true;
- try{const result=await request('heartbeat',{sessionId:session});if(result?.ok!==true)enabled=false}
+ const actorUid=user()?.uid;
+ try{const result=await request('heartbeat',{sessionId:session});if(actorUid===user()?.uid&&result?.ok!==true)enabled=false}
  catch{/* Nunca fabricar minutos de actividad cuando el servidor falla. */}
  finally{busy=false}
 }
