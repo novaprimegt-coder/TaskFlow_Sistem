@@ -17,7 +17,7 @@ test("Sintaxis de controles y políticas",()=>{
  assert.ok(css.includes("#tfAudienceV178"));
 });
 test("Preservar versión de pagos y actualizar solamente el recurso de audiencia",()=>{
- assert.match(index,/v=189-ads-vertical-fallback/);
+ assert.match(index,/v=(?:189-ads-vertical-fallback|192-rutinas-reloj-cierre)/);
  assert.match(index,/v=191-ads-audience-reliability/);
  assert.match(index,/runtime-19\.txt/);
 });

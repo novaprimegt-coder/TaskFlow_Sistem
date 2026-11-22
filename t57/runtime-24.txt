@@ -95,6 +95,11 @@ function installSharedRoutineLayout(){
  }
 
  const TIMER_STORAGE_PREFIX='taskflow_routine_deadline_v180:';
+ // El inicio pertenece a la rutina y a la cuenta, nunca a un plazo anterior.
+ const sessionStarted=key=>{
+  try{return panel.dataset.tfRoutine===key&&window.__tfProtocolLockT12Inspect?.().started===true}
+  catch(_){return false}
+ };
  const timerMemory=Object.create(null);
  const timerOwner=()=>{
   try{return String(window.TaskFlowFirebase?.getUser?.()?.uid||'guest')}catch(_){return 'guest'}
@@ -144,14 +149,15 @@ function installSharedRoutineLayout(){
   const open=()=>{
    const minutes=profile.duration;
    if(!Number.isInteger(minutes)||minutes<1||minutes>1440)return;
-   if(deadline(key)<=Date.now())saveDeadline(key,Date.now()+minutes*60000);
+   // Al comenzar, establecer la duración íntegra correspondiente a la rutina.
+   saveDeadline(key,Date.now()+minutes*60000);
    card.hidden=false;
    clock.hidden=false;
    drawTimer();
    card.focus({preventScroll:true});
    card.scrollIntoView({behavior:'auto',block:'center'});
   };
-  if(deadline(key)>Date.now()){
+  if(deadline(key)>0 && (deadline(key)>Date.now() || sessionStarted(key))){
    card.hidden=false;
    clock.hidden=false;
    queueMicrotask(drawTimer);
@@ -234,6 +240,7 @@ function installSharedRoutineLayout(){
  }
 
  let renderedHead=null;
+ let lastLaunch=null;
  let restore=null;
  function missionButton(row){return row?.tagName==='BUTTON'?row:row?.querySelector('button.tf156-check');}
  function followMission(action,rows){
@@ -250,12 +257,19 @@ function installSharedRoutineLayout(){
  }
  function render(){
   const head=frame.classList.contains('open')?panel.querySelector(':scope > .v85-routine-modal-head'):null;
-  if(head===renderedHead)return;
+  if(head===renderedHead){
+   // El núcleo puede reconstruir la lista sin reconstruir su cabecera.
+   if(head&&lastLaunch&&!lastLaunch.isConnected){
+    const list=panel.querySelector(':scope > .tf156-routine-list');
+    if(list)list.append(lastLaunch);
+   }
+   return;
+  }
   renderedHead=head;
   const kind=head&&Object.keys(profiles).find(key=>panel.querySelector(':scope > '+profiles[key].scroll));
   panel.classList.toggle('tf15-sung',kind==='sung');
   panel.classList.toggle('tf156-routine',!!kind&&kind!=='sung');
-  if(!kind){delete panel.dataset.tfRoutine;restore=null;visibleTimer=null;clearTimeout(timerFrame);return;}
+  if(!kind){delete panel.dataset.tfRoutine;restore=null;visibleTimer=null;lastLaunch=null;clearTimeout(timerFrame);return;}
 
   const profile=profiles[kind];
   const scroll=panel.querySelector(':scope > '+profile.scroll);
@@ -277,15 +291,16 @@ function installSharedRoutineLayout(){
   head.after(progressSection(kind,profile,heading.textContent,rows),ruleSection(scroll,profile),countdown.card);
   const lineIcons=window.__tfRoutineLineIconsV156?.[kind]||[];
   rows.forEach((row,index)=>styleMission(row,profile,index,lineIcons[index]));
-  const launch=element('button','tf15-launch');
+  // Conservar un único control por protocolo, reutilizando el botón de Sung.
+  let launch=scroll.querySelector(':scope > button.tf15-launch');
+  if(!launch)launch=element('button','tf15-launch');
   launch.type='button';
   launch.innerHTML=svg('play')+'<span></span>'+svg('arrow');
   launch.querySelector('span').textContent=profile.start;
-  // Al pulsar, el botón desaparece inmediatamente; al reabrir una
-  // sesión todavía activa tampoco vuelve a generarse visible.
-  launch.hidden=deadline(kind)>Date.now();
+  launch.hidden=sessionStarted(kind);
   launch.addEventListener('click',()=>{countdown.open();launch.hidden=true;});
-  scroll.append(launch);
+  if(launch.parentElement!==scroll)scroll.append(launch);
+  lastLaunch=launch;
 
   if(restore?.kind===kind){
    frame.scrollTop=restore.frameTop;
@@ -880,7 +895,7 @@ function tfRegionalizeHabitCycleSource(html){
 function prepareLoader(source){
   // Los módulos ya residen en memoria. No volver a serializar megabytes de JavaScript en el cargador.
   const routineStyle='<style id="tfSharedRoutineStyleV156">'+sharedRoutineCss()+'</style>';
-  const protocolControlsStyle="<style id=\"tfProtocolControlsV182\">#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch{\nposition:relative!important;box-sizing:border-box!important;align-items:center!important;justify-content:center!important;text-align:center!important;line-height:normal!important;min-width:0!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > span{\nposition:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;\ndisplay:block!important;width:max-content!important;max-width:calc(100% - 94px)!important;min-width:0!important;\npadding:0!important;margin:0!important;line-height:1.22!important;align-self:center!important;text-align:center!important;white-space:normal!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg{\nposition:absolute!important;top:50%!important;transform:translateY(-50%)!important;margin:0!important;align-self:center!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg:first-child{left:17px!important;right:auto!important;}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg:last-child{right:17px!important;left:auto!important;}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch[hidden],\n#windowContainer.window-container.open.tf-protocol-t12-locked #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch,\n#windowContainer.window-container.open.tf-protocol-t12-finished #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch{display:none!important;}\n#windowContainer.window-container.open.tf-protocol-t12-locked #windowContent[data-tf-routine] .v85-routine-modal-head > .window-close{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}\n#windowContainer.window-container.open.tf-protocol-t12-finished #windowContent[data-tf-routine] .v85-routine-modal-head > .window-close{visibility:visible!important;opacity:1!important;pointer-events:auto!important;}</style>";
+  const protocolControlsStyle="<style id=\"tfProtocolControlsV182\">#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch{\nposition:relative!important;box-sizing:border-box!important;align-items:center!important;justify-content:center!important;text-align:center!important;line-height:normal!important;min-width:0!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > span{\nposition:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;\ndisplay:block!important;width:max-content!important;max-width:calc(100% - 94px)!important;min-width:0!important;\npadding:0!important;margin:0!important;line-height:1.22!important;align-self:center!important;text-align:center!important;white-space:normal!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg{\nposition:absolute!important;top:50%!important;transform:translateY(-50%)!important;margin:0!important;align-self:center!important;\n}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg:first-child{left:17px!important;right:auto!important;}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch > svg:last-child{right:17px!important;left:auto!important;}\n#windowContainer.window-container.open #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch[hidden],\n#windowContainer.window-container.open.tf-protocol-t12-locked #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch,\n#windowContainer.window-container.open.tf-protocol-t12-finished #windowContent[data-tf-routine] .tf156-routine-list button.tf15-launch{display:none!important;}\n#windowContainer.window-container.open #windowContent[data-tf-routine='mentalist']:has(.tf156-routine-list button.tf15-launch) button.tfm-start{display:none!important;}\n#windowContainer.window-container.open.tf-protocol-t12-locked #windowContent[data-tf-routine] .v85-routine-modal-head > .window-close{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}\n#windowContainer.window-container.open.tf-protocol-t12-finished #windowContent[data-tf-routine] .v85-routine-modal-head > .window-close{visibility:visible!important;opacity:1!important;pointer-events:auto!important;}</style>";
   // Conservar el catálogo de trazos antes de que la vista general habilite los iconos ilustrados.
   const routineLineIcons=`window.__tfRoutineLineIconsV156={
     legal:V83_LEGAL_ROUTINE.map(step=>tfCategoryIconSvg(step.icon)),
