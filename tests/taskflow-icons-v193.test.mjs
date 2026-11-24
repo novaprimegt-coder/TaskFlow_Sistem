@@ -1,10 +1,10 @@
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const css=readFileSync('taskflow-icons-v193.css','utf8');
-const runtime=fs.readFileSync('t57/runtime-19.txt','utf8');
-const index=fs.readFileSync('index.html','utf8');
-const sw=fs.readFileSync('taskflow-offline-sw.js','utf8');
-const visual=fs.readFileSync('taskflow-visual-v158.css','utf8');
+const runtime=readFileSync('t57/runtime-19.txt','utf8');
+const index=readFileSync('index.html','utf8');
+const sw=readFileSync('taskflow-offline-sw.js','utf8');
+const visual=readFileSync('taskflow-visual-v158.css','utf8');
 for(const token of ['.tf158-system-glyph','.tf158-native-icon','.tf-ui-icon','.side-menu .menu-item svg','.kpi-card svg','.v48-card-head svg','.tf13076-task-icon svg','.tf13067-task-icon svg'])assert.ok(css.includes(token),'Falta selector '+token);
 assert.ok(css.includes('max-width:23px')&&css.includes('min-width:16px')&&css.includes('@media(max-width:430px)'),'Falta escala responsive');
 assert.ok(css.includes('--tf193-icon-aqua')&&css.includes('--tf193-icon-violet')&&css.includes('drop-shadow'),'Falta sistema cromático y acabado visual');
