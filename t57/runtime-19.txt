@@ -128,6 +128,7 @@ const headExtras='<style id="tfPermissionsT52Style">'+TF_T52_PERMISSION_CSS+'</s
  '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-hub-cards-v72.css'))+'">'+
  '<script src="'+htmlAttr(assetUrl('taskflow-touch-v105.js'))+'"><'+'/script>'+
  '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-visual-v158.css')+'&ui=162')+'">'+
+ '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-icons-v193.css')+'&ui=193-unified-icons')+'">'+
  '<link rel="stylesheet" href="'+htmlAttr(assetUrl('taskflow-onboarding-v161.css'))+'">'+
  '<script src="'+htmlAttr(assetUrl('taskflow-selects-v159.js'))+'"><'+'/script>'+
  '<script src="'+htmlAttr(assetUrl('taskflow-icons-v158.js')+'&ui=159')+'"><'+'/script>'+
