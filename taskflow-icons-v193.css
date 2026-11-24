@@ -55,3 +55,107 @@
 @media(prefers-reduced-motion:reduce) {
   .tf158-icon-catalog .tf-icon-option-mark {transition:none!important}
 }
+
+
+/* TaskFlow V194 · Iconografía integral, proporción y acabado visual.
+   Alcance deliberado: iconos de interfaz; no toca marcas, ilustraciones ni gráficos. */
+:root {
+  --tf194-icon-size: clamp(18px, 1.22em, 22px);
+  --tf194-icon-stroke: 1.85;
+  --tf194-icon-aqua: #75e7e8;
+  --tf194-icon-blue: #91c5ff;
+  --tf194-icon-violet: #c2a5ff;
+  --tf194-icon-muted: #aebbd0;
+  --tf194-icon-glow: 0 1px 2px rgba(0,0,0,.28), 0 0 7px rgba(83,207,229,.13);
+}
+:is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa,
+  .tf159-picker-arrow > svg,.tf159-picker-check > svg,.tf159-picker-mark > svg,
+  .tf161-timer-heading svg,.tf-icon-option-mark svg,.tf158-category-mark > svg,
+  .side-menu .menu-item > svg,.top-bar button > svg,.top-bar .search-icon > svg,
+  .kpi-card svg,.v27-hub-button svg,.v48-card-head svg,.v48-analysis-grid svg,
+  .v48-week-card svg,.search-container svg,.tf-profile-overlay button svg,
+  .tf-profile-overlay .tf-profile-action-row svg,.tf13076-task-icon svg,
+  .tf13067-task-icon svg,.quick-action-icon > svg,.reset-countdown-icon > svg) {
+  display: block;
+  width: var(--tf194-icon-size);
+  height: var(--tf194-icon-size);
+  min-width: 17px;
+  min-height: 17px;
+  max-width: 22px;
+  max-height: 22px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  stroke: currentColor;
+  stroke-width: var(--tf194-icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(var(--tf194-icon-glow));
+  opacity: .98;
+}
+:is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) {
+  color: var(--tf194-icon-aqua);
+}
+:is(.side-menu .menu-item,.top-bar button,.kpi-card,.v27-hub-button,
+  .v48-card-head,.quick-action-icon) :is(svg,.tf158-system-glyph) {
+  color: var(--tf194-icon-aqua);
+}
+:is(.tf159-picker-arrow,.tf159-picker-check,.tf159-picker-mark) { color: var(--tf194-icon-blue); }
+:is(.tf158-category-mark,.tf-icon-option-mark) { color: var(--tf194-icon-violet); }
+:is(.tf13076-task-icon,.tf13067-task-icon) { color: #c0b3ec; }
+:is(.tf158-fa,.tf158-system-glyph) { display: inline-grid; place-items: center; vertical-align: middle; }
+:is(.tf158-fa,.tf158-system-glyph) > svg { width: 100%; height: 100%; }
+:is(.tf-inline-icon-badge,.tf-icon-picker-preview,.tf158-category-mark,
+  .tf-icon-option-mark,.quick-action-icon,.tf13076-task-icon,.tf13067-task-icon) {
+  display: inline-grid;
+  place-items: center;
+  isolation: isolate;
+}
+:is(.tf-inline-icon-badge,.tf-icon-picker-preview,.tf158-category-mark,
+  .tf-icon-option-mark,.quick-action-icon) {
+  border: 1px solid rgba(115,220,235,.20);
+  background: linear-gradient(145deg, rgba(49,105,139,.30), rgba(18,35,62,.78));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.09),
+              inset 0 -5px 12px rgba(0,0,0,.10),
+              0 3px 10px rgba(0,0,0,.16);
+}
+:is(.tf-inline-icon-badge,.tf-icon-picker-preview,.tf158-category-mark,
+  .tf-icon-option-mark,.quick-action-icon) > svg {
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)) drop-shadow(0 0 5px rgba(88,210,232,.18));
+}
+.tf158-icon-catalog .tf-icon-option-mark {
+  border-color: rgba(129,202,237,.28);
+  background: radial-gradient(circle at 30% 22%, #315879 0%, #1b2c49 62%, #111d34 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12),
+              inset 0 -4px 9px rgba(0,0,0,.20),
+              0 3px 8px rgba(0,0,0,.20);
+}
+.tf158-icon-catalog .tf-icon-option.active .tf-icon-option-mark {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor,
+              0 0 12px rgba(103,225,232,.20);
+}
+:is(button,a,[role="button"],.menu-item):has(> svg),
+:is(button,a,[role="button"],.menu-item):has(> .tf158-system-glyph) {
+  align-items: center;
+}
+:is(button,a,[role="button"],.menu-item) > :is(svg,.tf158-system-glyph,.tf158-native-icon) {
+  vertical-align: middle;
+}
+@media(max-width:430px) {
+  :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa,
+    .side-menu .menu-item > svg,.top-bar button > svg,.kpi-card svg,
+    .v27-hub-button svg,.v48-card-head svg,.v48-analysis-grid svg,
+    .tf159-picker-arrow > svg,.tf159-picker-check > svg,
+    .quick-action-icon > svg,.reset-countdown-icon > svg) {
+    width: 19px;
+    height: 19px;
+    min-width: 17px;
+    min-height: 17px;
+    max-width: 20px;
+    max-height: 20px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) { transition: none !important; }
+}
