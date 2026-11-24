@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const css=fs.readFileSync('taskflow-icons-v193.css','utf8');
+const runtime=fs.readFileSync('t57/runtime-19.txt','utf8');
+const index=fs.readFileSync('index.html','utf8');
+const sw=fs.readFileSync('taskflow-offline-sw.js','utf8');
+const visual=fs.readFileSync('taskflow-visual-v158.css','utf8');
+for(const token of ['.tf158-system-glyph','.tf158-native-icon','.tf-ui-icon','.side-menu .menu-item svg','.kpi-card svg','.v48-card-head svg','.tf13076-task-icon svg','.tf13067-task-icon svg'])assert.ok(css.includes(token),'Falta selector '+token);
+assert.ok(css.includes('max-width:23px')&&css.includes('min-width:16px')&&css.includes('@media(max-width:430px)'),'Falta escala responsive');
+assert.ok(css.includes('--tf193-icon-aqua')&&css.includes('--tf193-icon-violet')&&css.includes('drop-shadow'),'Falta sistema cromático y acabado visual');
+assert.ok(!/svg\s*\{[^}]*width:\s*100vw/i.test(css),'No se permiten dimensiones globales destructivas');
+assert.ok(runtime.includes('taskflow-icons-v193.css')&&runtime.indexOf('taskflow-icons-v193.css')>runtime.indexOf('taskflow-visual-v158.css'),'CSS nuevo después del estilo vectorial base');
+assert.ok(index.includes('193-iconografia-unificada'),'Falta invalidación de caché del runtime');
+assert.ok(sw.includes('"taskflow-icons-v193.css"'),'Falta recurso en caché offline');
+assert.ok(visual.includes('.tf158-icon-catalog'),'Se perdió el catálogo existente');
+console.log('OK: iconografía V193, escalas, color, catálogo, carga y modo offline.');

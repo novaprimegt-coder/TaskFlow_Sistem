@@ -182,5 +182,8 @@ jobs:
           console.log('OK: medianoche por zona, horario de verano y arranque sin recompilacion duplicada');
           NODE
 
+      - name: Verificar iconografía V193
+        run: node tests/taskflow-icons-v193.test.mjs
+
       - name: Verificar cinco rutinas, cronómetros y cierre seguro
         run: node tests/taskflow-protocols-v192.test.mjs
