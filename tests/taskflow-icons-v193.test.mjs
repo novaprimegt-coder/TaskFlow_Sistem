@@ -11,7 +11,7 @@ assert.ok(css.includes('--tf193-icon-aqua')&&css.includes('--tf193-icon-violet')
 assert.ok(css.includes('TaskFlow V194 · Iconografía integral')&&css.includes('--tf194-icon-size')&&css.includes('clamp(18px, 1.22em, 22px)'),'Falta escala V194 equilibrada');
 assert.ok(css.includes('linear-gradient(145deg')&&css.includes('inset 0 1px 0')&&css.includes('vector-effect: non-scaling-stroke'),'Falta acabado de profundidad vectorial V194');
 assert.ok(!/svg\s*\{[^}]*width:\s*100vw/i.test(css),'No se permiten dimensiones globales destructivas');
-assert.ok(runtime.includes("taskflow-icons-v193.css')+'&ui=194-balanced-iconography'")&&runtime.indexOf('taskflow-icons-v193.css')>runtime.indexOf('taskflow-visual-v158.css'),'CSS V194 debe cargarse después del estilo vectorial base');
+assert.ok(runtime.includes("taskflow-icons-v193.css')+'&ui=195-context-fit'")&&runtime.indexOf('taskflow-icons-v193.css')>runtime.indexOf('taskflow-visual-v158.css'),'CSS V194 debe cargarse después del estilo vectorial base');
 assert.ok(index.includes('194-iconografia-unificada'),'Falta invalidación de caché del runtime V194');
 assert.ok(sw.includes('"taskflow-icons-v193.css"'),'Falta recurso en caché offline');
 assert.ok(visual.includes('.tf158-icon-catalog'),'Se perdió el catálogo existente');
