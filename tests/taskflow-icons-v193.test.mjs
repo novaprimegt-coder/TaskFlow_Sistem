@@ -15,4 +15,11 @@ assert.ok(runtime.includes("taskflow-icons-v193.css')+'&ui=194-balanced-iconogra
 assert.ok(index.includes('194-iconografia-unificada'),'Falta invalidación de caché del runtime V194');
 assert.ok(sw.includes('"taskflow-icons-v193.css"'),'Falta recurso en caché offline');
 assert.ok(visual.includes('.tf158-icon-catalog'),'Se perdió el catálogo existente');
-console.log('OK: iconografía V193, escalas, color, catálogo, carga y modo offline.');
+assert.ok(css.includes('TaskFlow V195 · Iconografía de precisión por contexto'),'Falta refinamiento V195');
+assert.ok(css.includes('html body .side-menu .menu-item > :is(svg,.tf158-system-glyph,.tf158-native-icon)'),'Falta tamaño específico de navegación');
+assert.ok(css.includes('html body :is(.tf13076-check,.tf13067-check) svg')&&css.includes('width: 14px'),'Falta escala reducida para checks');
+assert.ok(css.includes('html body .tf158-icon-catalog .tf-icon-option-mark > svg'),'Falta tamaño específico del catálogo');
+assert.ok(runtime.includes("taskflow-icons-v193.css')+'&ui=195-context-fit'"),'Falta carga CSS V195');
+assert.ok(index.includes('195-iconos-precision'),'Falta caché V195');
+assert.ok(sw.includes('taskflow-offline-shell-t156-iconos-v195')&&sw.includes('taskflow-offline-runtime-t131-iconos-v195'),'Falta renovación de caché offline V195');
+console.log('OK: iconografía V195 por contexto, escalas táctiles, paleta y cachés.');

@@ -159,3 +159,200 @@
 @media(prefers-reduced-motion:reduce) {
   :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) { transition: none !important; }
 }
+
+
+/* TaskFlow V195 · Iconografía de precisión por contexto.
+   Ajusta cada familia por separado; evita imponer una escala universal. */
+:root {
+  --tf195-ink: #e8f2ff;
+  --tf195-muted: #9fb2ca;
+  --tf195-cyan: #70e4e5;
+  --tf195-blue: #8dbdff;
+  --tf195-violet: #c3a5ff;
+  --tf195-mint: #80e5c1;
+  --tf195-coral: #ff9eac;
+  --tf195-lime: #c7e98b;
+  --tf195-line: rgba(151,190,226,.24);
+  --tf195-icon-shadow: 0 1px 1px rgba(0,0,0,.35), 0 0 4px rgba(91,196,224,.12);
+}
+/* Iconos generales: tamaño de lectura, no tamaño de ilustración. */
+html body :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) {
+  width: 19px;
+  height: 19px;
+  min-width: 17px;
+  min-height: 17px;
+  max-width: 20px;
+  max-height: 20px;
+  flex: 0 0 auto;
+  color: var(--tf195-cyan);
+  filter: drop-shadow(var(--tf195-icon-shadow));
+  opacity: .96;
+  vertical-align: middle;
+}
+html body .reset-countdown-icon .tf158-system-glyph {
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  min-height: 17px;
+  max-width: 17px;
+  max-height: 17px;
+}
+html body :is(.tf-inline-icon-badge,.tf-icon-picker-preview) > .tf158-native-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+}
+/* Navegación: iconos discretos y alineados con el texto. */
+html body .side-menu .menu-item > :is(svg,.tf158-system-glyph,.tf158-native-icon) {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  color: var(--tf195-blue);
+  filter: none;
+}
+html body .top-bar button > :is(svg,.tf158-system-glyph,.tf158-native-icon) {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  color: var(--tf195-muted);
+  filter: none;
+}
+html body .top-bar .search-icon > svg {
+  width: 18px;
+  height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+}
+/* Métricas y paneles: solo los iconos marcados, nunca todos los SVG de la tarjeta. */
+html body :is(.kpi-card,.v27-hub-button,.v48-card-head,.v48-analysis-grid,.v48-week-card)
+  :is(.tf-ui-icon,.tf158-system-glyph,.tf158-native-icon) {
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  min-height: 19px;
+  max-width: 19px;
+  max-height: 19px;
+  color: var(--tf195-cyan);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.28));
+}
+/* Rutinas: icono de tarea y marca de misión en escalas distintas. */
+html body :is(.tf13076-task-icon,.tf13067-task-icon) > svg {
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  min-height: 19px;
+  max-width: 19px;
+  max-height: 19px;
+  color: var(--tf195-violet);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.32));
+}
+html body :is(.tf13076-check,.tf13067-check) svg {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  max-width: 14px;
+  max-height: 14px;
+  filter: none;
+}
+/* Selectores: flechas y checks son controles, no iconos de contenido. */
+html body :is(.tf159-picker-arrow,.tf159-picker-check,.tf159-picker-mark) > svg {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  color: var(--tf195-blue);
+  filter: none;
+}
+html body .tf161-timer-heading svg {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  color: var(--tf195-mint);
+  filter: none;
+}
+/* Catálogo: conserva las celdas táctiles; estiliza el glifo dentro de ellas. */
+html body .tf158-icon-catalog .tf158-category-mark {
+  width: 27px;
+  height: 27px;
+  color: var(--tf195-violet);
+  border: 1px solid var(--tf195-line);
+  border-radius: 8px;
+  background: linear-gradient(145deg,rgba(44,70,104,.72),rgba(17,29,51,.94));
+  box-shadow: inset 0 1px rgba(255,255,255,.09),0 2px 6px rgba(0,0,0,.16);
+}
+html body .tf158-icon-catalog .tf158-category-mark > svg {
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  min-height: 19px;
+  max-width: 19px;
+  max-height: 19px;
+  filter: none;
+}
+html body .tf158-icon-catalog .tf-icon-option-mark > svg {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  filter: none;
+}
+html body .tf158-icon-catalog .tf-icon-option.active .tf-icon-option-mark {
+  outline: 1px solid color-mix(in srgb,var(--tf158-tone) 72%,white 8%);
+  outline-offset: 2px;
+}
+/* Paleta semántica: respeta el tono elegido por cada icono. */
+html body :is(.tf158-fa,.tf158-system-glyph)[data-tone="mint"] { color: var(--tf195-mint); }
+html body :is(.tf158-fa,.tf158-system-glyph)[data-tone="coral"] { color: var(--tf195-coral); }
+html body :is(.tf158-fa,.tf158-system-glyph)[data-tone="lime"] { color: var(--tf195-lime); }
+html body :is(.tf158-fa,.tf158-system-glyph)[data-tone="violet"] { color: var(--tf195-violet); }
+html body :is(.tf158-fa,.tf158-system-glyph)[data-tone="blue"] { color: var(--tf195-blue); }
+/* Pantallas compactas: conserva el área táctil y reduce solo el glifo. */
+@media(max-width:430px) {
+  html body :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) {
+    width: 18px;
+    height: 18px;
+    min-width: 17px;
+    min-height: 17px;
+    max-width: 19px;
+    max-height: 19px;
+  }
+  html body .side-menu .menu-item > :is(svg,.tf158-system-glyph,.tf158-native-icon),
+  html body .top-bar button > :is(svg,.tf158-system-glyph,.tf158-native-icon) {
+    width: 17px;
+    height: 17px;
+    min-width: 17px;
+    min-height: 17px;
+    max-width: 17px;
+    max-height: 17px;
+  }
+  html body :is(.tf13076-task-icon,.tf13067-task-icon) > svg {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    max-width: 18px;
+    max-height: 18px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  html body :is(.tf158-system-glyph,.tf158-native-icon,.tf-ui-icon,.tf158-fa) {
+    transition: none !important;
+  }
+}
