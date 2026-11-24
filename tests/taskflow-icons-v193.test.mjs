@@ -1,6 +1,6 @@
-'use strict';
-const fs=require('node:fs'),assert=require('node:assert/strict');
-const css=fs.readFileSync('taskflow-icons-v193.css','utf8');
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const css=readFileSync('taskflow-icons-v193.css','utf8');
 const runtime=fs.readFileSync('t57/runtime-19.txt','utf8');
 const index=fs.readFileSync('index.html','utf8');
 const sw=fs.readFileSync('taskflow-offline-sw.js','utf8');
