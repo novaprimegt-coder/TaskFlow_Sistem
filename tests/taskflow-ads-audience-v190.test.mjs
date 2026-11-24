@@ -18,7 +18,7 @@ test("Sintaxis de controles y políticas",()=>{
 });
 test("Preservar versión de pagos y actualizar solamente el recurso de audiencia",()=>{
  assert.match(index,/v=(?:189-ads-vertical-fallback|192-rutinas-reloj-cierre)/);
- assert.match(index,/v=(?:191-ads-audience-reliability|193-iconografia-unificada|194-iconografia-unificada)/);
+ assert.match(index,/v=(?:191-ads-audience-reliability|193-iconografia-unificada|194-iconografia-unificada|195-iconos-precision)/);
  assert.match(index,/runtime-19\.txt/);
 });
 test("Cargar el consentimiento después del puente existente",()=>{
